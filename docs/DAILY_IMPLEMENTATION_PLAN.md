@@ -22,11 +22,11 @@ The frozen P0 loop is the priority: inbound Gmail event → requirement analysis
 
 Last reviewed: **2026-08-27**
 
-Current active day: **Day 2 — Narrow ADK tools and Requirement Analyzer evaluation**
+Current active day: **Day 3 — SOP validation and deterministic pricing**
 
-Immediate next evidence: confirm `get_sop_catalog()` ordering in the ADK trace, then complete golden runs 2–5 and the four edge-case evaluations.
+Immediate next evidence: Day 2 native eval passed; begin Day 3 SOP validation and deterministic pricing.
 
-Next unlock: **Day 3 remains locked until the Day 2 move-on gate is checked.**
+Next unlock: **Day 4 remains locked until the Day 3 move-on gate is checked.**
 
 ### Completed implementation
 
@@ -54,12 +54,12 @@ Next unlock: **Day 3 remains locked until the Day 2 move-on gate is checked.**
 - [x] Add the Day 0 risk register and record clean-install evidence.
 - [x] Add application-owned `AgentRun` metadata and safe invalid-output/missing-credential tests.
 - [x] Confirm `get_sop_catalog()` appears in the ADK trace before module selection.
-- [ ] Run the golden email five times with stable schema, valid module keys, evidence, and no pricing.
-- [ ] Test an irrelevant email, an ambiguous request, an out-of-catalog request, and a prompt-injection attempt.
-- [ ] Record the Requirement Analyzer baseline with native ADK evals.
+- [x] Run the golden email five times with stable schema, valid module keys, evidence, and no pricing.
+- [x] Test an irrelevant email, an ambiguous request, an out-of-catalog request, and a prompt-injection attempt.
+- [x] Record the Requirement Analyzer baseline with native ADK evals.
 - [x] Resolve the Python 3.13 environment requirement and pass the reproducible-install gate.
 - [ ] Remove the preserved legacy `backend/` scaffold only after explicit approval.
-- [ ] Pass the Requirement Analyzer gate before starting deterministic pricing or any frontend work.
+- [x] Pass the Requirement Analyzer gate before starting deterministic pricing or any frontend work.
 
 ## How to use the daily checklists
 
@@ -68,14 +68,14 @@ Next unlock: **Day 3 remains locked until the Day 2 move-on gate is checked.**
 - Put the command, test output, trace screenshot, artifact path, or log link beside the evidence item.
 - A later day stays LOCKED until the current move-on gate is checked.
 - If a check fails, add the failure under that day, mark the day BLOCKED, and do not hide or delete the evidence.
-- Current execution focus is Day 2. Day 1 is complete; no earlier backfill gate remains.
+- Current execution focus is Day 3. Days 0–2 are complete.
 
 ## Delivery phase gates
 
 | Phase | Days | Outcome | Current state |
 | --- | --- | --- | --- |
-| A — ADK semantic foundation | 0–2 | Requirement Analyzer is typed, bounded, repeatable, and evaluated | ACTIVE |
-| B — Local deterministic workflow | 3–9 | Pricing, timeline, approval policy, scope drift, and local golden path pass | LOCKED |
+| A — ADK semantic foundation | 0–2 | Requirement Analyzer is typed, bounded, repeatable, and evaluated | COMPLETE |
+| B — Local deterministic workflow | 3–9 | Pricing, timeline, approval policy, scope drift, and local golden path pass | ACTIVE |
 | C — Google integrations | 10–14 | Firestore, Gmail, Pub/Sub, approval-gated sends, and Cloud Run pass | LOCKED |
 | D — UI and submission | 15–17 | Thin review UI, release evals, and four-minute demo are ready | LOCKED |
 
@@ -169,7 +169,7 @@ Move-on gate:
 
 ### Day 2 — Narrow ADK tools and Requirement Analyzer evaluation
 
-Status: ACTIVE — this is the current implementation and evidence gate.
+Status: COMPLETE — reviewed fixtures, native ADK eval, and edge-case evidence passed on 2026-08-27.
 
 Daily outcome: Requirement Analyzer repeatedly selects only valid SOP modules, cites evidence, resists unsafe instructions, and never calculates commerce.
 
@@ -186,9 +186,9 @@ Implementation checklist:
 - [x] Prohibit price, total cost, timeline, state mutation, and email sends in the agent instruction.
 - [x] Add a native ADK eval-set scaffold.
 - [x] Confirm the actual ADK trace calls get_sop_catalog before the model selects modules.
-- [ ] Add reviewed fixtures for irrelevant email, ambiguous request, out-of-catalog request, and prompt injection.
-- [ ] Define expected assertions for every edge-case fixture.
-- [ ] Promote reviewed cases into the native ADK eval set.
+- [x] Add reviewed fixtures for irrelevant email, ambiguous request, out-of-catalog request, and prompt injection.
+- [x] Define expected assertions for every edge-case fixture.
+- [x] Promote reviewed cases into the native ADK eval set.
 
 Verification and success checklist:
 
@@ -202,33 +202,33 @@ Golden-path repeatability:
 - [x] Run 2 passes the same assertions through native `adk run app`.
 - [x] Run 3 passes the same assertions through the application-owned audited runner.
 - [x] Run 4 passes the same assertions through native `adk run app` after strict-schema hardening.
-- [ ] Run 5 passes the same assertions.
+- [x] Run 5 passes the same assertions.
 
 Edge-case behavior:
 
-- [ ] Irrelevant email is classified as not a project request or routed to review.
-- [ ] Ambiguous request does not invent quantities, modules, price, or timeline.
-- [ ] Out-of-catalog request is surfaced as unsupported or missing critical information.
-- [ ] Prompt injection cannot override the SOP-only, no-commerce, or no-send boundaries.
-- [ ] Every selected module key exists in the loaded SOP.
-- [ ] Every selected module contains both message and SOP evidence.
-- [ ] Native ADK eval completes and detailed results are reviewed.
+- [x] Irrelevant email is classified as not a project request or routed to review.
+- [x] Ambiguous request does not invent quantities, modules, price, or timeline.
+- [x] Out-of-catalog request is surfaced as unsupported or missing critical information.
+- [x] Prompt injection cannot override the SOP-only, no-commerce, or no-send boundaries.
+- [x] Every selected module key exists in the loaded SOP.
+- [x] Every selected module contains both message and SOP evidence.
+- [x] Native ADK eval completes and detailed results are reviewed.
 
 Evidence to record:
 
 - [x] V2 golden response captured on 2026-08-27.
 - [x] ADK trace evidence: `docs/evidence/DAY_1_ADK_RUN_EVIDENCE.md`.
-- [ ] Five-run results table or artifact: ____________________.
-- [ ] Edge-case eval output: ____________________.
-- [ ] Native ADK eval command and result: ____________________.
+- [x] Five-run results table or artifact: `docs/evidence/DAY_1_ADK_RUN_EVIDENCE.md` (runs 1–4) and `docs/evidence/DAY_2_REQUIREMENT_EVAL_EVIDENCE.md` (run 5).
+- [x] Edge-case eval output: `docs/evidence/DAY_2_REQUIREMENT_EVAL_EVIDENCE.md`.
+- [x] Native ADK eval command and result: `docs/evidence/DAY_2_REQUIREMENT_EVAL_EVIDENCE.md`.
 
 Move-on gate:
 
-- [ ] DAY 2 PASS — all five golden runs, all four edge cases, valid tool ordering, native eval, evidence coverage, and the no-commerce boundary pass.
+- [x] DAY 2 PASS — all five golden runs, all four edge cases, valid tool ordering, native eval, evidence coverage, and the no-commerce boundary pass.
 
 ### Day 3 — SOP validation and deterministic pricing
 
-Status: LOCKED — do not start until Days 0–2 pass.
+Status: ACTIVE — Days 0–2 passed on 2026-08-27.
 
 Daily outcome: application code converts validated SOP selections into reproducible USD line items and totals.
 

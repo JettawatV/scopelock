@@ -8,6 +8,11 @@ adk eval app tests/eval/requirement_analyzer.evalset.json `
   --print_detailed_results
 ```
 
+`adk eval` requires the locked `google-adk[eval]` extra. From the repository
+root, `uv sync --locked --python 3.13 --extra dev` installs it into `.venv313`.
+The CLI loads `app/__init__.py`; that package re-exports `agent` without
+constructing the agent twice.
+
 `tests/fixtures/requirement_analyzer_cases.json` is the reviewed source of truth
 for the Requirement Analyzer. It contains the golden request plus irrelevant,
 ambiguous, out-of-catalog, and prompt-injection cases with explicit assertions.
