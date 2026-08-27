@@ -1,0 +1,18 @@
+[project]
+name = "scopelock"
+version = "0.1.0"
+description = "ADK-first, approval-gated scope management agent"
+requires-python = ">=3.13"
+dependencies = [
+  "pydantic>=2.10,<3",
+  "pyyaml>=6.0,<7",
+]
+
+[project.optional-dependencies]
+adk = ["google-adk>=1.0.0"]
+dev = ["pytest>=8.0,<9"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+pythonpath = ["."]
+

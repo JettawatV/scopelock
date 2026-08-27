@@ -1,0 +1,133 @@
+# DEMO TEMPLATE ONLY.
+# Replace amounts/timelines with final confirmed JVL demo SOP values.
+
+business:
+  name: JVL
+  currency: USD
+  proposal_valid_days: 14
+  default_quiet_window_minutes: 60
+
+policies:
+  human_approval_required_for_send: true
+  accepted_scope_is_immutable: true
+  ambiguous_commercial_change_requires_review: true
+
+modules:
+  - key: core_workflow_automation
+    name: Core Workflow Automation
+    description: Automate one defined business workflow from intake through structured output.
+    aliases:
+      - workflow automation
+      - business process automation
+      - request automation
+    pricing:
+      type: fixed
+      amount_thb: 4000
+    timeline:
+      base_days: 5
+      parallelizable: false
+    included:
+      - one primary workflow
+      - business-rule implementation
+      - basic error handling
+    excluded:
+      - additional external integrations
+      - custom mobile application
+      - 24/7 managed operations
+
+  - key: email_intake
+    name: Gmail Intake Integration
+    description: Read and process inbound Gmail messages for the workflow.
+    aliases:
+      - gmail integration
+      - email intake
+      - shared inbox
+    pricing:
+      type: fixed
+      amount_thb: 500
+    timeline:
+      base_days: 2
+      parallelizable: true
+    included:
+      - one Gmail mailbox
+      - inbound email parsing
+    excluded:
+      - multi-mailbox routing
+
+  - key: operations_dashboard
+    name: Operations Dashboard
+    description: Simple dashboard for structured workflow records and statuses.
+    aliases:
+      - dashboard
+      - admin dashboard
+      - operations view
+    pricing:
+      type: fixed
+      amount_thb: 750
+    timeline:
+      base_days: 3
+      parallelizable: true
+    included:
+      - standard charts
+      - status table
+      - basic filters
+    excluded:
+      - advanced BI modeling
+      - custom mobile dashboard
+
+  - key: email_notifications
+    name: Email Notification Workflow
+    description: Email alerts for predefined workflow events.
+    aliases:
+      - email alerts
+      - email notifications
+    pricing:
+      type: fixed
+      amount_thb: 400
+    timeline:
+      base_days: 1
+      parallelizable: true
+    included:
+      - predefined notification events
+    excluded:
+      - marketing campaigns
+
+  - key: line_notifications
+    name: LINE Notification Integration
+    description: Send workflow notifications through LINE.
+    aliases:
+      - line alerts
+      - line notifications
+      - line integration
+    pricing:
+      type: fixed
+      amount_thb: 750
+    timeline:
+      base_days: 3
+      parallelizable: false
+    included:
+      - one LINE channel/account
+      - workflow notifications
+    excluded:
+      - LINE mini app
+      - conversational chatbot
+
+  - key: line_approval
+    name: LINE Approval Workflow
+    description: Allow authorized managers to approve/reject workflow items through LINE.
+    aliases:
+      - manager approval on line
+      - line approval
+    pricing:
+      type: fixed
+      amount_thb: 750
+    timeline:
+      base_days: 2
+      parallelizable: false
+    dependencies:
+      - line_notifications
+    included:
+      - approve/reject action
+      - authorized manager flow
+    excluded:
+      - complex multi-step approval matrix
