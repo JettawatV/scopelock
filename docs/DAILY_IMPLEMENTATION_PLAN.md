@@ -4,7 +4,7 @@
 
 This plan turns the product, architecture, domain, agent, SOP, evaluation, and hackathon documents into a sequence of small, verifiable tasks.
 
-The first stage is deliberately ADK-first: prove typed agent behavior, narrow tools, deterministic pricing/timeline, and evaluation locally before building a frontend. A day is complete only when its success criteria and evidence are recorded. If a pass gate fails, fix that day before moving forward.
+The first stage is deliberately ADK-first: use the native ADK development toolkit (`adk web .`, `adk run app`, and `adk eval`) as the main development loop. Develop the visible `scopelock` root agent and its Requirement Analyzer sub-agent first, then prove typed agent behavior, narrow tools, deterministic pricing/timeline, and evaluation locally before building a frontend. A day is complete only when its success criteria and evidence are recorded. If a pass gate fails, fix that day before moving forward.
 
 The frozen P0 loop is the priority: inbound Gmail event → requirement analysis → deterministic proposal → user approval → same-thread send → scope monitoring → buffered revision/change order → approval → send. Do not add integrations or UI polish until the relevant gate below passes.
 
@@ -15,6 +15,7 @@ The frozen P0 loop is the priority: inbound Gmail event → requirement analysis
 - No agent tool may send email or directly mutate commercial state.
 - Accepted scope versions are immutable. Before acceptance use proposal revisions; after acceptance use change orders.
 - Use the ADK development toolkit and local fixtures for the early loop. Gmail, Firestore, Pub/Sub, Cloud Run, and UI come later.
+- Frontend/UI/UX is blocked until agents pass the local golden-path and safety gates through ADK.
 - Use confirmed demo SOP values before recording. Values in the example SOP are placeholders.
 
 ## Daily plan
@@ -41,7 +42,7 @@ Pass gate: the team can explain the golden path and the forbidden behaviors in u
 
 Tasks:
 
-- Scaffold the Python backend package and test runner.
+- Scaffold the ADK-standard project-root `app/` package, `root_agent`, sub-agent package, read-only tools, deterministic `scopelock/` package, and native `tests/` layout.
 - Configure Vertex AI/Gemini access through environment variables; keep secrets out of source control.
 - Define Pydantic v2 models for `EvidenceRef`, normalized requirements, SOP selections, `RequirementAnalysis`, `ScopeEventProposal`, and `ScopeAnalysis`.
 - Add one local ADK runner that accepts an email-like string and prints validated structured output.

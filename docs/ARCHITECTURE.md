@@ -165,27 +165,27 @@ Use deterministic code for:
 
 ---
 
-## 7. Backend module boundaries
+## 7. ADK app and deterministic application boundaries
 
 Suggested Python package shape:
 
 ```text
-backend/
-  app/
-    api/
-      gmail_webhook.py
-      projects.py
-      approvals.py
-      evals.py
-    agents/
-      scope_analyzer.py
-      requirement_analyzer.py
-      reviewer.py
-    domain/
-      models.py
-      enums.py
-      state_machines.py
-    services/
+app/
+  agent.py                   # ADK root_agent: ScopeLock
+  sub_agents/
+    requirement_analyzer.py  # P0 first agent
+    scope_analyzer.py        # add after Requirement Analyzer passes evals
+    reviewer.py              # optional, risk-triggered only
+  tools/
+    sop_tools.py
+    context_tools.py
+
+scopelock/
+  domain/
+    models.py
+    enums.py
+    state_machines.py
+  services/
       gmail_service.py
       gmail_history_service.py
       sop_service.py
@@ -196,17 +196,20 @@ backend/
       scope_buffer_service.py
       approval_service.py
       audit_service.py
-    repositories/
+  repositories/
       firestore_projects.py
       firestore_events.py
       firestore_runs.py
-    eval/
-      runner.py
-      metrics.py
-    main.py
+
+tests/
+  unit/
+  integration/
+  eval/
 ```
 
-Do not create agents when a service/function is enough.
+Use `adk web .` and `adk run app` while developing agents. Do not create agents
+when a service/function is enough, and never put pricing, approval, state
+transitions, or Gmail send capabilities inside `app/` tools.
 
 ---
 

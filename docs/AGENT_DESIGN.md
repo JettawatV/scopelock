@@ -8,6 +8,17 @@ Avoid a "one giant agent with every tool" architecture.
 
 P0 may be implemented with **two primary LLM agents and one optional reviewer**.
 
+## ADK development structure
+
+Use one ADK-native root agent named `scopelock` in `app/agent.py`. It delegates
+to the active P0 sub-agent in `app/sub_agents/`. Start with only
+`requirement_analyzer`; add `scope_analyzer` only after the Requirement Analyzer
+passes typed-output, evidence, tool-trajectory, and safety evaluations.
+
+Develop through `adk web .` and `adk run app`. Keep deterministic commerce in
+the separate `scopelock/` package. Frontend work is blocked until this ADK gate
+passes.
+
 ---
 
 ## 2. Agent A — Requirement Analyzer

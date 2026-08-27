@@ -1,5 +1,6 @@
 # DEMO TEMPLATE ONLY.
 # Replace amounts/timelines with final confirmed JVL demo SOP values.
+# Amounts below are illustrative USD demo values, not live pricing.
 
 business:
   name: JVL
@@ -22,7 +23,7 @@ modules:
       - request automation
     pricing:
       type: fixed
-      amount_thb: 4000
+      amount_usd: 4000
     timeline:
       base_days: 5
       parallelizable: false
@@ -44,7 +45,7 @@ modules:
       - shared inbox
     pricing:
       type: fixed
-      amount_thb: 500
+      amount_usd: 500
     timeline:
       base_days: 2
       parallelizable: true
@@ -63,7 +64,7 @@ modules:
       - operations view
     pricing:
       type: fixed
-      amount_thb: 750
+      amount_usd: 750
     timeline:
       base_days: 3
       parallelizable: true
@@ -83,7 +84,7 @@ modules:
       - email notifications
     pricing:
       type: fixed
-      amount_thb: 400
+      amount_usd: 400
     timeline:
       base_days: 1
       parallelizable: true
@@ -101,7 +102,7 @@ modules:
       - line integration
     pricing:
       type: fixed
-      amount_thb: 750
+      amount_usd: 750
     timeline:
       base_days: 3
       parallelizable: false
@@ -120,7 +121,7 @@ modules:
       - line approval
     pricing:
       type: fixed
-      amount_thb: 750
+      amount_usd: 750
     timeline:
       base_days: 2
       parallelizable: false

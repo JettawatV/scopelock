@@ -2,6 +2,7 @@ from pathlib import Path
 
 from backend.app.domain.models import EvidenceRef, NormalizedRequirement, RequirementAnalysis, SOPModuleSelection
 from backend.app.services.sop_service import SOPCatalog, load_sop
+from backend.app.agents.adk_tools import get_current_scope, get_recent_thread_context, get_sop_catalog
 
 PROMPT_VERSION = "requirement_analyzer_v1"
 
@@ -19,10 +20,14 @@ def build_adk_agent():
     return Agent(
         name="requirement_analyzer",
         model="gemini-3.5-flash",
+        output_schema=RequirementAnalysis,
         instruction=(
             "Extract typed project requirements and map only to module keys returned by "
-            "the SOP tool. Cite evidence. Never calculate or invent price."
+            "get_sop_catalog. Cite the client email and SOP evidence. Never calculate "
+            "or invent price. Use get_current_scope and get_recent_thread_context only "
+            "when a project ID is supplied."
         ),
+        tools=[get_sop_catalog, get_current_scope, get_recent_thread_context],
     )
 
 
@@ -64,4 +69,3 @@ def offline_requirement_analysis(email_text: str, catalog: SOPCatalog) -> Requir
 
 def analyze_fixture(email_text: str, sop_path: str | Path = "config/jvl_sop.example.yaml") -> RequirementAnalysis:
     return offline_requirement_analysis(email_text, load_sop(sop_path))
-

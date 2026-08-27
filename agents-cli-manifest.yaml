@@ -1,0 +1,6 @@
+name: scopelock
+agent_directory: app
+create_params:
+  deployment_target: none
+  session_type: in_memory
+

@@ -1,0 +1,23 @@
+{
+  "eval_set_id": "scopelock_requirement_analyzer_v1",
+  "name": "ScopeLock Requirement Analyzer",
+  "description": "Native ADK eval-set scaffold. Promote a case only after its expected structured output is reviewed.",
+  "eval_cases": [
+    {
+      "eval_id": "golden_initial_request",
+      "conversation": [
+        {
+          "invocation_id": "initial_email",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "We want to automate incoming customer requests from our shared Gmail inbox, store structured data, show a simple operations dashboard, and email managers when manual review is needed. Please send a proposal."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

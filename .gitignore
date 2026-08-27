@@ -13,12 +13,14 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 *.egg-info/
+.adk/
 
 # Local artifacts and logs
 *.log
 artifacts/
 .coverage
 htmlcov/
+docs/
 
 # Editors and OS files
 .vscode/

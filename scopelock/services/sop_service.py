@@ -44,7 +44,7 @@ class SOPCatalog(BaseModel):
 
     @model_validator(mode="after")
     def unique_module_keys(self):
-        keys = [m.key for m in self.modules]
+        keys = [module.key for module in self.modules]
         if len(keys) != len(set(keys)):
             raise ValueError("SOP module keys must be unique")
         return self
@@ -59,3 +59,4 @@ class SOPCatalog(BaseModel):
 def load_sop(path: str | Path) -> SOPCatalog:
     with Path(path).open("r", encoding="utf-8") as handle:
         return SOPCatalog.model_validate(yaml.safe_load(handle))
+
