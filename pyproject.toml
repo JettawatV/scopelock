@@ -1,10 +1,14 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "scopelock"
 version = "0.1.0"
 description = "ADK-first, approval-gated scope management agent"
 requires-python = ">=3.13"
 dependencies = [
-  "google-adk[gcp]>=2.8.0,<3",
+  "google-adk[gcp,eval]>=2.8.0,<3",
   "pydantic>=2.10,<3",
   "python-dotenv>=1.0,<2",
   "pyyaml>=6.0,<7",
@@ -17,3 +21,7 @@ dev = ["pytest>=8.0,<9"]
 testpaths = ["tests"]
 pythonpath = ["."]
 
+[tool.setuptools.packages.find]
+include = ["app*", "scopelock*"]
+exclude = ["backend*", "tests*"]
+namespaces = false

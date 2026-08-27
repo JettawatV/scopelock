@@ -1,0 +1,13 @@
+{
+  "criteria": {
+    "requirement_contract": 1.0
+  },
+  "custom_metrics": {
+    "requirement_contract": {
+      "code_config": {
+        "name": "scopelock.testing.adk_eval_metrics.requirement_contract_metric"
+      },
+      "description": "Deterministically checks strict RequirementAnalysis structure, reviewed case outcomes, SOP keys, evidence, tool boundaries, and the no-commerce rule."
+    }
+  }
+}

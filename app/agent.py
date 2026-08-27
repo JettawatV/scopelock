@@ -1,7 +1,6 @@
 """ScopeLock's ADK-native root-agent entry point."""
 
 from pathlib import Path
-
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 from google.adk.apps import App
@@ -28,5 +27,6 @@ workflows. If the request is not a project requirement, say it needs review.
     sub_agents=[requirement_analyzer],
 )
 
-# Explicit ADK application wrapper for Agents CLI/deployment compatibility.
-app = App(name="scopelock", root_agent=root_agent)
+# ADK requires the App name to match its discoverable package directory.
+# The user-facing/root-agent identity remains ``scopelock``.
+app = App(name="app", root_agent=root_agent)
