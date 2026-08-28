@@ -1,5 +1,5 @@
 {
-  "eval_set_id": "scopelock_requirement_analyzer_v2",
+  "eval_set_id": "scopelock_requirement_analyzer_v3",
   "name": "ScopeLock Requirement Analyzer",
   "description": "Reviewed golden and edge cases evaluated by the deterministic requirement_contract custom metric.",
   "eval_cases": [

@@ -45,6 +45,14 @@ def event(
                 source_id="scope-1",
                 quote_or_rule="accepted baseline",
             ),
+            *(
+                EvidenceRef(
+                    source_type="sop",
+                    source_id=key,
+                    quote_or_rule="validated SOP module rule",
+                )
+                for key in module_keys
+            ),
         ],
         confidence=confidence,
     )
@@ -141,6 +149,37 @@ def test_unknown_module_routes_to_needs_review():
     assert "Unknown SOP module keys" in decision.reasons[0]
 
 
+def test_missing_semantic_evidence_routes_to_needs_review():
+    missing_baseline = event(
+        ScopeEventClassification.EXPANSION,
+        confidence=95,
+        module_keys=["line_notifications"],
+    ).model_copy(
+        update={
+            "evidence": [
+                EvidenceRef(
+                    source_type="gmail",
+                    source_id="message-1",
+                    quote_or_rule="client request",
+                )
+            ]
+        }
+    )
+
+    decision = policy().evaluate(
+        ScopeAnalysis(
+            events=[missing_baseline],
+            conversation_closure=False,
+            overall_confidence=95,
+        )
+    )
+
+    assert decision.status == ScopeAnalysisStatus.NEEDS_REVIEW
+    assert decision.review_required is True
+    assert any("accepted-scope evidence" in reason for reason in decision.reasons)
+    assert any("SOP evidence" in reason for reason in decision.reasons)
+
+
 def test_noncommercial_events_cannot_smuggle_module_quantities():
     with pytest.raises(ValidationError):
         event(
@@ -180,5 +219,17 @@ def test_closure_flag_requires_a_closure_event():
         ScopeAnalysis(
             events=[event(ScopeEventClassification.NO_CHANGE, confidence=95)],
             conversation_closure=True,
+            overall_confidence=95,
+        )
+
+
+def test_two_events_are_reserved_for_closure_plus_one_material_change():
+    with pytest.raises(ValidationError):
+        ScopeAnalysis(
+            events=[
+                event(ScopeEventClassification.NO_CHANGE, confidence=95),
+                event(ScopeEventClassification.CLARIFICATION, confidence=95),
+            ],
+            conversation_closure=False,
             overall_confidence=95,
         )

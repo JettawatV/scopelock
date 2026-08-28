@@ -45,6 +45,20 @@ def test_complete_local_golden_path_is_approval_gated_and_evidence_backed(tmp_pa
     ]
     assert result.scope_events[0].evidence
     assert result.scope_events[1].evidence
+    for event in result.scope_events:
+        evidence_types = {item.source_type for item in event.evidence}
+        assert {"gmail", "scope_version"}.issubset(evidence_types)
+    material_event = result.scope_events[1]
+    sop_evidence_ids = {
+        item.source_id
+        for item in material_event.evidence
+        if item.source_type == "sop"
+    }
+    assert {
+        item.module_key for item in material_event.additions
+    }.issubset(sop_evidence_ids)
+    assert result.scope_events[0].price_delta_usd == 0
+    assert result.scope_events[0].timeline_delta_days == 0
     assert [artifact.artifact_type for artifact in result.artifacts] == [
         ArtifactType.PROPOSAL,
         ArtifactType.CHANGE_ORDER,
@@ -53,10 +67,34 @@ def test_complete_local_golden_path_is_approval_gated_and_evidence_backed(tmp_pa
     assert {
         intent.approval_id for intent in result.send_intents
     } == {approval.id for approval in result.approvals}
+    approvals_by_id = {approval.id: approval for approval in result.approvals}
+    artifacts_by_id = {artifact.id: artifact for artifact in result.artifacts}
+    for intent in result.send_intents:
+        approval = approvals_by_id[intent.approval_id]
+        artifact = artifacts_by_id[intent.artifact_id]
+        assert (
+            intent.artifact_id,
+            intent.artifact_version,
+            intent.artifact_checksum,
+        ) == (
+            approval.artifact_id,
+            approval.artifact_version,
+            approval.artifact_checksum,
+        )
+        assert (
+            intent.artifact_version,
+            intent.artifact_checksum,
+        ) == (
+            artifact.version_number,
+            artifact.checksum,
+        )
     assert {intent.gmail_thread_id for intent in result.send_intents} == {
         "gmail-thread-golden-001"
     }
     assert len(repository.list(collection="sends")) == 2
+    assert result.proposed_change_scope.id != result.accepted_baseline.id
+    assert result.final_project.baseline_scope_version_id == result.accepted_baseline.id
+    assert result.final_project.active_scope_version_id == result.accepted_baseline.id
     assert result.elapsed_seconds < 240
 
 

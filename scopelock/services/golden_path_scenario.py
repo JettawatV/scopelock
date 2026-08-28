@@ -118,6 +118,11 @@ class GoldenPathScenarioBuilder:
                     source_id=message_id,
                     quote_or_rule=message_text,
                 ),
+                EvidenceRef(
+                    source_type="scope_version",
+                    source_id=baseline.id,
+                    quote_or_rule="Accepted scope used as the comparison baseline.",
+                ),
                 *extra_evidence,
             ),
             correlation_id=stable_id("corr", message_id),

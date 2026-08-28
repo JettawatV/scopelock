@@ -67,6 +67,26 @@ class ScopeAnalysisPolicy:
         if invalid_keys:
             reasons.append(f"Unknown SOP module keys: {invalid_keys}")
 
+        for event in analysis.events:
+            source_types = {evidence.source_type for evidence in event.evidence}
+            if not {"gmail", "scope_version"}.issubset(source_types):
+                reasons.append(
+                    f"{event.classification.value} lacks Gmail and accepted-scope evidence"
+                )
+            sop_source_ids = {
+                evidence.source_id
+                for evidence in event.evidence
+                if evidence.source_type == "sop"
+            }
+            missing_sop_evidence = sorted(
+                set(event.sop_module_keys) - sop_source_ids
+            )
+            if missing_sop_evidence:
+                reasons.append(
+                    f"{event.classification.value} lacks SOP evidence for "
+                    f"{missing_sop_evidence}"
+                )
+
         if any(
             event.classification == ScopeEventClassification.AMBIGUOUS
             for event in analysis.events

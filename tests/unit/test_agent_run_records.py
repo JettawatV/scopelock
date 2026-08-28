@@ -120,6 +120,23 @@ def test_unknown_sop_module_becomes_needs_review():
     assert "unknown SOP module" in completed.error.message
 
 
+def test_missing_required_evidence_becomes_needs_review():
+    raw_output = json.loads(valid_output())
+    raw_output["selected_sop_modules"][0]["evidence"] = []
+    run = create_agent_run("Automate our shared Gmail inbox.")
+
+    completed = complete_agent_run(
+        run,
+        json.dumps(raw_output),
+        valid_module_keys={"email_intake"},
+    )
+
+    assert completed.status == AgentRunStatus.NEEDS_REVIEW
+    assert completed.output is None
+    assert completed.error is not None
+    assert "requires Gmail and SOP evidence" in completed.error.message
+
+
 def test_unexpected_commercial_field_becomes_needs_review():
     raw_output = json.loads(valid_output())
     raw_output["price_usd"] = 500

@@ -11,6 +11,7 @@ from typing import Any
 from scopelock.domain.enums import ArtifactStatus, ProjectLifecycleStatus
 from scopelock.domain.models import (
     AgentRun,
+    AgentRunError,
     AgentRunStatus,
     CommercialArtifact,
     EvidenceRef,
@@ -46,6 +47,10 @@ from scopelock.services.sop_service import SOPCatalog
 from scopelock.services.timeline_engine import TimelineEngine
 from scopelock.services.identity import stable_hash, stable_id
 from scopelock.services.idempotency_service import IdempotencyKeys
+from scopelock.services.semantic_contracts import (
+    SemanticContractViolation,
+    validate_requirement_analysis,
+)
 from scopelock.services.workflow_state import advance_project
 
 
@@ -78,7 +83,7 @@ class InitialProposalWorkflow:
         analyzer: RequirementAnalyzer,
         artifact_root: str | Path,
         model_name: str = "gemini-3.5-flash",
-        prompt_version: str = "requirement_analyzer_v2",
+        prompt_version: str = "requirement_analyzer_v3",
     ) -> None:
         self._catalog = catalog
         self._store = ModelStore(repository)
@@ -211,9 +216,48 @@ class InitialProposalWorkflow:
         idempotency_key: str,
         correlation_id: str,
     ) -> _SemanticStage:
-        analysis = self._analyzer(email)
-        if not analysis.is_project_request or not analysis.proposal_ready:
-            raise ValueError("Initial proposal workflow requires proposal-ready analysis")
+        try:
+            analysis = self._analyzer(email)
+            validate_requirement_analysis(
+                analysis,
+                valid_module_keys={module.key for module in self._catalog.modules},
+            )
+            if not analysis.is_project_request or not analysis.proposal_ready:
+                raise SemanticContractViolation(
+                    "Initial proposal workflow requires proposal-ready analysis"
+                )
+        except Exception as exc:
+            failed_run = AgentRun(
+                id=run_id,
+                correlation_id=correlation_id,
+                project_id=project_id,
+                trigger_type="gmail_message",
+                trigger_ref=email.message_id,
+                agent_name="requirement_analyzer",
+                model=self._model_name,
+                prompt_version=self._prompt_version,
+                started_at=email.received_at,
+                completed_at=email.received_at,
+                status=(
+                    AgentRunStatus.NEEDS_REVIEW
+                    if isinstance(exc, SemanticContractViolation)
+                    else AgentRunStatus.FAILED
+                ),
+                input_hash=input_hash,
+                error=AgentRunError(
+                    category=type(exc).__name__,
+                    message=str(exc),
+                    retryable=False,
+                ),
+            )
+            self._store.create(
+                CollectionName.AGENT_RUNS,
+                failed_run,
+                unique_keys={
+                    "trigger_agent": f"{email.message_id}:{self._prompt_version}"
+                },
+            )
+            raise
         selected = tuple(
             ModuleQuantity(module_key=item.module_key, quantity=item.quantity)
             for item in analysis.selected_sop_modules

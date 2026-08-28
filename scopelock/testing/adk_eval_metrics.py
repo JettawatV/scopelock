@@ -12,6 +12,10 @@ from google.adk.evaluation.evaluator import EvaluationResult, PerInvocationResul
 from pydantic import ValidationError
 
 from scopelock.domain.models import RequirementAnalysis
+from scopelock.services.semantic_contracts import (
+    SemanticContractViolation,
+    validate_requirement_analysis,
+)
 from scopelock.services.sop_service import load_sop
 from scopelock.settings import PROJECT_ROOT
 
@@ -99,6 +103,13 @@ def evaluate_requirement_assertions(
         ]
 
     failures: list[str] = []
+    try:
+        validate_requirement_analysis(
+            analysis,
+            valid_module_keys=valid_sop_module_keys(),
+        )
+    except SemanticContractViolation as exc:
+        failures.append(f"Semantic contract failed: {exc}")
     selected_keys = [
         selection.module_key for selection in analysis.selected_sop_modules
     ]

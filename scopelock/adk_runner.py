@@ -26,6 +26,10 @@ from scopelock.domain.models import (
     ToolActionStatus,
 )
 from scopelock.services.agent_run_repository import JsonAgentRunRepository
+from scopelock.services.semantic_contracts import (
+    SemanticContractViolation,
+    validate_requirement_analysis,
+)
 from scopelock.services.sop_service import load_sop
 from scopelock.settings import PROJECT_ROOT, model_name, project_id
 
@@ -70,17 +74,15 @@ def validate_requirement_output(
             f"RequirementAnalysis validation failed with {len(exc.errors())} error(s)"
         ) from exc
 
-    invalid_keys = sorted(
-        {
-            selection.module_key
-            for selection in analysis.selected_sop_modules
-            if selection.module_key not in valid_module_keys
-        }
-    )
-    if invalid_keys:
-        raise InvalidRequirementOutput(
-            f"RequirementAnalysis selected unknown SOP module(s): {', '.join(invalid_keys)}"
+    try:
+        validate_requirement_analysis(
+            analysis,
+            valid_module_keys=valid_module_keys,
         )
+    except SemanticContractViolation as exc:
+        raise InvalidRequirementOutput(
+            f"RequirementAnalysis semantic contract failed: {exc}"
+        ) from exc
     return analysis
 
 

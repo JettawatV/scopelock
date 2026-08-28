@@ -265,7 +265,7 @@ class ScopeEventProposal(StrictContractModel):
 
 
 class ScopeAnalysis(StrictContractModel):
-    events: list[ScopeEventProposal] = Field(min_length=1)
+    events: list[ScopeEventProposal] = Field(min_length=1, max_length=2)
     conversation_closure: bool
     overall_confidence: int = Field(ge=0, le=100, strict=True)
 
@@ -279,6 +279,21 @@ class ScopeAnalysis(StrictContractModel):
             raise ValueError(
                 "conversation_closure must exactly match presence of a CLOSURE event"
             )
+        if len(self.events) == 2:
+            classifications = {
+                event.classification for event in self.events
+            }
+            material = {
+                ScopeEventClassification.EXPANSION,
+                ScopeEventClassification.REDUCTION,
+                ScopeEventClassification.REPLACEMENT,
+            }
+            if ScopeEventClassification.CLOSURE not in classifications or not (
+                classifications & material
+            ):
+                raise ValueError(
+                    "Two events are allowed only for CLOSURE plus one material change"
+                )
         return self
 
 
