@@ -19,6 +19,8 @@ context documents if there is a conflict.
 - `docs/IMPLEMENTATION_PLAN.md` — build order for the remaining hackathon days
 - `docs/DAILY_IMPLEMENTATION_PLAN.md` — granular daily checklists, evidence, and move-on gates
 - `docs/RISK_REGISTER.md` — active delivery, safety, integration, and demo risks
+- `docs/FIRESTORE_SCHEMA.md` — persistent collection ownership, unique keys, and CAS rules
+- `docs/LOCAL_DEMO_RUNBOOK.md` — exact non-UI golden-path rehearsal
 - `docs/HACKATHON_REQUIREMENTS.md` — concise guardrails; official uploaded rules override it
 - `docs/DEMO_GOLDEN_PATH.md` — one scenario the entire build should optimize around
 - `config/jvl_sop.example.yaml` — illustrative machine-readable SOP
@@ -53,8 +55,8 @@ python -m pytest -q
 ```
 
 The project `uv.lock` pins the resolved dependency set. Verified on
-2026-08-28 with Python 3.13.14, ADK 2.8.0, 143 locked packages, successful ADK
-discovery, and 96 passing tests. This uv-managed environment does not require an
+2026-08-28 with Python 3.13.14, ADK 2.8.0, Firestore 2.29.0, 144 locked
+packages, successful ADK discovery, and 117 passing tests. This uv-managed environment does not require an
 embedded `pip` module.
 
 ## Development workflow
@@ -91,6 +93,23 @@ adk eval app tests/eval/workflow_trajectories.evalset.json `
 `adk web` should be the main interactive development loop. The local `.adk/`
 directory it creates is ignored. The JSONL corpus remains the curated source
 set; promote specification-reviewed cases into `tests/eval/` for native ADK runs.
+
+### Deterministic local workflow
+
+Use the reviewed fixture to run the application-owned proposal path without a
+frontend or live Gmail call:
+
+```powershell
+python -m scopelock.cli initial-proposal --repeat 2
+python -m scopelock.cli golden-path
+```
+
+The first command proves initial-proposal idempotency and ends at
+`AWAITING_USER_REVIEW`. The second rehearses the documented post-acceptance
+change-order story: initial approval, `NO_CHANGE`, LINE `EXPANSION`, semantic
+closure, +USD 1,500 / +5 days, and a second approval-bound local send intent.
+Generated proposal data and Markdown are written under the ignored
+`artifacts/local_workflow/` directory.
 
 ### Audited Requirement Analyzer runner
 

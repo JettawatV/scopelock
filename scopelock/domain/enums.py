@@ -105,6 +105,24 @@ class SendIntentStatus(StrEnum):
     CREATED = "CREATED"
 
 
+class ScopeBufferStatus(StrEnum):
+    OPEN = "OPEN"
+    READY_TO_FINALIZE = "READY_TO_FINALIZE"
+    FINALIZED = "FINALIZED"
+
+
+class BufferFinalizationReason(StrEnum):
+    QUIET_WINDOW = "QUIET_WINDOW"
+    SEMANTIC_CLOSURE = "SEMANTIC_CLOSURE"
+    MANUAL = "MANUAL"
+
+
+class ScopeModuleOperation(StrEnum):
+    ADD = "ADD"
+    REMOVE = "REMOVE"
+    REPLACE = "REPLACE"
+
+
 class ConfidenceBand(StrEnum):
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"

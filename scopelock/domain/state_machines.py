@@ -45,6 +45,7 @@ PROJECT_TRANSITIONS: Mapping[
         {
             ProjectLifecycleStatus.REJECTED,
             ProjectLifecycleStatus.PROPOSAL_SENT,
+            ProjectLifecycleStatus.ACTIVE_PROJECT,
         }
     ),
     ProjectLifecycleStatus.REJECTED: frozenset(
@@ -63,7 +64,10 @@ PROJECT_TRANSITIONS: Mapping[
         {ProjectLifecycleStatus.ACTIVE_PROJECT}
     ),
     ProjectLifecycleStatus.ACTIVE_PROJECT: frozenset(
-        {ProjectLifecycleStatus.COMPLETED}
+        {
+            ProjectLifecycleStatus.AWAITING_USER_REVIEW,
+            ProjectLifecycleStatus.COMPLETED,
+        }
     ),
     ProjectLifecycleStatus.COMPLETED: frozenset(),
 }

@@ -22,11 +22,11 @@ The frozen P0 loop is the priority: inbound Gmail event → requirement analysis
 
 Last reviewed: **2026-08-28**
 
-Current active day: **Day 7 — Local initial-proposal vertical path**
+Current active day: **Day 11 — Gmail OAuth, watch, Pub/Sub, and History API**
 
-Immediate next evidence: compose the already-tested Requirement Analyzer, SOP validation, PricingEngine, TimelineEngine, immutable proposal artifact, audit records, and approval stop into one repeatable local command.
+Immediate next evidence: configure the dedicated Gmail demo account and least-privilege OAuth, then prove one real Pub/Sub notification resolves exactly one inbound Gmail message through the History API.
 
-Next unlock: **Day 8 remains locked until the Day 7 local vertical-path gate is checked.**
+Next unlock: **Day 12 remains locked until the Day 11 live Gmail event gate is checked.**
 
 ### Completed implementation
 
@@ -43,11 +43,15 @@ Next unlock: **Day 8 remains locked until the Day 7 local vertical-path gate is 
 - [x] Requirement Analyzer v2 readiness policy implemented for the golden path.
 - [x] Requirement mapping instruction updated to require ID plus human-readable description.
 - [x] Day 0 risk register added with blocking risks and exit evidence.
-- [x] Python 3.13.14 environment, 143-package lockfile, clean install, ADK discovery, and current 96-test suite verified.
+- [x] Python 3.13.14 environment, 144-package lockfile, clean install, ADK discovery, and current 117-test suite verified.
 - [x] Day 3 strict SOP validation, deterministic USD PricingEngine, immutable pricing records, and golden pricing fixture verified.
 - [x] Day 4 deterministic timeline, explicit state transitions, immutable ScopeVersion records, and proposal/change-order numbering verified.
 - [x] Day 5 typed Scope Analyzer and 25-case native ADK corpus verified with measured 100% exact classification, 100% evidence coverage, and 0% invalid modules in the recorded run.
 - [x] Day 6 native ADK trajectories, approval/checksum policy, reviewable failure paths, and idempotent non-sending intent stub verified.
+- [x] Day 7 complete local initial-proposal path, deterministic proposal artifact, checksum, audit trail, and idempotent replay verified.
+- [x] Day 8 scope buffering, consolidation, stale-artifact preservation, revisions, change orders, reductions, and replacements verified.
+- [x] Day 9 complete local post-acceptance change-order rehearsal verified in under four minutes without frontend or Gmail dependencies.
+- [x] Day 10 repository contracts, Firestore 2.29.0 adapter, unique keys, CAS transactions, replay, concurrency, recovery, and immutable storage verified.
 - [x] Frontend/UI work explicitly held until the ADK agent gates pass.
 
 ### Evidence gates
@@ -73,15 +77,15 @@ Next unlock: **Day 8 remains locked until the Day 7 local vertical-path gate is 
 - Put the command, test output, trace screenshot, artifact path, or log link beside the evidence item.
 - A later day stays LOCKED until the current move-on gate is checked.
 - If a check fails, add the failure under that day, mark the day BLOCKED, and do not hide or delete the evidence.
-- Current execution focus is Day 7. Days 0–6 are complete.
+- Current execution focus is Day 11. Days 0–10 are complete.
 
 ## Delivery phase gates
 
 | Phase | Days | Outcome | Current state |
 | --- | --- | --- | --- |
 | A — ADK semantic foundation | 0–2 | Requirement Analyzer is typed, bounded, repeatable, and evaluated | COMPLETE |
-| B — Local deterministic workflow | 3–9 | Pricing, timeline, approval policy, scope drift, and local golden path pass | ACTIVE |
-| C — Google integrations | 10–14 | Firestore, Gmail, Pub/Sub, approval-gated sends, and Cloud Run pass | LOCKED |
+| B — Local deterministic workflow | 3–9 | Pricing, timeline, approval policy, scope drift, and local golden path pass | COMPLETE |
+| C — Google integrations | 10–14 | Firestore, Gmail, Pub/Sub, approval-gated sends, and Cloud Run pass | ACTIVE |
 | D — UI and submission | 15–17 | Thin review UI, release evals, and four-minute demo are ready | LOCKED |
 
 ## Daily plan
@@ -389,155 +393,155 @@ Move-on gate:
 
 ### Day 7 — Local initial-proposal vertical path
 
-Status: ACTIVE — Days 4–6 passed on 2026-08-28.
+Status: COMPLETE — local deterministic proposal, audit, artifact, and replay gates passed on 2026-08-28.
 
 Daily outcome: one local command turns the golden email into a complete deterministic proposal awaiting approval.
 
 Implementation checklist:
 
-- [ ] Implement in-memory repositories for the local workflow.
-- [ ] Compose analyze → validate SOP → price → timeline → proposal artifact → await approval.
-- [ ] Record AgentRun, ScopeDecision, ToolAction, state transition, and artifact events.
-- [ ] Generate a deterministic proposal data model.
-- [ ] Render a basic proposal artifact from a fixed template.
-- [ ] Add artifact checksum and source-version metadata.
-- [ ] Ensure reruns use an idempotency key and do not create conflicting versions.
-- [ ] Add a single documented local command for the workflow.
+- [x] Implement in-memory repositories for the local workflow.
+- [x] Compose analyze → validate SOP → price → timeline → proposal artifact → await approval.
+- [x] Record AgentRun, ScopeDecision, ToolAction, state transition, and artifact events.
+- [x] Generate a deterministic proposal data model.
+- [x] Render a basic proposal artifact from a fixed template.
+- [x] Add artifact checksum and source-version metadata.
+- [x] Ensure reruns use an idempotency key and do not create conflicting versions.
+- [x] Add a single documented local command for the workflow.
 
 Verification and success checklist:
 
-- [ ] Proposal contains requirements, modules, line items, USD total, timeline, assumptions, exclusions, and evidence.
-- [ ] Model output contains semantic selections but no calculated commercial fields.
-- [ ] Application logs show deterministic pricing and timeline steps.
-- [ ] Artifact checksum matches the approved proposal data.
-- [ ] A rerun produces the same result without a conflicting proposal version.
-- [ ] Workflow ends at AWAITING_USER_REVIEW.
+- [x] Proposal contains requirements, modules, line items, USD total, timeline, assumptions, exclusions, and evidence.
+- [x] Model output contains semantic selections but no calculated commercial fields.
+- [x] Application logs show deterministic pricing and timeline steps.
+- [x] Artifact checksum matches the approved proposal data.
+- [x] A rerun produces the same result without a conflicting proposal version.
+- [x] Workflow ends at AWAITING_USER_REVIEW.
 
 Evidence to record:
 
-- [ ] Local command and console output: ____________________.
-- [ ] Generated proposal artifact: ____________________.
-- [ ] Audit record sample: ____________________.
+- [x] Local command and console output: `docs/evidence/DAY_7_LOCAL_PROPOSAL_EVIDENCE.md`.
+- [x] Generated proposal artifact: `artifacts/local_workflow/project-2d8777f70cf0f48f33b51922/proposal-v1.md` (generated/ignored) and Day 7 evidence.
+- [x] Audit record sample: `tests/integration/test_initial_proposal_workflow.py` and Day 7 evidence.
 
 Move-on gate:
 
-- [ ] DAY 7 PASS — the local initial-proposal path passes repeatedly and is screen-recording ready.
+- [x] DAY 7 PASS — the local initial-proposal path passes repeatedly and is screen-recording ready.
 
 ### Day 8 — Scope buffer, revision, and change-order logic
 
-Status: LOCKED.
+Status: COMPLETE — deterministic buffering and immutable-history gates passed on 2026-08-28.
 
 Daily outcome: related material changes consolidate without losing history or mutating the accepted baseline.
 
 Implementation checklist:
 
-- [ ] Implement ScopeBufferService.
-- [ ] Store baseline scope-version reference on every buffered event.
-- [ ] Aggregate additions, reductions, replacements, and net deltas.
-- [ ] Implement configurable quiet-window metadata.
-- [ ] Implement explicit semantic closure.
-- [ ] Implement manual finalize.
-- [ ] Recalculate an existing unapproved draft when new input arrives.
-- [ ] Preserve invalidated artifact history and checksums.
-- [ ] Generate proposal revisions before acceptance.
-- [ ] Generate change orders after acceptance.
+- [x] Implement ScopeBufferService.
+- [x] Store baseline scope-version reference on every buffered event.
+- [x] Aggregate additions, reductions, replacements, and net deltas.
+- [x] Implement configurable quiet-window metadata.
+- [x] Implement explicit semantic closure.
+- [x] Implement manual finalize.
+- [x] Recalculate an existing unapproved draft when new input arrives.
+- [x] Preserve invalidated artifact history and checksums.
+- [x] Generate proposal revisions before acceptance.
+- [x] Generate change orders after acceptance.
 
 Verification and success checklist:
 
-- [ ] Harmless clarification creates an event but no commercial buffer.
-- [ ] Two rapid material changes produce one consolidated artifact.
-- [ ] Closure finalizes immediately in the demo fixture.
-- [ ] Manual finalize produces the same deterministic result.
-- [ ] New input invalidates the stale draft without deleting it.
-- [ ] Reduction and replacement deltas are correct.
-- [ ] Accepted baseline remains unchanged until the approved change is accepted.
+- [x] Harmless clarification creates an event but no commercial buffer.
+- [x] Two rapid material changes produce one consolidated artifact.
+- [x] Closure finalizes immediately in the demo fixture.
+- [x] Manual finalize produces the same deterministic result.
+- [x] New input invalidates the stale draft without deleting it.
+- [x] Reduction and replacement deltas are correct.
+- [x] Accepted baseline remains unchanged until the approved change is accepted.
 
 Evidence to record:
 
-- [ ] Buffer unit-test output: ____________________.
-- [ ] Consolidation integration-test output: ____________________.
-- [ ] Before/after scope-version evidence: ____________________.
+- [x] Buffer unit-test output: `docs/evidence/DAY_8_SCOPE_BUFFER_EVIDENCE.md` — 5 focused tests passed.
+- [x] Consolidation integration-test output: `docs/evidence/DAY_8_SCOPE_BUFFER_EVIDENCE.md` and `tests/integration/test_local_golden_path.py`.
+- [x] Before/after scope-version evidence: accepted USD 5,650 / 5 days; proposed USD 7,150 / 10 days in Day 8 evidence.
 
 Move-on gate:
 
-- [ ] DAY 8 PASS — buffer, consolidation, reduction, replacement, and immutable-history tests pass.
+- [x] DAY 8 PASS — buffer, consolidation, reduction, replacement, and immutable-history tests pass.
 
 ### Day 9 — Complete local golden-path rehearsal
 
-Status: LOCKED.
+Status: COMPLETE — full fixture-driven rehearsal and four-minute gate passed on 2026-08-28.
 
 Daily outcome: the entire judging story works locally with fixtures and no frontend dependency.
 
 Implementation checklist:
 
-- [ ] Run the initial client email fixture.
-- [ ] Generate and approve the initial proposal through a deterministic operator command.
-- [ ] Simulate the same-thread client reply.
-- [ ] Run the harmless clarification fixture.
-- [ ] Run the material expansion fixture.
-- [ ] Run the closure fixture.
-- [ ] Generate and approve the consolidated revision or change order.
-- [ ] Choose and document whether the demo uses a pre-acceptance revision or post-acceptance change order.
-- [ ] Confirm the demo SOP values and expected USD/timeline deltas.
-- [ ] Write the exact local demo runbook and expected state after each action.
+- [x] Run the initial client email fixture.
+- [x] Generate and approve the initial proposal through a deterministic operator command.
+- [x] Simulate the same-thread client reply.
+- [x] Run the harmless clarification fixture.
+- [x] Run the material expansion fixture.
+- [x] Run the closure fixture.
+- [x] Generate and approve the consolidated revision or change order.
+- [x] Choose and document whether the demo uses a pre-acceptance revision or post-acceptance change order.
+- [x] Confirm the demo SOP values and expected USD/timeline deltas.
+- [x] Write the exact local demo runbook and expected state after each action.
 
 Verification and success checklist:
 
-- [ ] The story shows event, reasoning, deterministic artifact, approval, scope drift, consolidation, and second approval.
-- [ ] Clarification and expansion produce different evidence-backed classifications.
-- [ ] Price and timeline deltas match the confirmed SOP fixture.
-- [ ] No commercial send/action occurs without approval.
-- [ ] The workflow can be repeated from a clean local state.
-- [ ] The non-UI rehearsal fits comfortably within the four-minute demo budget.
+- [x] The story shows event, reasoning, deterministic artifact, approval, scope drift, consolidation, and second approval.
+- [x] Clarification and expansion produce different evidence-backed classifications.
+- [x] Price and timeline deltas match the confirmed SOP fixture.
+- [x] No commercial send/action occurs without approval.
+- [x] The workflow can be repeated from a clean local state.
+- [x] The non-UI rehearsal fits comfortably within the four-minute demo budget.
 
 Evidence to record:
 
-- [ ] Passing end-to-end local test output: ____________________.
-- [ ] Timed rehearsal result: ____________________.
-- [ ] Demo runbook path: ____________________.
+- [x] Passing end-to-end local test output: `docs/evidence/DAY_9_LOCAL_GOLDEN_PATH_EVIDENCE.md` — 3 integration tests passed.
+- [x] Timed rehearsal result: 0.010972 seconds in the recorded fixture run.
+- [x] Demo runbook path: `docs/LOCAL_DEMO_RUNBOOK.md`.
 
 Move-on gate:
 
-- [ ] DAY 9 PASS — the complete local golden path is repeatable enough to start Google service integrations.
+- [x] DAY 9 PASS — the complete local golden path is repeatable enough to start Google service integrations.
 
 ### Day 10 — Firestore persistence and idempotent application workflow
 
-Status: LOCKED.
+Status: COMPLETE — repository, Firestore adapter, replay, concurrency, recovery, and immutability gates passed on 2026-08-28.
 
 Daily outcome: persistent state matches the domain model and duplicate events cannot duplicate business actions.
 
 Implementation checklist:
 
-- [ ] Define Firestore collections and document ownership for projects, scope versions, events, buffers, artifacts, agent runs, tool actions, approvals, sends, and eval results.
-- [ ] Implement repository interfaces before cloud-specific adapters.
-- [ ] Implement Firestore adapters.
-- [ ] Add correlation IDs to every workflow.
-- [ ] Add unique keys for Gmail message, Gmail thread, history record, Pub/Sub event, artifact version, approval, and send action.
-- [ ] Add transaction or compare-and-set protection where races are possible.
-- [ ] Add model, persistence, and external-service retry/timeout boundaries.
-- [ ] Add emulator or controlled-project fixtures.
+- [x] Define Firestore collections and document ownership for projects, scope versions, events, buffers, artifacts, agent runs, tool actions, approvals, sends, and eval results.
+- [x] Implement repository interfaces before cloud-specific adapters.
+- [x] Implement Firestore adapters.
+- [x] Add correlation IDs to every workflow.
+- [x] Add unique keys for Gmail message, Gmail thread, history record, Pub/Sub event, artifact version, approval, and send action.
+- [x] Add transaction or compare-and-set protection where races are possible.
+- [x] Add model, persistence, and external-service retry/timeout boundaries.
+- [x] Add emulator or controlled-project fixtures.
 
 Verification and success checklist:
 
-- [ ] Stored state matches the explicit state machine after every step.
-- [ ] Replaying one event creates no duplicate project, scope event, artifact, approval, or send intent.
-- [ ] Failed writes remain recoverable and cannot trigger a send.
-- [ ] Accepted scope versions remain immutable in storage.
-- [ ] Concurrent duplicate handling resolves to one canonical result.
+- [x] Stored state matches the explicit state machine after every step.
+- [x] Replaying one event creates no duplicate project, scope event, artifact, approval, or send intent.
+- [x] Failed writes remain recoverable and cannot trigger a send.
+- [x] Accepted scope versions remain immutable in storage.
+- [x] Concurrent duplicate handling resolves to one canonical result.
 
 Evidence to record:
 
-- [ ] Firestore schema/reference path: ____________________.
-- [ ] Replay and concurrency test output: ____________________.
-- [ ] Failure-recovery test output: ____________________.
+- [x] Firestore schema/reference path: `docs/FIRESTORE_SCHEMA.md`.
+- [x] Replay and concurrency test output: `docs/evidence/DAY_10_FIRESTORE_AND_REPLAY_EVIDENCE.md`.
+- [x] Failure-recovery test output: `docs/evidence/DAY_10_FIRESTORE_AND_REPLAY_EVIDENCE.md`.
 
 Move-on gate:
 
-- [ ] DAY 10 PASS — persistence, replay, concurrency, and immutable-baseline tests pass.
+- [x] DAY 10 PASS — persistence, replay, concurrency, and immutable-baseline tests pass.
 
 ### Day 11 — Gmail OAuth, watch, Pub/Sub, and History API
 
-Status: LOCKED.
+Status: ACTIVE — unlocked after the Day 10 persistence gate passed on 2026-08-28.
 
 Daily outcome: a real inbound Gmail message wakes ScopeLock and resolves exactly one new thread message.
 

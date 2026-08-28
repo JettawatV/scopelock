@@ -1,0 +1,117 @@
+{
+  "fixture_id": "scopelock-local-golden-v1",
+  "initial_email": {
+    "message_id": "gmail-golden-001",
+    "thread_id": "gmail-thread-golden-001",
+    "sender_name": "Golden Path Client",
+    "sender_email": "client@example.com",
+    "subject": "Automation project requirements",
+    "body": "Hi,\n\nWe want to automate our incoming customer requests. Requests currently arrive in a shared Gmail inbox and the team copies them into Google Sheets manually.\n\nWe'd like the system to classify each request, store the structured data, and show the team a simple operations dashboard. We also need email notifications when a request needs manual review.\n\nPlease send us a proposal with price and timeline.\n\nThanks.",
+    "received_at": "2026-08-28T02:00:00Z"
+  },
+  "requirement_analysis": {
+    "is_project_request": true,
+    "project_title": "Customer Request Intake and Dashboard Automation",
+    "objective": "Automate customer-request intake, classification, structured storage, operations visibility, and manual-review alerts.",
+    "requirements": [
+      {
+        "requirement_id": "REQ-01",
+        "category": "Workflow",
+        "description": "Automate customer request classification and structured storage.",
+        "normalized_key": "customer_request_automation",
+        "source_quote": "classify each request, store the structured data"
+      },
+      {
+        "requirement_id": "REQ-02",
+        "category": "Intake",
+        "description": "Read requests from one shared Gmail inbox.",
+        "normalized_key": "gmail_intake",
+        "source_quote": "Requests currently arrive in a shared Gmail inbox"
+      },
+      {
+        "requirement_id": "REQ-03",
+        "category": "Dashboard",
+        "description": "Show structured request records in a simple operations dashboard.",
+        "normalized_key": "operations_dashboard",
+        "source_quote": "show the team a simple operations dashboard"
+      },
+      {
+        "requirement_id": "REQ-04",
+        "category": "Notification",
+        "description": "Email the team when a request needs manual review.",
+        "normalized_key": "email_notifications",
+        "source_quote": "email notifications when a request needs manual review"
+      }
+    ],
+    "selected_sop_modules": [
+      {
+        "module_key": "core_workflow_automation",
+        "quantity": 1,
+        "mapped_requirement": "REQ-01: Automate customer request classification and structured storage.",
+        "confidence": 0.98,
+        "evidence": [
+          {"source_type": "gmail", "source_id": "gmail-golden-001", "quote_or_rule": "classify each request, store the structured data"},
+          {"source_type": "sop", "source_id": "core_workflow_automation", "quote_or_rule": "Automate one defined business workflow from intake through structured output."}
+        ]
+      },
+      {
+        "module_key": "email_intake",
+        "quantity": 1,
+        "mapped_requirement": "REQ-02: Read requests from one shared Gmail inbox.",
+        "confidence": 0.98,
+        "evidence": [
+          {"source_type": "gmail", "source_id": "gmail-golden-001", "quote_or_rule": "Requests currently arrive in a shared Gmail inbox"},
+          {"source_type": "sop", "source_id": "email_intake", "quote_or_rule": "Read and process inbound Gmail messages for the workflow."}
+        ]
+      },
+      {
+        "module_key": "operations_dashboard",
+        "quantity": 1,
+        "mapped_requirement": "REQ-03: Show structured request records in a simple operations dashboard.",
+        "confidence": 0.98,
+        "evidence": [
+          {"source_type": "gmail", "source_id": "gmail-golden-001", "quote_or_rule": "show the team a simple operations dashboard"},
+          {"source_type": "sop", "source_id": "operations_dashboard", "quote_or_rule": "Simple dashboard for structured workflow records and statuses."}
+        ]
+      },
+      {
+        "module_key": "email_notifications",
+        "quantity": 1,
+        "mapped_requirement": "REQ-04: Email the team when a request needs manual review.",
+        "confidence": 0.98,
+        "evidence": [
+          {"source_type": "gmail", "source_id": "gmail-golden-001", "quote_or_rule": "email notifications when a request needs manual review"},
+          {"source_type": "sop", "source_id": "email_notifications", "quote_or_rule": "Email alerts for predefined workflow events."}
+        ]
+      }
+    ],
+    "assumptions": [
+      "One shared Gmail inbox is the only intake channel.",
+      "The dashboard uses standard status tables, charts, and filters."
+    ],
+    "exclusions_to_surface": [
+      "Multi-mailbox routing is excluded.",
+      "Advanced BI modeling and custom mobile dashboards are excluded."
+    ],
+    "missing_critical_information": [],
+    "proposal_ready": true,
+    "confidence": 0.98,
+    "evidence": [
+      {"source_type": "gmail", "source_id": "gmail-golden-001", "quote_or_rule": "Please send us a proposal with price and timeline."}
+    ]
+  },
+  "followups": {
+    "clarification": {
+      "message_id": "gmail-golden-002",
+      "text": "Could you call the dashboard Operations Overview instead?"
+    },
+    "expansion": {
+      "message_id": "gmail-golden-003",
+      "text": "One more thing — can managers also approve requests from LINE and receive LINE alerts?"
+    },
+    "closure": {
+      "message_id": "gmail-golden-004",
+      "text": "That's everything. Please send the revised proposal."
+    }
+  }
+}

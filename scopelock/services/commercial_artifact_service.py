@@ -42,6 +42,7 @@ def create_scope_version(
     assumptions: Sequence[str] = (),
     exclusions: Sequence[str] = (),
     source_artifact_id: str | None = None,
+    scope_version_id: str | None = None,
     created_at: datetime | None = None,
 ) -> ScopeVersion:
     normalized_inputs = timeline_result.calculation_inputs
@@ -50,7 +51,7 @@ def create_scope_version(
             "Scope module selections must be normalized TimelineResult inputs"
         )
     return ScopeVersion(
-        id=str(uuid4()),
+        id=scope_version_id or str(uuid4()),
         project_id=project_id,
         version_number=next_scope_version_number(existing),
         status=ScopeVersionStatus.PROPOSED,
@@ -95,6 +96,7 @@ def create_next_commercial_artifact(
     proposed_scope: ScopeVersion,
     existing: Sequence[CommercialArtifact],
     accepted_baseline: ScopeVersion | None = None,
+    artifact_id: str | None = None,
     created_at: datetime | None = None,
 ) -> CommercialArtifact:
     if proposed_scope.project_id != project_id:
@@ -133,7 +135,7 @@ def create_next_commercial_artifact(
         baseline_id = accepted_baseline.id
 
     return CommercialArtifact(
-        id=str(uuid4()),
+        id=artifact_id or str(uuid4()),
         project_id=project_id,
         artifact_type=artifact_type,
         version_number=version_number,

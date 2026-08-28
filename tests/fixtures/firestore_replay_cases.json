@@ -1,0 +1,23 @@
+{
+  "fixture_id": "firestore-replay-v1",
+  "project_id": "project-golden",
+  "unique_external_identities": {
+    "gmail_message_id": "gmail-golden-001",
+    "gmail_thread_id": "gmail-thread-golden-001",
+    "gmail_history_id": "history-golden-001",
+    "pubsub_event_id": "pubsub-golden-001"
+  },
+  "expected_collection_counts": {
+    "projects": 1,
+    "scope_versions": 2,
+    "scope_events": 3,
+    "buffers": 1,
+    "artifacts": 2,
+    "approvals": 2,
+    "sends": 2
+  },
+  "emulator": {
+    "project_id": "scopelock-emulator",
+    "host_environment_variable": "FIRESTORE_EMULATOR_HOST"
+  }
+}
