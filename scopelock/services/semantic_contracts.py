@@ -65,9 +65,6 @@ def validate_requirement_analysis(
         if analysis.unsupported_requirements:
             failures.append("analysis with unsupported work cannot be proposal-ready")
 
-    requirement_ids = {
-        requirement.requirement_id for requirement in analysis.requirements
-    }
     for selection in selections:
         source_types = {item.source_type for item in selection.evidence}
         if not {"gmail", "sop"}.issubset(source_types):
@@ -91,12 +88,14 @@ def validate_requirement_analysis(
             normalized_message_body=normalized_message_body,
             expected_sop_version=expected_sop_version,
         )
-        if not any(
-            requirement_id in selection.mapped_requirement
-            for requirement_id in requirement_ids
-        ):
+        exact_mappings = {
+            f"{requirement.requirement_id}: {requirement.description}"
+            for requirement in analysis.requirements
+        }
+        if selection.mapped_requirement not in exact_mappings:
             failures.append(
-                f"{selection.module_key} must map to a normalized requirement ID"
+                f"{selection.module_key} mapped_requirement must equal "
+                "'REQUIREMENT_ID: requirement description'"
             )
         limits = (quantity_limits or {}).get(selection.module_key)
         if limits is not None and not limits[0] <= selection.quantity <= limits[1]:

@@ -261,15 +261,32 @@ class RequirementAnalysis(StrictContractModel):
 
 
 class ScopeEventProposal(StrictContractModel):
-    classification: ScopeEventClassification
+    classification: ScopeEventClassification = Field(
+        description="One atomic semantic change; do not combine independent changes."
+    )
     description: str
     affected_requirement_ids: list[str] = Field(default_factory=list)
     proposed_requirements: list[NormalizedRequirement] = Field(default_factory=list)
-    sop_module_keys: list[str] = Field(default_factory=list)
-    quantities: list[ModuleQuantity] = Field(default_factory=list)
+    sop_module_keys: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Catalog keys affected by this event: added keys for EXPANSION, "
+            "removed keys for REDUCTION, and both removed and added keys for "
+            "REPLACEMENT. Empty for non-material events."
+        ),
+    )
+    quantities: list[ModuleQuantity] = Field(
+        default_factory=list,
+        description=(
+            "Positive quantities only for modules added by EXPANSION or "
+            "REPLACEMENT; empty for removed and non-material work."
+        ),
+    )
     unsupported_requirements: list[UnsupportedRequirement] = Field(default_factory=list)
     rationale: str
-    evidence: list[EvidenceRef] = Field(default_factory=list)
+    # Evidence is business-critical and must be emitted for every atomic event.
+    # Source binding and quote occurrence are validated by application policy.
+    evidence: list[EvidenceRef]
     confidence: int = Field(ge=0, le=100, strict=True)
 
     @model_validator(mode="after")
@@ -298,13 +315,25 @@ class ScopeEventProposal(StrictContractModel):
 
 
 class ScopeAnalysis(StrictContractModel):
-    events: list[ScopeEventProposal] = Field(default_factory=list, max_length=10)
+    # Vertex rejects `maxItems` in this nested response schema with a generic
+    # INVALID_ARGUMENT. Keep the runtime contract in the model validator so
+    # 11+ events still fail closed after generation without making the ADK
+    # request itself invalid.
+    events: list[ScopeEventProposal] = Field(
+        default_factory=list,
+        description=(
+            "Zero to ten atomic events, exactly one per independent change; "
+            "do not merge or duplicate events."
+        ),
+    )
     conversation_closure: bool
     overall_confidence: int = Field(ge=0, le=100, strict=True)
     source_language: Literal["en", "th", "mixed", "und"] = "und"
 
     @model_validator(mode="after")
     def validate_closure_event(self) -> "ScopeAnalysis":
+        if len(self.events) > 10:
+            raise ValueError("Scope analysis can contain at most ten events")
         closure_count = sum(
             event.classification == ScopeEventClassification.CLOSURE
             for event in self.events

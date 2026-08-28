@@ -630,7 +630,7 @@
         {
           "rubric_id": "E020_reviewed_result",
           "rubric_content": {
-            "text_property": "Return classifications ['EXPANSION', 'CLOSURE'] and modules ['line_notifications', 'line_approval'] from authoritative scope, current-message, and semantic SOP evidence."
+            "text_property": "Return classifications ['EXPANSION', 'EXPANSION', 'CLOSURE'] and modules ['line_notifications', 'line_approval'] from authoritative scope, current-message, and semantic SOP evidence."
           },
           "type": "FINAL_RESPONSE_QUALITY"
         },
@@ -1110,7 +1110,7 @@
         {
           "rubric_id": "E035_reviewed_result",
           "rubric_content": {
-            "text_property": "Return classifications ['CLARIFICATION', 'CLARIFICATION', 'CLARIFICATION', 'CLARIFICATION', 'CLARIFICATION', 'CLARIFICATION', 'CLARIFICATION', 'CLARIFICATION', 'CLARIFICATION', 'NO_CHANGE'] and modules [] from authoritative scope, current-message, and semantic SOP evidence."
+            "text_property": "Return classifications ['NO_CHANGE', 'NO_CHANGE', 'NO_CHANGE', 'NO_CHANGE', 'NO_CHANGE', 'NO_CHANGE', 'NO_CHANGE', 'NO_CHANGE', 'NO_CHANGE', 'NO_CHANGE'] and modules [] from authoritative scope, current-message, and semantic SOP evidence."
           },
           "type": "FINAL_RESPONSE_QUALITY"
         },

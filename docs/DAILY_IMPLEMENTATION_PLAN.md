@@ -22,9 +22,11 @@ The frozen P0 loop is the priority: inbound Gmail event → requirement analysis
 
 Last reviewed: **2026-08-28**
 
-Current active day: **Day 11 — Gmail OAuth, watch, Pub/Sub, and History API**
+Current active day: **Day 11 — Gmail OAuth setup active; automatic event activation held**
 
-Immediate next evidence: configure the dedicated Gmail demo account and least-privilege OAuth, then prove one real Pub/Sub notification resolves exactly one inbound Gmail message through the History API.
+Immediate next evidence: pass the Requirement Analyzer v4, Scope Analyzer v2,
+trajectory, and 18-run live repeatability gates. OAuth console/client setup may
+continue, but `users.watch` → Pub/Sub → agent invocation remains disabled.
 
 Next unlock: **Day 12 remains locked until the Day 11 live Gmail event gate is checked.**
 
@@ -55,7 +57,9 @@ Next unlock: **Day 12 remains locked until the Day 11 live Gmail event gate is c
 - [x] Midpoint behavior-preserving refactor centralized typed persistence, deterministic identity, transition helpers, and readable workflow stages before Day 11.
 - [x] Pre-Day 11 hardening added least-privilege tool contracts, semantic fail-closed validation, failure-isolation tests, approval/evidence invariants, and a one-command 133-test gate.
 - [x] Live Scope Analyzer rerun passed 25/25 and live workflow trajectories passed 2/2 on 2026-08-28.
-- [x] Requirement Analyzer v3 focused live rerun passed 5/5 on 2026-08-28; real Gmail events are cleared to invoke the validated workflow.
+- [x] Requirement Analyzer v3 focused live rerun passed 5/5 on 2026-08-28; this narrow result is preserved as superseded evidence.
+- [x] Pre-Gmail flexibility/runtime patch implemented with deterministic routing, direct sub-agent invocation, realistic Gmail normalization, Thai/mixed-scope handling, source-bound evidence, and 165 passing tests.
+- [ ] Requirement Analyzer v4 (12 cases), Scope Analyzer v2 (35 cases), and the new 18-run repeatability gate pass live before automatic Gmail events are enabled.
 - [x] Frontend/UI work explicitly held until the ADK agent gates pass.
 
 ### Evidence gates
@@ -545,7 +549,8 @@ Move-on gate:
 
 ### Day 11 — Gmail OAuth, watch, Pub/Sub, and History API
 
-Status: ACTIVE — pre-start agent readiness gate passed on 2026-08-28; Gmail OAuth/event implementation may begin.
+Status: ACTIVE — OAuth setup may proceed; automatic Gmail-event activation is
+HELD until the flexibility/runtime hardening gate passes.
 
 Daily outcome: a real inbound Gmail message wakes ScopeLock and resolves exactly one new thread message.
 
@@ -559,11 +564,31 @@ Implementation checklist:
 - [x] Rerun Requirement Analyzer v3 live eval: 5 passed, 0 failed.
 - [x] Remove the pre-start hold after the v3 result JSON records 5/5.
 
+Pre-Gmail flexibility/runtime hardening checklist:
+
+- [x] Add deterministic `AgentRoute` and terminal `InboundProcessingResult` contracts.
+- [x] Normalize plain/HTML Gmail bodies, Thai Unicode, quotes, signatures, long content, and attachment metadata without model access to attachments.
+- [x] Route duplicate/outbound/automated/empty, incomplete intake, proposed scope, and accepted scope deterministically.
+- [x] Invoke the selected production sub-agent directly with immutable `AnalysisContext` session state.
+- [x] Expose only semantic SOP keys, aliases, inclusions, exclusions, dependencies, materiality, and quantity policy to agents.
+- [x] Retain supported mappings while unsupported work blocks all commercial artifacts.
+- [x] Keep deadline and budget constraints typed and isolated from deterministic commerce.
+- [x] Support 0–10 atomic scope events, compound changes, and closure plus material events; fail 11+ closed.
+- [x] Bind Gmail, baseline, quote, module, quantity, and SOP-version evidence to authoritative application records.
+- [x] Persist application-owned inbound results, AgentRuns, redacted ToolActions, decisions, events, and replay outcomes.
+- [x] Pass the expanded deterministic gate: 165 passed, 0 failed.
+- [ ] Pass Requirement Analyzer v4 native ADK eval: 12/12.
+- [ ] Pass Scope Analyzer v2 native ADK eval: 35/35.
+- [ ] Pass workflow trajectory native ADK eval: 2/2.
+- [ ] Pass focused live repeatability: 18/18 across golden, mixed, Thai, deadline, prompt-injection, and multi-change cases.
+- [ ] Prove `adk run app` and `adk web` remain discoverable with the current package.
+- [ ] Record result filenames and final decision in `docs/evidence/PRE_GMAIL_FLEXIBILITY_PATCH.md`.
+
 - [ ] Create or confirm the dedicated demo Gmail account.
 - [ ] Configure the least-privilege Gmail OAuth scopes.
 - [ ] Store OAuth client configuration and tokens outside source control.
 - [ ] Configure the Pub/Sub topic and push subscription.
-- [ ] Implement Gmail users.watch setup and renewal tracking.
+- [ ] After the hardening gate passes, implement Gmail users.watch setup and renewal tracking.
 - [ ] Implement the Pub/Sub push endpoint and notification decoding.
 - [ ] Persist the last processed Gmail history checkpoint.
 - [ ] Resolve notifications through the Gmail History API.
@@ -573,6 +598,7 @@ Implementation checklist:
 
 Verification and success checklist:
 
+- [ ] Pre-Gmail flexibility/runtime hardening gate is fully checked.
 - [ ] A real inbound email creates one Firestore project/event without opening ScopeLock.
 - [ ] The history ID resolves the expected message and thread.
 - [ ] Replayed Pub/Sub delivery creates no duplicate record or artifact.

@@ -211,6 +211,14 @@ def test_scope_analysis_accepts_zero_to_ten_unique_events_and_rejects_more():
         )
 
 
+def test_scope_analysis_keeps_event_limit_out_of_vertex_response_schema():
+    """Vertex rejects nested maxItems even though application validation supports it."""
+
+    events_schema = ScopeAnalysis.model_json_schema()["properties"]["events"]
+
+    assert "maxItems" not in events_schema
+
+
 def test_scope_analysis_allows_replacement_with_clarification_and_closure_changes():
     replacement = ScopeEventProposal(
         classification=ScopeEventClassification.REPLACEMENT,
@@ -218,6 +226,7 @@ def test_scope_analysis_allows_replacement_with_clarification_and_closure_change
         sop_module_keys=["email_notifications", "line_notifications"],
         quantities=[{"module_key": "line_notifications", "quantity": 1}],
         rationale="One baseline module is replaced by one catalog module.",
+        evidence=[],
         confidence=95,
     )
     clarification = _scope_event(1)
@@ -225,6 +234,7 @@ def test_scope_analysis_allows_replacement_with_clarification_and_closure_change
         classification=ScopeEventClassification.CLOSURE,
         description="That is everything.",
         rationale="Explicit closure.",
+        evidence=[],
         confidence=95,
     )
 

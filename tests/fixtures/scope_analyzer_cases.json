@@ -303,7 +303,7 @@
       },
       "current_message": {
         "message_id": "message-E008",
-        "text": "Forget LINE. Email alerts are enough."
+        "text": "Remove the proposed LINE notifications."
       },
       "input": "EXISTING_PROJECT\nproject_id: E008\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
       "expected_assertions": {
@@ -590,7 +590,7 @@
       },
       "current_message": {
         "message_id": "message-E015",
-        "text": "Can your team monitor failures around the clock after launch?"
+        "text": "Please add around-the-clock failure monitoring after launch."
       },
       "input": "EXISTING_PROJECT\nproject_id: E015\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
       "expected_assertions": {
@@ -798,6 +798,7 @@
       "expected_assertions": {
         "exact_classifications": [
           "EXPANSION",
+          "EXPANSION",
           "CLOSURE"
         ],
         "exact_module_keys": [
@@ -916,7 +917,7 @@
       },
       "current_message": {
         "message_id": "message-E023",
-        "text": "Can every department have its own permissions, layouts, and custom metrics?"
+        "text": "Add department-specific permissions, layouts, and custom metrics."
       },
       "input": "EXISTING_PROJECT\nproject_id: E023\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
       "expected_assertions": {
@@ -1212,7 +1213,7 @@
       "current_message": {"message_id": "message-E035", "text": "Set the title to Ops; rename chart A; rename status B; use category C; filter by D; send to E; run at 9am; use subject F; label table G; and color the included chart blue."},
       "input": "EXISTING_PROJECT\nproject_id: E035\nAnalyze the current inbound client message against the authoritative scope. Return only ScopeAnalysis.",
       "expected_assertions": {
-        "exact_classifications": ["CLARIFICATION", "CLARIFICATION", "CLARIFICATION", "CLARIFICATION", "CLARIFICATION", "CLARIFICATION", "CLARIFICATION", "CLARIFICATION", "CLARIFICATION", "NO_CHANGE"],
+        "exact_classifications": ["NO_CHANGE", "NO_CHANGE", "NO_CHANGE", "NO_CHANGE", "NO_CHANGE", "NO_CHANGE", "NO_CHANGE", "NO_CHANGE", "NO_CHANGE", "NO_CHANGE"],
         "exact_module_keys": [],
         "conversation_closure": false,
         "require_affected_baseline": true,

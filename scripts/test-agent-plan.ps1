@@ -14,7 +14,9 @@ if (-not (Test-Path -LiteralPath $python)) {
 
 Push-Location -LiteralPath $repoRoot
 try {
-    & $python -m pytest -q
+    $baseTemp = Join-Path $repoRoot "artifacts\test-temp\agent-plan-$PID"
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $baseTemp) | Out-Null
+    & $python -m pytest -q --basetemp $baseTemp
     if ($LASTEXITCODE -ne 0) {
         throw "Deterministic agent-plan gate failed"
     }
