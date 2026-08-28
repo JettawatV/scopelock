@@ -199,3 +199,33 @@ Before final hackathon demo:
 - no invalid SOP modules;
 - no duplicate send in replay test;
 - Cloud Run traces/logs show tool execution.
+
+---
+
+## 11. Pre-Gmail agent readiness gate
+
+Before real Gmail OAuth, watch, Pub/Sub, or History API events are connected to
+the agents, run:
+
+```powershell
+.\scripts\test-agent-plan.ps1
+.\scripts\test-agent-plan.ps1 -LiveAdk
+```
+
+The gate passes only when all of the following are true:
+
+1. The complete deterministic suite passes.
+2. The root agent exposes exactly Requirement Analyzer and Scope Analyzer.
+3. Requirement Analyzer has only `get_sop_catalog`; Scope Analyzer has only the
+   three approved read-only context/catalog tools.
+4. Typed schemas expose no pricing, timeline, approval, or send fields.
+5. Unknown modules, missing evidence, commercial language, malformed output,
+   and model exceptions fail closed before any commercial record or send.
+6. The current Requirement Analyzer prompt version passes all 5 reviewed live
+   cases.
+7. Scope Analyzer passes all 25 reviewed live cases.
+8. Both live ADK trajectory cases pass with no unexpected or forbidden action.
+
+Any missing, stale, or failed live result keeps the external email path on
+hold. A prompt change must increment its prompt version and rerun the owning
+live eval before promotion.

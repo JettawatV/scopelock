@@ -53,6 +53,9 @@ Next unlock: **Day 12 remains locked until the Day 11 live Gmail event gate is c
 - [x] Day 9 complete local post-acceptance change-order rehearsal verified in under four minutes without frontend or Gmail dependencies.
 - [x] Day 10 repository contracts, Firestore 2.29.0 adapter, unique keys, CAS transactions, replay, concurrency, recovery, and immutable storage verified.
 - [x] Midpoint behavior-preserving refactor centralized typed persistence, deterministic identity, transition helpers, and readable workflow stages before Day 11.
+- [x] Pre-Day 11 hardening added least-privilege tool contracts, semantic fail-closed validation, failure-isolation tests, approval/evidence invariants, and a one-command 133-test gate.
+- [x] Live Scope Analyzer rerun passed 25/25 and live workflow trajectories passed 2/2 on 2026-08-28.
+- [x] Requirement Analyzer v3 focused live rerun passed 5/5 on 2026-08-28; real Gmail events are cleared to invoke the validated workflow.
 - [x] Frontend/UI work explicitly held until the ADK agent gates pass.
 
 ### Evidence gates
@@ -542,11 +545,19 @@ Move-on gate:
 
 ### Day 11 — Gmail OAuth, watch, Pub/Sub, and History API
 
-Status: ACTIVE — unlocked after the Day 10 persistence gate passed on 2026-08-28.
+Status: ACTIVE — pre-start agent readiness gate passed on 2026-08-28; Gmail OAuth/event implementation may begin.
 
 Daily outcome: a real inbound Gmail message wakes ScopeLock and resolves exactly one new thread message.
 
 Implementation checklist:
+
+- [x] Run the deterministic pre-Gmail agent readiness gate: 133 passed.
+- [x] Confirm exact agent roster, typed outputs, and least-privilege read-only tool allowlists.
+- [x] Confirm unsafe semantic output and model exceptions create zero commercial artifacts, approvals, or sends.
+- [x] Rerun Scope Analyzer live eval: 25 passed, 0 failed.
+- [x] Rerun live workflow trajectories: 2 passed, 0 failed.
+- [x] Rerun Requirement Analyzer v3 live eval: 5 passed, 0 failed.
+- [x] Remove the pre-start hold after the v3 result JSON records 5/5.
 
 - [ ] Create or confirm the dedicated demo Gmail account.
 - [ ] Configure the least-privilege Gmail OAuth scopes.

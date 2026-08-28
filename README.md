@@ -70,9 +70,11 @@ ScopeLock (root agent)
 └── Scope Analyzer (typed existing-project change analysis)
 ```
 
-The Requirement Analyzer gate, 25-case Scope Analyzer corpus, and two native
-ADK trajectory cases pass. Frontend UI/UX remains locked until the later cloud
-integration gates in `docs/DAILY_IMPLEMENTATION_PLAN.md` pass.
+The Requirement Analyzer v3 corpus passes 5/5, the Scope Analyzer corpus passes
+25/25, and both native ADK trajectory cases pass. The agents are cleared for
+the Day 11 Gmail OAuth/event integration path. Frontend UI/UX remains locked
+until the later cloud integration gates in `docs/DAILY_IMPLEMENTATION_PLAN.md`
+pass.
 
 The ADK app selector displays `app` because that name must match the
 discoverable `app/` package. The root agent inside it is named `scopelock`.
@@ -90,6 +92,18 @@ adk eval app tests/eval/scope_analyzer.evalset.json `
 adk eval app tests/eval/workflow_trajectories.evalset.json `
   --config_file_path tests/eval/workflow_trajectories.config.json
 ```
+
+Run the complete agent-plan regression gate with one command:
+
+```powershell
+.\scripts\test-agent-plan.ps1
+.\scripts\test-agent-plan.ps1 -LiveAdk
+```
+
+The first command runs all deterministic contract, unit, and integration tests.
+`-LiveAdk` then runs all three reviewed eval sets against Vertex AI and inspects
+ADK's result JSON, because the ADK command can return exit code zero even when a
+custom semantic metric fails a case.
 
 `adk web` should be the main interactive development loop. The local `.adk/`
 directory it creates is ignored. The JSONL corpus remains the curated source
