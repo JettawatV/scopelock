@@ -726,7 +726,7 @@
         {
           "rubric_id": "E023_reviewed_result",
           "rubric_content": {
-            "text_property": "Return classifications ['EXPANSION'] and modules [] from authoritative scope, current-message, and semantic SOP evidence."
+            "text_property": "Return classifications ['EXPANSION', 'EXPANSION', 'EXPANSION'] and modules [] from authoritative scope, current-message, and semantic SOP evidence."
           },
           "type": "FINAL_RESPONSE_QUALITY"
         },

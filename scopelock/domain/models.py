@@ -265,7 +265,13 @@ class ScopeEventProposal(StrictContractModel):
         description="One atomic semantic change; do not combine independent changes."
     )
     description: str
-    affected_requirement_ids: list[str] = Field(default_factory=list)
+    affected_requirement_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Authoritative baseline requirement IDs affected or referenced by "
+            "this event."
+        ),
+    )
     proposed_requirements: list[NormalizedRequirement] = Field(default_factory=list)
     sop_module_keys: list[str] = Field(
         default_factory=list,
@@ -286,7 +292,14 @@ class ScopeEventProposal(StrictContractModel):
     rationale: str
     # Evidence is business-critical and must be emitted for every atomic event.
     # Source binding and quote occurrence are validated by application policy.
-    evidence: list[EvidenceRef]
+    evidence: list[EvidenceRef] = Field(
+        description=(
+            "Required direct evidence for this event. Every event must contain "
+            "at least one current Gmail reference and one authoritative "
+            "ScopeVersion reference; material module keys also require matching "
+            "SOP references."
+        )
+    )
     confidence: int = Field(ge=0, le=100, strict=True)
 
     @model_validator(mode="after")

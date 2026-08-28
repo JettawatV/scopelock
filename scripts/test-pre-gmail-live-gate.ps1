@@ -4,7 +4,6 @@ param()
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $adk = Join-Path $repoRoot ".venv313\Scripts\adk.exe"
-$history = Join-Path $repoRoot "app\.adk\eval_history"
 $reportPath = Join-Path $repoRoot "artifacts\evals\pre-gmail-live-gate.json"
 
 if (-not (Test-Path -LiteralPath $adk)) {
@@ -18,21 +17,25 @@ $requirements = (
     "thai_supported_request,deadline_constraint,prompt_injection_request"
 )
 $scope = "tests\eval\scope_analyzer.evalset.json:E028"
+$requirementAgent = "tests\live_agents\requirement_app"
+$scopeAgent = "tests\live_agents\scope_app"
 
 function Invoke-ReviewedEval {
     param(
         [string]$EvalSelector,
+        [string]$AgentPath,
         [string]$ConfigPath,
         [string]$ResultPattern,
         [int]$ExpectedCases,
         [int]$Iteration
     )
 
-    & $adk eval app $EvalSelector --config_file_path $ConfigPath | Out-Host
+    & $adk eval $AgentPath $EvalSelector --config_file_path $ConfigPath | Out-Host
     if ($LASTEXITCODE -ne 0) {
         throw "Live ADK command failed for $EvalSelector on iteration $Iteration"
     }
-    $result = Get-ChildItem -LiteralPath $history -Filter "*$ResultPattern*.evalset_result.json" |
+    $agentHistory = Join-Path $repoRoot "$AgentPath\.adk\eval_history"
+    $result = Get-ChildItem -LiteralPath $agentHistory -Filter "*$ResultPattern*.evalset_result.json" |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1
     if ($null -eq $result) {
@@ -63,12 +66,14 @@ try {
     foreach ($iteration in 1..3) {
         $runs += Invoke-ReviewedEval `
             -EvalSelector $requirements `
+            -AgentPath $requirementAgent `
             -ConfigPath "tests\eval\requirement_analyzer.config.json" `
             -ResultPattern "scopelock_requirement_analyzer_v4" `
             -ExpectedCases 5 `
             -Iteration $iteration
         $runs += Invoke-ReviewedEval `
             -EvalSelector $scope `
+            -AgentPath $scopeAgent `
             -ConfigPath "tests\eval\scope_analyzer.config.json" `
             -ResultPattern "scopelock_scope_analyzer_v2" `
             -ExpectedCases 1 `

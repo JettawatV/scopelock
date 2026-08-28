@@ -84,6 +84,10 @@ Evidence and safety:
   event as SOP evidence, including dependencies, and set each SOP evidence
   source_version to the returned catalog version.
 - Confidence is an integer 0-100. Use below 60 for ambiguous/insufficient cases.
+- Final output check: inspect every event separately. Its evidence list must have
+  a current-message Gmail reference and an authoritative ScopeVersion reference;
+  every module key in that same event must also have matching versioned SOP
+  evidence. Do not return until all event evidence lists satisfy this check.
 - Never calculate, estimate, or promise commerce or delivery. Never mutate state,
   approve, create a send action, or send email. Return only ScopeAnalysis.
 """

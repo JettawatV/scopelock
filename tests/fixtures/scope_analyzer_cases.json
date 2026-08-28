@@ -601,7 +601,7 @@
         "conversation_closure": false,
         "require_affected_baseline": false,
         "baseline_requirement_id": "BASE-E015",
-        "require_needs_review": false,
+        "require_needs_review": true,
         "required_tool_order": [
           "get_current_scope",
           "get_recent_thread_context",
@@ -922,13 +922,15 @@
       "input": "EXISTING_PROJECT\nproject_id: E023\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
       "expected_assertions": {
         "exact_classifications": [
+          "EXPANSION",
+          "EXPANSION",
           "EXPANSION"
         ],
         "exact_module_keys": [],
         "conversation_closure": false,
         "require_affected_baseline": false,
         "baseline_requirement_id": "BASE-E023",
-        "require_needs_review": false,
+        "require_needs_review": true,
         "required_tool_order": [
           "get_current_scope",
           "get_recent_thread_context",
