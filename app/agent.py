@@ -10,6 +10,7 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from app.sub_agents.requirement_analyzer import requirement_analyzer
 from app.sub_agents.scope_analyzer import scope_analyzer
+from scopelock.domain.enums import AgentRoute
 from scopelock.settings import build_model
 
 
@@ -35,3 +36,19 @@ later approval-gated workflows.
 # ADK requires the App name to match its discoverable package directory.
 # The user-facing/root-agent identity remains ``scopelock``.
 app = App(name="app", root_agent=root_agent)
+
+
+def build_direct_app(route: AgentRoute) -> App:
+    """Build a production app whose root is selected by deterministic code."""
+
+    if route == AgentRoute.REQUIREMENT_ANALYSIS:
+        from app.sub_agents.requirement_analyzer import build_requirement_analyzer
+
+        selected = build_requirement_analyzer()
+    elif route == AgentRoute.SCOPE_ANALYSIS:
+        from app.sub_agents.scope_analyzer import build_scope_analyzer
+
+        selected = build_scope_analyzer()
+    else:
+        raise ValueError("IGNORE routes cannot invoke an ADK agent")
+    return App(name="app", root_agent=selected)

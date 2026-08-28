@@ -92,6 +92,16 @@ def test_firestore_adapter_creates_unique_canonical_record_and_lists_it():
 
     assert duplicate.document_id == first.document_id == "event-1"
     assert repo.get(collection="scope_events", document_id="event-1") == first
+    assert repo.find_by_unique_key(
+        collection="scope_events",
+        key_name="gmail_message_id",
+        key_value="message-1",
+    ) == first
+    assert repo.find_by_unique_key(
+        collection="scope_events",
+        key_name="gmail_message_id",
+        key_value="missing",
+    ) is None
     assert repo.list(collection="scope_events") == (first,)
 
 

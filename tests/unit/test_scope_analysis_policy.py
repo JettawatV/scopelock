@@ -223,13 +223,80 @@ def test_closure_flag_requires_a_closure_event():
         )
 
 
-def test_two_events_are_reserved_for_closure_plus_one_material_change():
-    with pytest.raises(ValidationError):
+def test_multiple_independent_events_are_allowed_without_closure():
+    analysis = ScopeAnalysis(
+        events=[
+            event(ScopeEventClassification.NO_CHANGE, confidence=95),
+            event(ScopeEventClassification.CLARIFICATION, confidence=95).model_copy(
+                update={"description": "Independent clarification"}
+            ),
+        ],
+        conversation_closure=False,
+        overall_confidence=95,
+    )
+
+    assert len(analysis.events) == 2
+
+
+@pytest.mark.parametrize(
+    ("unsafe_kind", "reason_fragment"),
+    [
+        ("message_id", "wrong Gmail message"),
+        ("gmail_quote", "Gmail quote"),
+        ("scope_id", "wrong ScopeVersion"),
+        ("baseline_quote", "baseline quote"),
+        ("sop_version", "wrong SOP version"),
+        ("quantity", "outside"),
+    ],
+)
+def test_scope_policy_binds_evidence_and_quantity_to_authoritative_context(
+    unsafe_kind,
+    reason_fragment,
+):
+    candidate = event(
+        ScopeEventClassification.EXPANSION,
+        confidence=95,
+        module_keys=["line_notifications"],
+    )
+    evidence = list(candidate.evidence)
+    evidence[2] = evidence[2].model_copy(update={"source_version": "jvl-demo-v1"})
+    if unsafe_kind == "message_id":
+        evidence[0] = evidence[0].model_copy(update={"source_id": "other-message"})
+    elif unsafe_kind == "gmail_quote":
+        evidence[0] = evidence[0].model_copy(update={"quote_or_rule": "not present"})
+    elif unsafe_kind == "scope_id":
+        evidence[1] = evidence[1].model_copy(update={"source_id": "other-scope"})
+    elif unsafe_kind == "baseline_quote":
+        evidence[1] = evidence[1].model_copy(update={"quote_or_rule": "not present"})
+    elif unsafe_kind == "sop_version":
+        evidence[2] = evidence[2].model_copy(update={"source_version": "old-sop"})
+    quantities = candidate.quantities
+    if unsafe_kind == "quantity":
+        quantities = [ModuleQuantity(module_key="line_notifications", quantity=2)]
+    candidate = candidate.model_copy(
+        update={"evidence": evidence, "quantities": quantities}
+    )
+    catalog = load_sop("config/jvl_sop.example.yaml")
+    strict_policy = ScopeAnalysisPolicy(
+        valid_module_keys={module.key for module in catalog.modules},
+        quantity_limits={
+            module.key: (module.quantity.minimum, module.quantity.maximum)
+            for module in catalog.modules
+        },
+    )
+
+    decision = strict_policy.evaluate(
         ScopeAnalysis(
-            events=[
-                event(ScopeEventClassification.NO_CHANGE, confidence=95),
-                event(ScopeEventClassification.CLARIFICATION, confidence=95),
-            ],
+            events=[candidate],
             conversation_closure=False,
             overall_confidence=95,
-        )
+        ),
+        expected_message_id="message-1",
+        normalized_message_body="The client request is explicit.",
+        expected_scope_version_id="scope-1",
+        baseline_texts=("The accepted baseline is authoritative.",),
+        expected_sop_version="jvl-demo-v1",
+    )
+
+    assert decision.status == ScopeAnalysisStatus.NEEDS_REVIEW
+    assert any(reason_fragment in reason for reason in decision.reasons)

@@ -8,15 +8,20 @@ from google.adk.evaluation.eval_set import EvalSet
 def test_native_adk_eval_set_is_valid():
     path = Path("tests/eval/requirement_analyzer.evalset.json")
     eval_set = EvalSet.model_validate_json(path.read_text(encoding="utf-8"))
-    assert eval_set.eval_set_id == "scopelock_requirement_analyzer_v3"
+    assert eval_set.eval_set_id == "scopelock_requirement_analyzer_v4"
     assert eval_set.eval_cases[0].eval_id == "golden_initial_request"
-    assert {case.eval_id for case in eval_set.eval_cases} == {
+    assert {case.eval_id for case in eval_set.eval_cases}.issuperset({
         "golden_initial_request",
         "irrelevant_email",
         "ambiguous_project_request",
         "out_of_catalog_request",
         "prompt_injection_request",
-    }
+        "mixed_supported_and_unsupported",
+        "deadline_constraint",
+        "budget_constraint",
+        "thai_supported_request",
+        "thai_ambiguous_request",
+    })
     assert all(case.rubrics for case in eval_set.eval_cases)
 
 
@@ -35,18 +40,22 @@ def test_reviewed_fixtures_match_native_adk_cases():
     native_cases = {case.eval_id: case for case in eval_set.eval_cases}
 
     assert fixture_data["review_status"] == "reviewed"
-    assert fixture_data["prompt_version"] == "requirement_analyzer_v3"
+    assert fixture_data["prompt_version"] == "requirement_analyzer_v4"
     assert set(fixture_cases) == set(native_cases)
     assert {
         case["category"]
         for case in fixture_data["cases"]
         if case["category"] != "golden_path"
-    } == {
+    }.issuperset({
         "irrelevant_email",
         "ambiguous_request",
         "out_of_catalog_request",
         "prompt_injection",
-    }
+        "mixed_scope",
+        "client_constraint",
+        "thai_supported",
+        "thai_ambiguous",
+    })
     for eval_id, fixture in fixture_cases.items():
         assert fixture["review_status"] == "reviewed"
         assert fixture["review_rationale"]
@@ -88,8 +97,8 @@ def test_scope_native_eval_assets_cover_all_reviewed_cases():
 
     assert fixture_data["review_status"] == "specification_reviewed"
     assert fixture_data["reviewer"]
-    assert len(fixture_data["cases"]) == 25
-    assert len(eval_set.eval_cases) == 25
+    assert len(fixture_data["cases"]) == 35
+    assert len(eval_set.eval_cases) == 35
     assert {case["eval_id"] for case in fixture_data["cases"]} == {
         case.eval_id for case in eval_set.eval_cases
     }

@@ -1,6 +1,8 @@
 import asyncio
 import hashlib
 import json
+import subprocess
+import sys
 
 from google.adk.events import Event
 from google.genai import types
@@ -18,6 +20,7 @@ from scopelock.domain.models import (
     ToolActionStatus,
 )
 from scopelock.services.agent_run_repository import JsonAgentRunRepository
+from scopelock.services.adk_runtime import redact_tool_payload
 
 
 def valid_output(module_key: str = "email_intake") -> str:
@@ -241,3 +244,44 @@ def test_missing_configuration_records_failed_run_without_tools(tmp_path, monkey
     assert run.error.category == "RuntimeError"
     assert "GOOGLE_CLOUD_PROJECT is missing" in run.error.message
     assert (tmp_path / run.id / "agent_run.json").exists()
+
+
+def test_tool_payload_redaction_never_persists_bodies_or_commerce_rules():
+    redacted = redact_tool_payload(
+        "get_sop_catalog",
+        {
+            "version": "jvl-demo-v1",
+            "email_body": "private client request",
+            "modules": [
+                {
+                    "key": "email_intake",
+                    "amount_usd": 500,
+                    "timeline": {"base_days": 2},
+                }
+            ],
+        },
+    )
+    serialized = json.dumps(redacted, sort_keys=True)
+
+    assert redacted["version"] == "jvl-demo-v1"
+    assert redacted["module_keys"] == ["email_intake"]
+    assert "private client request" not in serialized
+    assert "amount_usd" not in serialized
+    assert "timeline" not in serialized
+
+
+def test_cli_stdout_emits_thai_as_utf8_bytes():
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from scopelock.adk_runner import configure_utf8_stdout; "
+                "configure_utf8_stdout(); print('ทดสอบภาษาไทย')"
+            ),
+        ],
+        capture_output=True,
+        check=True,
+    )
+
+    assert completed.stdout.decode("utf-8").strip() == "ทดสอบภาษาไทย"

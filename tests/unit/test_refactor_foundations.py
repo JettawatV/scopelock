@@ -31,6 +31,21 @@ class DemoRecord(BaseModel):
     value: int
 
 
+class FailOnceCreateRepository:
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+        self.attempts = 0
+
+    def create_or_get(self, **kwargs):
+        self.attempts += 1
+        if self.attempts == 1:
+            raise ConnectionError("temporary persistence failure")
+        return self.wrapped.create_or_get(**kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self.wrapped, name)
+
+
 def accepted_baseline():
     catalog = load_sop("config/jvl_sop.example.yaml")
     selections = tuple(
@@ -78,6 +93,21 @@ def test_model_store_centralizes_typed_create_get_and_cas_replace():
     stored = store.replace(CollectionName.EVAL_RESULTS, updated)
     assert stored.revision == 2
     assert store.get(CollectionName.EVAL_RESULTS, original.id, DemoRecord) == updated
+
+
+def test_production_model_store_retries_transient_persistence_failure():
+    repository = FailOnceCreateRepository(
+        InMemoryApplicationRepository(clock=lambda: NOW)
+    )
+    store = ModelStore(repository, use_boundaries=True)
+
+    stored = store.create(
+        CollectionName.EVAL_RESULTS,
+        DemoRecord(id="retry-record", value=1),
+    )
+
+    assert stored.document_id == "retry-record"
+    assert repository.attempts == 2
 
 
 def test_model_store_raises_explicitly_for_missing_cas_target():

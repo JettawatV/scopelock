@@ -51,6 +51,14 @@ class ApplicationRepository(Protocol):
 
     def get(self, *, collection: str, document_id: str) -> StoredDocument | None: ...
 
+    def find_by_unique_key(
+        self,
+        *,
+        collection: str,
+        key_name: str,
+        key_value: str,
+    ) -> StoredDocument | None: ...
+
     def list(self, *, collection: str) -> tuple[StoredDocument, ...]: ...
 
     def compare_and_set(

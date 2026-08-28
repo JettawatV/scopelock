@@ -10,6 +10,7 @@ from scopelock.repositories.contracts import (
     DocumentNotFoundError,
     StoredDocument,
 )
+from scopelock.services.execution_boundaries import WorkflowExecutionBoundaries
 
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -17,6 +18,8 @@ ModelT = TypeVar("ModelT", bound=BaseModel)
 
 class CollectionName(StrEnum):
     PROJECTS = "projects"
+    INBOUND_MESSAGES = "inbound_messages"
+    INBOUND_RESULTS = "inbound_results"
     SCOPE_VERSIONS = "scope_versions"
     SCOPE_EVENTS = "scope_events"
     BUFFERS = "buffers"
@@ -37,8 +40,19 @@ class CollectionName(StrEnum):
 class ModelStore:
     """Remove serialization and CAS bookkeeping from workflow orchestration."""
 
-    def __init__(self, repository: ApplicationRepository) -> None:
+    def __init__(
+        self,
+        repository: ApplicationRepository,
+        *,
+        use_boundaries: bool = False,
+    ) -> None:
         self.repository = repository
+        self._use_boundaries = use_boundaries
+
+    def _persist(self, operation):
+        if self._use_boundaries:
+            return WorkflowExecutionBoundaries.persistence(operation)
+        return operation()
 
     def create(
         self,
@@ -50,12 +64,14 @@ class ModelStore:
         immutable: bool = False,
     ) -> StoredDocument:
         resolved_id = document_id or self._model_id(model)
-        return self.repository.create_or_get(
-            collection=collection.value,
-            document_id=resolved_id,
-            payload=model.model_dump(mode="json"),
-            unique_keys=unique_keys,
-            immutable=immutable,
+        return self._persist(
+            lambda: self.repository.create_or_get(
+                collection=collection.value,
+                document_id=resolved_id,
+                payload=model.model_dump(mode="json"),
+                unique_keys=unique_keys,
+                immutable=immutable,
+            )
         )
 
     def get(
@@ -64,9 +80,28 @@ class ModelStore:
         document_id: str,
         model_type: type[ModelT],
     ) -> ModelT | None:
-        stored = self.repository.get(
-            collection=collection.value,
-            document_id=document_id,
+        stored = self._persist(
+            lambda: self.repository.get(
+                collection=collection.value,
+                document_id=document_id,
+            )
+        )
+        return model_type.model_validate(stored.payload) if stored else None
+
+    def find_by_unique_key(
+        self,
+        collection: CollectionName,
+        *,
+        key_name: str,
+        key_value: str,
+        model_type: type[ModelT],
+    ) -> ModelT | None:
+        stored = self._persist(
+            lambda: self.repository.find_by_unique_key(
+                collection=collection.value,
+                key_name=key_name,
+                key_value=key_value,
+            )
         )
         return model_type.model_validate(stored.payload) if stored else None
 
@@ -75,9 +110,11 @@ class ModelStore:
         collection: CollectionName,
         document_id: str,
     ) -> StoredDocument:
-        stored = self.repository.get(
-            collection=collection.value,
-            document_id=document_id,
+        stored = self._persist(
+            lambda: self.repository.get(
+                collection=collection.value,
+                document_id=document_id,
+            )
         )
         if stored is None:
             raise DocumentNotFoundError(
@@ -94,12 +131,14 @@ class ModelStore:
     ) -> StoredDocument:
         document_id = self._model_id(model)
         current = self.require_document(collection, document_id)
-        return self.repository.compare_and_set(
-            collection=collection.value,
-            document_id=document_id,
-            expected_revision=current.revision,
-            payload=model.model_dump(mode="json"),
-            make_immutable=make_immutable,
+        return self._persist(
+            lambda: self.repository.compare_and_set(
+                collection=collection.value,
+                document_id=document_id,
+                expected_revision=current.revision,
+                payload=model.model_dump(mode="json"),
+                make_immutable=make_immutable,
+            )
         )
 
     @staticmethod

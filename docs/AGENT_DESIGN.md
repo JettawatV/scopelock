@@ -20,6 +20,11 @@ Develop through `adk web .` and `adk run app`. Keep deterministic commerce in
 the separate `scopelock/` package. Frontend work is blocked until this ADK gate
 passes.
 
+The root agent is a development/eval convenience only. Production applies a
+deterministic `AgentRoute` and invokes the selected sub-agent directly through
+`AdkAgentGateway`; the model never decides whether a message is initial intake
+or an existing-project change.
+
 ---
 
 ## 2. Agent A — Requirement Analyzer
@@ -47,6 +52,9 @@ RequirementAnalysis:
     assumptions: list[str]
     exclusions_to_surface: list[str]
     missing_critical_information: list[str]
+    source_language: Literal["en", "th", "mixed", "und"]
+    client_constraints: list[ClientConstraint]
+    unsupported_requirements: list[UnsupportedRequirement]
     proposal_ready: bool
     confidence: float
     evidence: list[EvidenceRef]
@@ -54,6 +62,13 @@ RequirementAnalysis:
 
 ### Constraint
 It may only select SOP module keys that exist in the provided catalog.
+
+Requirement Analyzer v4 is catalog-driven. It retains valid supported mappings
+when an email also asks for unsupported work, records the unsupported work with
+Gmail evidence, sets `proposal_ready=false`, and blocks commercial artifacts.
+Requested deadlines and budgets are client constraints only; they never change
+deterministic price or delivery calculations. Human-readable descriptions stay
+in the source language while keys and statuses remain canonical English.
 
 It must never invent price.
 
@@ -79,9 +94,10 @@ Determine how the message semantically changes the currently authoritative/propo
 
 ```python
 ScopeAnalysis:
-    events: list[ScopeEventProposal]
+    events: list[ScopeEventProposal]  # 0 through 10 atomic events
     conversation_closure: bool
     overall_confidence: int  # percentage, 0 through 100
+    source_language: Literal["en", "th", "mixed", "und"]
 ```
 
 Each event:
@@ -102,6 +118,7 @@ ScopeEventProposal:
     proposed_requirements: list[NormalizedRequirement]
     sop_module_keys: list[str]
     quantities: list[ModuleQuantity]
+    unsupported_requirements: list[UnsupportedRequirement]
     rationale: str
     evidence: list[EvidenceRef]
     confidence: int  # percentage, 0 through 100
@@ -110,6 +127,13 @@ ScopeEventProposal:
 ### Core reasoning question
 
 > If the business fulfilled this new request, would it perform materially different work from the currently agreed/proposed scope?
+
+Scope Analyzer v2 emits one event per independent change and deduplicates
+equivalent wording. Zero events are allowed only for irrelevant/system noise;
+relevant benign messages remain `NO_CHANGE` or `CLARIFICATION`. A response may
+contain at most one `CLOSURE`, and closure may coexist with several material
+events. Eleven proposed events, invalid combinations, unsupported quantities,
+or source-binding failures route to `NEEDS_REVIEW`.
 
 ---
 
@@ -161,6 +185,12 @@ Good:
 - `get_recent_thread_context(project_id)`
 - `propose_scope_events(...)`
 
+The implemented agents expose only `get_sop_catalog()` for Requirement Analyzer
+and `get_current_scope()`, `get_recent_thread_context()`, and
+`get_sop_catalog()` for Scope Analyzer. These tools read immutable ADK session
+state. They do not open Gmail or Firestore and cannot invoke pricing, timeline,
+state mutation, approval, artifact creation, or send services.
+
 Avoid giving the LLM direct:
 - arbitrary Firestore access;
 - unrestricted Gmail send;
@@ -180,6 +210,7 @@ Every important semantic decision should reference evidence.
 EvidenceRef:
     source_type: "gmail" | "scope_version" | "sop"
     source_id: str
+    source_version: str | None
     quote_or_rule: str
 ```
 
@@ -189,6 +220,11 @@ The UI should show concise user-facing justification:
 - what the client asked;
 - what the baseline says;
 - which SOP rule applies.
+
+Application validation binds Gmail evidence to the authoritative current
+message ID and normalized body, scope evidence to the active ScopeVersion ID and
+baseline text, and SOP evidence to exact selected module keys plus the active
+catalog version. Any mismatch fails closed.
 
 ---
 
@@ -239,8 +275,8 @@ The "improvement" is:
 Store a version string with every AgentRun.
 
 Examples:
-- `requirement_analyzer_v1`
-- `scope_analyzer_v1`
+- `requirement_analyzer_v4`
+- `scope_analyzer_v2`
 
 Any prompt change should:
 1. update version;

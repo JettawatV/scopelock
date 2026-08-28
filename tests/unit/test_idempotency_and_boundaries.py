@@ -48,6 +48,11 @@ def test_concurrent_duplicate_create_resolves_to_one_canonical_document():
 
     assert len({result.document_id for result in results}) == 1
     assert len(repository.list(collection="scope_events")) == 1
+    assert repository.find_by_unique_key(
+        collection="scope_events",
+        key_name="gmail_message_id",
+        key_value="message-canonical",
+    ) == results[0]
 
 
 def test_transient_call_retries_within_boundary_and_send_policy_never_blindly_retries():

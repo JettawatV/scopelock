@@ -23,6 +23,11 @@ modules:
       - workflow automation
       - business process automation
       - request automation
+    quantity:
+      mode: fixed_package
+      unit: workflow package
+      minimum: 1
+      maximum: 1
     pricing:
       type: fixed
       amount_usd: 4000
@@ -48,6 +53,11 @@ modules:
       - gmail integration
       - email intake
       - shared inbox
+    quantity:
+      mode: fixed_package
+      unit: inbox package
+      minimum: 1
+      maximum: 1
     pricing:
       type: fixed
       amount_usd: 500
@@ -69,6 +79,11 @@ modules:
       - dashboard
       - admin dashboard
       - operations view
+    quantity:
+      mode: fixed_package
+      unit: dashboard package
+      minimum: 1
+      maximum: 1
     pricing:
       type: fixed
       amount_usd: 750
@@ -91,6 +106,11 @@ modules:
     aliases:
       - email alerts
       - email notifications
+    quantity:
+      mode: fixed_package
+      unit: notification package
+      minimum: 1
+      maximum: 1
     pricing:
       type: fixed
       amount_usd: 400
@@ -111,6 +131,11 @@ modules:
       - line alerts
       - line notifications
       - line integration
+    quantity:
+      mode: fixed_package
+      unit: notification package
+      minimum: 1
+      maximum: 1
     pricing:
       type: fixed
       amount_usd: 750
@@ -132,6 +157,11 @@ modules:
     aliases:
       - manager approval on line
       - line approval
+    quantity:
+      mode: fixed_package
+      unit: approval package
+      minimum: 1
+      maximum: 1
     pricing:
       type: fixed
       amount_usd: 750

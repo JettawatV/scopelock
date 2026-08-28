@@ -3,6 +3,34 @@
 from enum import StrEnum
 
 
+class AgentRoute(StrEnum):
+    IGNORE = "IGNORE"
+    REQUIREMENT_ANALYSIS = "REQUIREMENT_ANALYSIS"
+    SCOPE_ANALYSIS = "SCOPE_ANALYSIS"
+
+
+class InboundProcessingStatus(StrEnum):
+    IGNORED = "IGNORED"
+    DUPLICATE = "DUPLICATE"
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+    PROPOSAL_CREATED = "PROPOSAL_CREATED"
+    SCOPE_EVENTS_RECORDED = "SCOPE_EVENTS_RECORDED"
+    FAILED = "FAILED"
+
+
+class EmailDirection(StrEnum):
+    INBOUND = "INBOUND"
+    OUTBOUND = "OUTBOUND"
+    AUTOMATED = "AUTOMATED"
+    UNKNOWN = "UNKNOWN"
+
+
+class EmailBodyFormat(StrEnum):
+    PLAIN = "PLAIN"
+    HTML_FALLBACK = "HTML_FALLBACK"
+    EMPTY = "EMPTY"
+
+
 class ProjectLifecycleStatus(StrEnum):
     NEW = "NEW"
     ANALYZING_REQUIREMENTS = "ANALYZING_REQUIREMENTS"

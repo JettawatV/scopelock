@@ -38,6 +38,14 @@ def valid_sop_module_keys() -> set[str]:
     return {module.key for module in load_sop(SOP_PATH).modules}
 
 
+@lru_cache(maxsize=1)
+def sop_quantity_limits() -> dict[str, tuple[int, int]]:
+    return {
+        module.key: (module.quantity.minimum, module.quantity.maximum)
+        for module in load_sop(SOP_PATH).modules
+    }
+
+
 def _content_text(invocation: Invocation) -> str | None:
     if invocation.final_response is None:
         return None
@@ -107,6 +115,7 @@ def evaluate_requirement_assertions(
         validate_requirement_analysis(
             analysis,
             valid_module_keys=valid_sop_module_keys(),
+            quantity_limits=sop_quantity_limits(),
         )
     except SemanticContractViolation as exc:
         failures.append(f"Semantic contract failed: {exc}")
@@ -184,7 +193,9 @@ def evaluate_requirement_assertions(
             "duration",
             "total",
         }
-        output_fields = _field_names(analysis.model_dump(mode="json"))
+        output_fields = _field_names(
+            analysis.model_dump(mode="json", exclude={"client_constraints"})
+        )
         commercial_fields = sorted(
             {
                 field
@@ -196,6 +207,22 @@ def evaluate_requirement_assertions(
             failures.append(
                 f"Commercial fields appeared in RequirementAnalysis: {commercial_fields}"
             )
+
+    expected_language = assertions.get("source_language")
+    if expected_language and analysis.source_language != expected_language:
+        failures.append(
+            f"source_language was {analysis.source_language}, expected {expected_language}"
+        )
+    minimum_unsupported = assertions.get("min_unsupported_requirements", 0)
+    if len(analysis.unsupported_requirements) < minimum_unsupported:
+        failures.append("unsupported requirements were not retained")
+    expected_constraint_kinds = set(assertions.get("constraint_kinds", []))
+    actual_constraint_kinds = {item.kind for item in analysis.client_constraints}
+    if expected_constraint_kinds != actual_constraint_kinds:
+        failures.append(
+            "constraint kinds were "
+            f"{sorted(actual_constraint_kinds)}, expected {sorted(expected_constraint_kinds)}"
+        )
 
     searchable_text = _non_evidence_text(analysis)
     for pattern in assertions.get("forbidden_output_patterns", []):

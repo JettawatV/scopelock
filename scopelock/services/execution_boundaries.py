@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 from time import sleep
-from typing import TypeVar
+from typing import Awaitable, TypeVar
 
 
 ResultT = TypeVar("ResultT")
@@ -68,6 +69,32 @@ def run_with_boundary(
     raise RetryExhaustedError(f"{policy.name} failed") from last_error
 
 
+async def run_async_with_boundary(
+    operation: Callable[[], Awaitable[ResultT]],
+    *,
+    policy: BoundaryPolicy,
+    retry_on: tuple[type[BaseException], ...] = (TimeoutError, ConnectionError),
+) -> ResultT:
+    last_error: BaseException | None = None
+    for attempt in range(1, policy.max_attempts + 1):
+        try:
+            return await asyncio.wait_for(operation(), timeout=policy.timeout_seconds)
+        except asyncio.TimeoutError as error:
+            last_error = BoundaryTimeoutError(
+                f"{policy.name} timed out after {policy.timeout_seconds} seconds"
+            )
+            if attempt == policy.max_attempts:
+                raise last_error from error
+        except retry_on as error:
+            last_error = error
+            if attempt == policy.max_attempts:
+                raise RetryExhaustedError(
+                    f"{policy.name} failed after {attempt} attempts"
+                ) from error
+        await asyncio.sleep(policy.backoff_seconds * attempt)
+    raise RetryExhaustedError(f"{policy.name} failed") from last_error
+
+
 class WorkflowExecutionBoundaries:
     """Named P0 policies; sends deliberately have no blind retry."""
 
@@ -85,6 +112,13 @@ class WorkflowExecutionBoundaries:
     @classmethod
     def model(cls, operation: Callable[[], ResultT]) -> ResultT:
         return run_with_boundary(operation, policy=cls.model_policy)
+
+    @classmethod
+    async def model_async(
+        cls,
+        operation: Callable[[], Awaitable[ResultT]],
+    ) -> ResultT:
+        return await run_async_with_boundary(operation, policy=cls.model_policy)
 
     @classmethod
     def persistence(cls, operation: Callable[[], ResultT]) -> ResultT:

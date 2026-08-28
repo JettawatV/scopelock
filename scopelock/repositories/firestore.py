@@ -140,6 +140,27 @@ class FirestoreApplicationRepository:
         )
         return self._decode(snapshot.to_dict()) if snapshot.exists else None
 
+    def find_by_unique_key(
+        self,
+        *,
+        collection: str,
+        key_name: str,
+        key_value: str,
+    ) -> StoredDocument | None:
+        index_id = self._unique_document_id(collection, key_name, key_value)
+        index_snapshot = self._client.collection(self.UNIQUE_COLLECTION).document(
+            index_id
+        ).get(timeout=self._timeout_seconds)
+        if not index_snapshot.exists:
+            return None
+        index_payload = index_snapshot.to_dict()
+        canonical_snapshot = self._client.collection(
+            index_payload["collection"]
+        ).document(index_payload["document_id"]).get(timeout=self._timeout_seconds)
+        if not canonical_snapshot.exists:
+            raise DocumentConflictError("Unique index points to missing record")
+        return self._decode(canonical_snapshot.to_dict())
+
     def list(self, *, collection: str) -> tuple[StoredDocument, ...]:
         documents = (
             self._decode(snapshot.to_dict())

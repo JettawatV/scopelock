@@ -32,11 +32,14 @@ Cloud Run — ScopeLock Backend
     |
     +--> Gmail History API / Messages API
     |
-    +--> ADK Scope Analyzer (Gemini 3.5 Flash)
+    +--> Deterministic inbound router
     |       |
-    |       +--> typed RequirementExtraction
-    |       +--> typed ScopeDecision
-    |       +--> evidence references
+    |       +--> IGNORE
+    |       +--> ADK Requirement Analyzer (direct)
+    |       +--> ADK Scope Analyzer (direct)
+    |               |
+    |               +--> typed semantic output
+    |               +--> authoritative evidence references
     |
     +--> Deterministic SOP / Pricing Engine
     |
@@ -138,6 +141,13 @@ For the single-user hackathon build:
 
 Never commit tokens or client secrets.
 
+### Pre-activation hold
+
+OAuth client setup and credential verification may proceed during Day 11. Do
+not activate `users.watch`, Pub/Sub delivery into the agent workflow, or any
+automatic Gmail-event invocation until the pre-Gmail flexibility gate passes.
+The frontend remains locked during this hold.
+
 ---
 
 ## 6. ADK role
@@ -162,6 +172,26 @@ Use deterministic code for:
 - Gmail idempotency;
 - send authorization;
 - buffer aggregation.
+
+### Inbound normalization and routing
+
+Application code normalizes Gmail before ADK sees a message. It prefers decoded
+`text/plain`, falls back to sanitized HTML text, preserves Unicode/Thai, removes
+obvious quoted history and signatures, records attachment metadata without
+attachment contents, and keeps a hash of the unmodified Gmail resource. Model
+context is bounded to 20,000 current-message characters and five prior messages
+of 4,000 characters each.
+
+`AgentRoute` is deterministic:
+
+- duplicate, outbound, automated, or empty input → `IGNORE`;
+- no project or no active scope → `REQUIREMENT_ANALYSIS`;
+- active proposed/accepted ScopeVersion → `SCOPE_ANALYSIS`.
+
+The production path selects the Requirement Analyzer or Scope Analyzer as the
+ADK application root directly. The development root agent and its
+`EXISTING_PROJECT` convention exist only for `adk web`, `adk run`, and native
+eval interaction; they do not make production routing decisions.
 
 ---
 
@@ -195,6 +225,10 @@ scopelock/
       proposal_service.py
       scope_buffer_service.py
       approval_policy.py
+      gmail_message_normalizer.py
+      inbound_router.py
+      inbound_processing_workflow.py
+      adk_agent_gateway.py
       workflow_trajectory.py
       scope_run_boundary.py
       audit_service.py
@@ -212,6 +246,18 @@ tests/
 Use `adk web .` and `adk run app` while developing agents. Do not create agents
 when a service/function is enough, and never put pricing, approval, state
 transitions, or Gmail send capabilities inside `app/` tools.
+
+For production calls, `AdkAgentGateway` loads one immutable `AnalysisContext`
+before invocation and places it in ADK session state. Tools may read only that
+state. The context contains the normalized current message, bounded prior
+messages, authoritative ScopeVersion when present, semantic SOP projection, and
+SOP version. The semantic SOP contains only module keys, aliases, inclusions,
+exclusions, dependencies, materiality, and quantity policy; prices and timeline
+rules never cross the agent boundary.
+
+ToolAction audit records retain operation name, IDs/hashes, catalog version,
+duration, status, and error. They exclude credentials, complete email bodies,
+catalog amounts, and timeline rules.
 
 ---
 

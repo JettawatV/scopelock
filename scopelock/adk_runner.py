@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import hashlib
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
@@ -26,6 +27,10 @@ from scopelock.domain.models import (
     ToolActionStatus,
 )
 from scopelock.services.agent_run_repository import JsonAgentRunRepository
+from scopelock.services.adk_runtime import (
+    extract_redacted_tool_actions,
+    final_text_from_events as _final_text_from_events,
+)
 from scopelock.services.semantic_contracts import (
     SemanticContractViolation,
     validate_requirement_analysis,
@@ -40,6 +45,14 @@ class InvalidRequirementOutput(ValueError):
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def configure_utf8_stdout(stream=None) -> None:
+    """Make Windows CLI output safe for Thai and other Unicode text."""
+
+    target = stream or sys.stdout
+    if hasattr(target, "reconfigure"):
+        target.reconfigure(encoding="utf-8", errors="replace")
 
 
 def create_agent_run(
@@ -66,6 +79,7 @@ def validate_requirement_output(
     raw_output: str,
     *,
     valid_module_keys: set[str],
+    quantity_limits: dict[str, tuple[int, int]] | None = None,
 ) -> RequirementAnalysis:
     try:
         analysis = RequirementAnalysis.model_validate_json(raw_output)
@@ -78,6 +92,7 @@ def validate_requirement_output(
         validate_requirement_analysis(
             analysis,
             valid_module_keys=valid_module_keys,
+            quantity_limits=quantity_limits,
         )
     except SemanticContractViolation as exc:
         raise InvalidRequirementOutput(
@@ -91,11 +106,13 @@ def complete_agent_run(
     raw_output: str,
     *,
     valid_module_keys: set[str],
+    quantity_limits: dict[str, tuple[int, int]] | None = None,
 ) -> AgentRun:
     try:
         analysis = validate_requirement_output(
             raw_output,
             valid_module_keys=valid_module_keys,
+            quantity_limits=quantity_limits,
         )
     except InvalidRequirementOutput as exc:
         return run.model_copy(
@@ -142,75 +159,15 @@ def extract_tool_actions(
     agent_run_id: str,
     starting_sequence: int,
 ) -> list[ToolAction]:
-    actions: list[ToolAction] = []
-    content = event.content
-    if content is None:
-        return actions
-
-    sequence = starting_sequence
-    for part in content.parts or []:
-        function_call = getattr(part, "function_call", None)
-        if function_call is not None:
-            call_id = function_call.id or event.id or str(uuid4())
-            actions.append(
-                ToolAction(
-                    id=str(uuid4()),
-                    agent_run_id=agent_run_id,
-                    sequence=sequence,
-                    call_id=call_id,
-                    tool_name=function_call.name or "unknown_tool",
-                    phase=ToolActionPhase.CALL,
-                    status=ToolActionStatus.REQUESTED,
-                    payload=function_call.args or {},
-                    event_id=event.id,
-                    author=event.author,
-                    recorded_at=utc_now(),
-                )
-            )
-            sequence += 1
-
-        function_response = getattr(part, "function_response", None)
-        if function_response is not None:
-            response = function_response.response or {}
-            response_error = response.get("error") if isinstance(response, dict) else None
-            call_id = function_response.id or event.id or str(uuid4())
-            actions.append(
-                ToolAction(
-                    id=str(uuid4()),
-                    agent_run_id=agent_run_id,
-                    sequence=sequence,
-                    call_id=call_id,
-                    tool_name=function_response.name or "unknown_tool",
-                    phase=ToolActionPhase.RESULT,
-                    status=(
-                        ToolActionStatus.FAILED
-                        if response_error is not None
-                        else ToolActionStatus.COMPLETED
-                    ),
-                    payload=response,
-                    event_id=event.id,
-                    author=event.author,
-                    recorded_at=utc_now(),
-                    error=str(response_error) if response_error is not None else None,
-                )
-            )
-            sequence += 1
-    return actions
+    actions = extract_redacted_tool_actions([event], agent_run_id=agent_run_id)
+    return [
+        action.model_copy(update={"sequence": starting_sequence + index})
+        for index, action in enumerate(actions)
+    ]
 
 
 def final_text_from_events(events: Iterable[Event]) -> str | None:
-    final_text: str | None = None
-    for event in events:
-        if not event.is_final_response() or event.content is None:
-            continue
-        text_parts = [
-            part.text
-            for part in event.content.parts or []
-            if getattr(part, "text", None)
-        ]
-        if text_parts:
-            final_text = "".join(text_parts)
-    return final_text
+    return _final_text_from_events(events)
 
 
 def configured_sop_path() -> Path:
@@ -239,6 +196,7 @@ async def run_requirement_analysis(
             app_name=app.name,
             user_id=user_id,
             session_id=run.correlation_id,
+            state={"semantic_sop": catalog.semantic_view()},
         )
         runner = Runner(app=app, session_service=session_service)
         new_message = types.Content(
@@ -252,13 +210,11 @@ async def run_requirement_analysis(
             new_message=new_message,
         ):
             events.append(event)
-            run.tool_trajectory.extend(
-                extract_tool_actions(
-                    event,
-                    agent_run_id=run.id,
-                    starting_sequence=len(run.tool_trajectory) + 1,
-                )
-            )
+
+        run.tool_trajectory = extract_redacted_tool_actions(
+            events,
+            agent_run_id=run.id,
+        )
 
         raw_output = final_text_from_events(events)
         if raw_output is None:
@@ -269,6 +225,10 @@ async def run_requirement_analysis(
             run,
             raw_output,
             valid_module_keys={module.key for module in catalog.modules},
+            quantity_limits={
+                module.key: (module.quantity.minimum, module.quantity.maximum)
+                for module in catalog.modules
+            },
         )
     except InvalidRequirementOutput as exc:
         run = run.model_copy(
@@ -291,6 +251,7 @@ async def run_requirement_analysis(
 
 
 def main() -> None:
+    configure_utf8_stdout()
     parser = argparse.ArgumentParser(
         description="Run ScopeLock Requirement Analyzer with application-owned audit records."
     )

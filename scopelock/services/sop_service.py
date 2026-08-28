@@ -58,6 +58,21 @@ class MaterialitySettings(FrozenSOPModel):
     material_if_added: StrictBool
 
 
+class QuantityPolicy(FrozenSOPModel):
+    mode: Literal["fixed_package", "per_unit"]
+    unit: NonEmptyText
+    minimum: PositiveQuantity = 1
+    maximum: PositiveQuantity
+
+    @model_validator(mode="after")
+    def validate_bounds(self) -> "QuantityPolicy":
+        if self.maximum < self.minimum:
+            raise ValueError("Quantity maximum must be at least the minimum")
+        if self.mode == "fixed_package" and (self.minimum != 1 or self.maximum != 1):
+            raise ValueError("Fixed packages must use quantity 1")
+        return self
+
+
 class BusinessSettings(FrozenSOPModel):
     name: NonEmptyText
     currency: Literal["USD"]
@@ -85,6 +100,7 @@ class SOPModule(FrozenSOPModel):
     name: NonEmptyText
     description: NonEmptyText
     aliases: tuple[NonEmptyText, ...] = ()
+    quantity: QuantityPolicy
     pricing: PricingRule
     timeline: TimelineRule
     included: tuple[NonEmptyText, ...] = ()
@@ -117,7 +133,27 @@ class SOPModule(FrozenSOPModel):
             )
         if self.key in self.dependencies:
             raise ValueError(f"SOP module {self.key!r} cannot depend on itself")
+        if self.pricing.type == "fixed" and self.quantity.mode != "fixed_package":
+            raise ValueError("Fixed pricing requires fixed-package quantity semantics")
+        if self.pricing.type == "per_unit":
+            if self.quantity.mode != "per_unit":
+                raise ValueError("Per-unit pricing requires per-unit quantity semantics")
+            if self.pricing.unit != self.quantity.unit:
+                raise ValueError("Pricing and semantic quantity units must match")
+            if self.pricing.minimum_units != self.quantity.minimum:
+                raise ValueError("Pricing and semantic quantity minimums must match")
         return self
+
+    def semantic_view(self) -> dict[str, object]:
+        return {
+            "key": self.key,
+            "aliases": list(self.aliases),
+            "inclusions": list(self.included),
+            "exclusions": list(self.excluded),
+            "dependencies": list(self.dependencies),
+            "materiality": self.scope_rules.model_dump(mode="json"),
+            "quantity_policy": self.quantity.model_dump(mode="json"),
+        }
 
 
 class SOPCatalog(FrozenSOPModel):
@@ -186,6 +222,14 @@ class SOPCatalog(FrozenSOPModel):
             if module.key == key:
                 return module
         raise KeyError(f"Unknown SOP module: {key}")
+
+    def semantic_view(self) -> dict[str, object]:
+        """Return the agent-safe catalog with all commerce rules removed."""
+
+        return {
+            "version": self.version,
+            "modules": [module.semantic_view() for module in self.modules],
+        }
 
 
 def load_sop(path: str | Path) -> SOPCatalog:

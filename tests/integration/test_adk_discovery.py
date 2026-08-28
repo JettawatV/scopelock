@@ -1,14 +1,17 @@
 import subprocess
 import sys
+import inspect
 from pathlib import Path
 
 import app as app_package
-from app.agent import app, root_agent
+from app.agent import app, build_direct_app, root_agent
 from app.sub_agents.requirement_analyzer import PROMPT_VERSION, requirement_analyzer
 from app.sub_agents.scope_analyzer import (
     PROMPT_VERSION as SCOPE_PROMPT_VERSION,
     scope_analyzer,
 )
+from scopelock.domain.enums import AgentRoute
+from scopelock.services.adk_agent_gateway import AdkAgentGateway
 
 
 def test_app_package_exposes_agent_module_for_adk_eval():
@@ -63,21 +66,30 @@ def test_root_agent_exposes_scope_lock_hierarchy():
     )
 
 
+def test_production_gateway_uses_direct_deterministic_sub_agent_routes():
+    assert build_direct_app(AgentRoute.REQUIREMENT_ANALYSIS).root_agent.name == (
+        "requirement_analyzer"
+    )
+    assert build_direct_app(AgentRoute.SCOPE_ANALYSIS).root_agent.name == "scope_analyzer"
+    assert "EXISTING_PROJECT" not in inspect.getsource(AdkAgentGateway._input_text)
+
+
 def test_requirement_analyzer_contains_golden_readiness_policy():
-    assert PROMPT_VERSION == "requirement_analyzer_v3"
-    assert "standard golden-path request" in requirement_analyzer.instruction
-    assert "Set proposal_ready to true" in requirement_analyzer.instruction
-    assert "mapped_requirement must contain both" in requirement_analyzer.instruction
-    assert "Never calculate, mention, estimate, or invent price" in requirement_analyzer.instruction
-    assert "Ordinary coordination, lunch, social, or other non-project mail" in requirement_analyzer.instruction
+    assert PROMPT_VERSION == "requirement_analyzer_v4"
+    assert "supported mappings" in requirement_analyzer.instruction
+    assert "proposal_ready is true only" in requirement_analyzer.instruction
+    assert "source language" in requirement_analyzer.instruction
+    assert "Never calculate or promise a project total" in requirement_analyzer.instruction
+    assert "Ordinary coordination, automated mail, social mail" in requirement_analyzer.instruction
 
 
 def test_scope_analyzer_has_typed_read_only_scope_policy():
-    assert SCOPE_PROMPT_VERSION == "scope_analyzer_v1"
+    assert SCOPE_PROMPT_VERSION == "scope_analyzer_v2"
     assert scope_analyzer.output_schema.__name__ == "ScopeAnalysis"
     assert "get_current_scope(project_id)" in scope_analyzer.instruction
     assert "get_recent_thread_context(project_id)" in scope_analyzer.instruction
     assert "get_sop_catalog()" in scope_analyzer.instruction
     assert "CLOSURE" in scope_analyzer.instruction
-    assert "Never calculate, mention, estimate, or invent price" in scope_analyzer.instruction
-    assert "Never mutate project state" in scope_analyzer.instruction
+    assert "up to ten events" in scope_analyzer.instruction
+    assert "Never calculate, estimate, or promise commerce" in scope_analyzer.instruction
+    assert "Never mutate state" in scope_analyzer.instruction

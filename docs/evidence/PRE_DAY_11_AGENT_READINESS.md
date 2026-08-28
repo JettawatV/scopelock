@@ -2,7 +2,7 @@
 
 Date: 2026-08-28
 
-Status: **PASS — agents are cleared for the Day 11 Gmail OAuth/event path.**
+Status: **SUPERSEDED NARROW PASS — OAuth setup may continue, but automatic Gmail-event activation is held by the newer flexibility gate.**
 
 ## Deterministic gate
 
@@ -69,5 +69,9 @@ Final pre-Gmail live gate:
 - Scope Analyzer v1: **25/25 passed**.
 - Workflow trajectories v1: **2/2 passed**.
 
-The pre-start hold is removed. Day 11 may proceed with Gmail OAuth, watch,
-Pub/Sub, and History API implementation while preserving the tested boundaries.
+This evidence remains valid for the older v3/v1 narrow corpora. It does not
+clear Requirement Analyzer v4, Scope Analyzer v2, realistic Gmail
+normalization, compound changes, Thai input, or the new 18-run repeatability
+gate. Day 11 OAuth configuration may proceed, but `users.watch` → Pub/Sub →
+agent invocation stays disabled until
+`docs/evidence/PRE_GMAIL_FLEXIBILITY_PATCH.md` records a complete pass.

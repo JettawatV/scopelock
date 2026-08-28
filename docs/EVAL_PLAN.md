@@ -83,6 +83,13 @@ Unit-test:
 - approval gate;
 - idempotency.
 
+The pre-Gmail deterministic suite also covers routing, Gmail normalization,
+English/Thai Unicode, HTML fallback, quoted replies/signatures, bounded context,
+attachments-as-metadata, mixed supported/unsupported scope, client constraints,
+0/1/10/invalid-11 scope events, compound changes, authoritative evidence
+binding, duplicate replay, direct sub-agent routing, redacted trajectories, and
+UTF-8 CLI output.
+
 These should be ordinary deterministic tests, not LLM evals.
 
 ---
@@ -145,7 +152,8 @@ Any violation is a release blocker.
 
 ## 8. Eval corpus
 
-Start with 20–30 human-labeled scenarios.
+The reviewed native ADK corpora currently contain 12 Requirement Analyzer v4
+cases and 35 Scope Analyzer v2 cases.
 
 `evals/scopelock_eval_cases.jsonl` contains starter cases.
 
@@ -161,6 +169,17 @@ Include:
 - implicit scope expansion;
 - harmless presentation tweak;
 - client closure ("please send updated quote").
+- mixed supported and unsupported initial scope;
+- English deadline and budget constraints;
+- Thai supported, ambiguous, no-change, and expansion cases;
+- normalized HTML and quoted-reply input;
+- clarification follow-up during incomplete intake;
+- multiple independent and mixed-direction changes;
+- closure with several material changes;
+- zero-event automated noise;
+- partial out-of-catalog scope changes;
+- duplicate wording consolidation;
+- ten-event success and eleven-event review behavior.
 
 ---
 
@@ -204,12 +223,13 @@ Before final hackathon demo:
 
 ## 11. Pre-Gmail agent readiness gate
 
-Before real Gmail OAuth, watch, Pub/Sub, or History API events are connected to
-the agents, run:
+OAuth setup may proceed, but before `users.watch`, Pub/Sub, or History API events
+are allowed to invoke agents automatically, run:
 
 ```powershell
 .\scripts\test-agent-plan.ps1
 .\scripts\test-agent-plan.ps1 -LiveAdk
+.\scripts\test-pre-gmail-live-gate.ps1
 ```
 
 The gate passes only when all of the following are true:
@@ -221,10 +241,15 @@ The gate passes only when all of the following are true:
 4. Typed schemas expose no pricing, timeline, approval, or send fields.
 5. Unknown modules, missing evidence, commercial language, malformed output,
    and model exceptions fail closed before any commercial record or send.
-6. The current Requirement Analyzer prompt version passes all 5 reviewed live
-   cases.
-7. Scope Analyzer passes all 25 reviewed live cases.
+6. Requirement Analyzer v4 passes all 12 reviewed native cases.
+7. Scope Analyzer v2 passes all 35 reviewed native cases.
 8. Both live ADK trajectory cases pass with no unexpected or forbidden action.
+9. Golden, mixed-scope, Thai, deadline, prompt-injection, and multi-change cases
+   each pass three consecutive live runs: 18/18 total.
+10. The production gateway invokes the deterministically selected sub-agent
+    directly and no model/tool response contains SOP prices or timeline rules.
+11. A `proposal_ready=false` result creates no proposal/revision, and replaying
+    a Gmail message causes no second model run or artifact.
 
 Any missing, stale, or failed live result keeps the external email path on
 hold. A prompt change must increment its prompt version and rerun the owning

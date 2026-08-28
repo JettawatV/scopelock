@@ -12,6 +12,15 @@ from scopelock.domain.models import (
 )
 
 
+def _normalized_text(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+def _contains_quote(sources: tuple[str, ...], quote: str) -> bool:
+    candidate = _normalized_text(quote)
+    return bool(candidate) and any(candidate in _normalized_text(source) for source in sources)
+
+
 COMMERCIAL_CLASSIFICATIONS = frozenset(
     {
         ScopeEventClassification.EXPANSION,
@@ -40,11 +49,22 @@ class ScopeAnalysisPolicy:
         *,
         valid_module_keys: set[str],
         thresholds: ConfidenceThresholds | None = None,
+        quantity_limits: dict[str, tuple[int, int]] | None = None,
     ) -> None:
         self._valid_module_keys = frozenset(valid_module_keys)
         self._thresholds = thresholds or ConfidenceThresholds()
+        self._quantity_limits = dict(quantity_limits or {})
 
-    def evaluate(self, analysis: ScopeAnalysis) -> ScopeAnalysisDecision:
+    def evaluate(
+        self,
+        analysis: ScopeAnalysis,
+        *,
+        expected_message_id: str | None = None,
+        normalized_message_body: str | None = None,
+        expected_scope_version_id: str | None = None,
+        baseline_texts: tuple[str, ...] = (),
+        expected_sop_version: str | None = None,
+    ) -> ScopeAnalysisDecision:
         relevant_scores = [analysis.overall_confidence]
         commercial_events = [
             event
@@ -85,6 +105,48 @@ class ScopeAnalysisPolicy:
                 reasons.append(
                     f"{event.classification.value} lacks SOP evidence for "
                     f"{missing_sop_evidence}"
+                )
+            extra_sop_evidence = sorted(
+                sop_source_ids - set(event.sop_module_keys)
+            )
+            if extra_sop_evidence:
+                reasons.append(
+                    f"{event.classification.value} has SOP evidence for unselected "
+                    f"modules {extra_sop_evidence}"
+                )
+            for evidence in event.evidence:
+                if evidence.source_type == "gmail":
+                    if expected_message_id is not None and evidence.source_id != expected_message_id:
+                        reasons.append(f"{event.classification.value} cites wrong Gmail message")
+                    if normalized_message_body is not None and not _contains_quote(
+                        (normalized_message_body,), evidence.quote_or_rule
+                    ):
+                        reasons.append(f"{event.classification.value} Gmail quote is not in message")
+                elif evidence.source_type == "scope_version":
+                    if (
+                        expected_scope_version_id is not None
+                        and evidence.source_id != expected_scope_version_id
+                    ):
+                        reasons.append(f"{event.classification.value} cites wrong ScopeVersion")
+                    if baseline_texts and not _contains_quote(
+                        baseline_texts, evidence.quote_or_rule
+                    ):
+                        reasons.append(f"{event.classification.value} baseline quote is not authoritative")
+                elif (
+                    evidence.source_type == "sop"
+                    and expected_sop_version is not None
+                    and evidence.source_version != expected_sop_version
+                ):
+                    reasons.append(f"{event.classification.value} cites wrong SOP version")
+            for quantity in event.quantities:
+                limits = self._quantity_limits.get(quantity.module_key)
+                if limits is not None and not limits[0] <= quantity.quantity <= limits[1]:
+                    reasons.append(
+                        f"{quantity.module_key} quantity {quantity.quantity} is outside {limits}"
+                    )
+            if event.unsupported_requirements:
+                reasons.append(
+                    f"{event.classification.value} contains unsupported work"
                 )
 
         if any(

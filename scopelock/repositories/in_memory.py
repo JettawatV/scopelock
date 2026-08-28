@@ -86,6 +86,17 @@ class InMemoryApplicationRepository:
         with self._lock:
             return self._documents.get((collection, document_id))
 
+    def find_by_unique_key(
+        self,
+        *,
+        collection: str,
+        key_name: str,
+        key_value: str,
+    ) -> StoredDocument | None:
+        with self._lock:
+            identity = self._unique_indexes.get((collection, key_name, key_value))
+            return self._documents.get(identity) if identity is not None else None
+
     def list(self, *, collection: str) -> tuple[StoredDocument, ...]:
         with self._lock:
             return tuple(

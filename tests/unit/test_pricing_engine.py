@@ -29,6 +29,12 @@ def catalog_with_per_unit_module() -> SOPCatalog:
             "name": "Additional Gmail Mailbox",
             "description": "Add another mailbox to an existing intake flow.",
             "aliases": ["extra mailbox"],
+            "quantity": {
+                "mode": "per_unit",
+                "unit": "mailbox",
+                "minimum": 2,
+                "maximum": 10,
+            },
             "pricing": {
                 "type": "per_unit",
                 "amount_usd": 250,

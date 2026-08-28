@@ -6,8 +6,12 @@ from typing import Any, Literal
 from pydantic import Field, model_validator
 
 from scopelock.domain.enums import (
+    AgentRoute,
     ArtifactStatus,
     BufferFinalizationReason,
+    EmailBodyFormat,
+    EmailDirection,
+    InboundProcessingStatus,
     ProjectLifecycleStatus,
     ScopeBufferStatus,
     ScopeEventClassification,
@@ -24,6 +28,7 @@ from scopelock.domain.models import (
     SendIntent,
     StrictFrozenContractModel,
     TimelineResult,
+    UnsupportedRequirement,
 )
 
 
@@ -35,6 +40,66 @@ class InboundEmail(StrictFrozenContractModel):
     subject: str
     body: str
     received_at: datetime
+    history_id: str | None = None
+    recipient_emails: tuple[str, ...] = ()
+    direction: EmailDirection = EmailDirection.INBOUND
+    body_format: EmailBodyFormat = EmailBodyFormat.PLAIN
+    raw_content_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    attachments: tuple["EmailAttachmentMetadata", ...] = ()
+
+
+class EmailAttachmentMetadata(StrictFrozenContractModel):
+    filename: str
+    mime_type: str
+    size: int = Field(default=0, ge=0, strict=True)
+    attachment_id: str | None = None
+
+
+class ThreadMessageContext(StrictFrozenContractModel):
+    message_id: str
+    direction: EmailDirection
+    sender_email: str
+    subject: str
+    body: str
+    received_at: datetime
+
+
+class AnalysisContext(StrictFrozenContractModel):
+    current_email: InboundEmail
+    prior_messages: tuple[ThreadMessageContext, ...] = Field(default=(), max_length=5)
+    current_scope: ScopeVersion | None = None
+    semantic_sop: dict[str, Any]
+    sop_version: str
+
+
+class RouteDecision(StrictFrozenContractModel):
+    route: AgentRoute
+    reason: str
+    project_id: str | None = None
+    duplicate: bool = False
+
+
+class InboundMessageRecord(StrictFrozenContractModel):
+    id: str
+    email: InboundEmail
+    correlation_id: str
+    created_at: datetime
+
+
+class InboundProcessingResult(StrictFrozenContractModel):
+    idempotency_key: str = Field(pattern=r"^[0-9a-f]{64}$")
+    correlation_id: str
+    status: InboundProcessingStatus
+    route: AgentRoute
+    message_id: str
+    thread_id: str
+    project_id: str | None = None
+    agent_run_id: str | None = None
+    scope_version_id: str | None = None
+    artifact_id: str | None = None
+    scope_event_ids: tuple[str, ...] = ()
+    error: str | None = None
+    replayed: bool = False
 
 
 class ProjectRecord(StrictFrozenContractModel):
@@ -166,6 +231,7 @@ class ScopeEventRecord(StrictFrozenContractModel):
     reductions: tuple[ModuleQuantity, ...] = ()
     replacements: tuple[ModuleReplacement, ...] = ()
     evidence: tuple[EvidenceRef, ...] = ()
+    unsupported_requirements: tuple[UnsupportedRequirement, ...] = ()
     price_delta_usd: int = 0
     timeline_delta_days: int = 0
     review_required: bool = False
@@ -186,7 +252,11 @@ class ScopeEventRecord(StrictFrozenContractModel):
             self.additions or self.reductions or self.replacements
         ):
             raise ValueError("Non-material scope events cannot change modules")
-        if self.classification == ScopeEventClassification.EXPANSION and not self.additions:
+        if (
+            self.classification == ScopeEventClassification.EXPANSION
+            and not self.additions
+            and not self.unsupported_requirements
+        ):
             raise ValueError("Expansion requires at least one module addition")
         if self.classification == ScopeEventClassification.REDUCTION and not self.reductions:
             raise ValueError("Reduction requires at least one module reduction")

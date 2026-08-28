@@ -51,7 +51,7 @@
         "confidence": 0.98,
         "evidence": [
           {"source_type": "gmail", "source_id": "gmail-golden-001", "quote_or_rule": "classify each request, store the structured data"},
-          {"source_type": "sop", "source_id": "core_workflow_automation", "quote_or_rule": "Automate one defined business workflow from intake through structured output."}
+          {"source_type": "sop", "source_id": "core_workflow_automation", "source_version": "jvl-demo-v1", "quote_or_rule": "Automate one defined business workflow from intake through structured output."}
         ]
       },
       {
@@ -61,7 +61,7 @@
         "confidence": 0.98,
         "evidence": [
           {"source_type": "gmail", "source_id": "gmail-golden-001", "quote_or_rule": "Requests currently arrive in a shared Gmail inbox"},
-          {"source_type": "sop", "source_id": "email_intake", "quote_or_rule": "Read and process inbound Gmail messages for the workflow."}
+          {"source_type": "sop", "source_id": "email_intake", "source_version": "jvl-demo-v1", "quote_or_rule": "Read and process inbound Gmail messages for the workflow."}
         ]
       },
       {
@@ -71,7 +71,7 @@
         "confidence": 0.98,
         "evidence": [
           {"source_type": "gmail", "source_id": "gmail-golden-001", "quote_or_rule": "show the team a simple operations dashboard"},
-          {"source_type": "sop", "source_id": "operations_dashboard", "quote_or_rule": "Simple dashboard for structured workflow records and statuses."}
+          {"source_type": "sop", "source_id": "operations_dashboard", "source_version": "jvl-demo-v1", "quote_or_rule": "Simple dashboard for structured workflow records and statuses."}
         ]
       },
       {
@@ -81,7 +81,7 @@
         "confidence": 0.98,
         "evidence": [
           {"source_type": "gmail", "source_id": "gmail-golden-001", "quote_or_rule": "email notifications when a request needs manual review"},
-          {"source_type": "sop", "source_id": "email_notifications", "quote_or_rule": "Email alerts for predefined workflow events."}
+          {"source_type": "sop", "source_id": "email_notifications", "source_version": "jvl-demo-v1", "quote_or_rule": "Email alerts for predefined workflow events."}
         ]
       }
     ],

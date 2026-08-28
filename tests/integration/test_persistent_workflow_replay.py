@@ -26,6 +26,9 @@ class FailOnceRepository:
     def get(self, **kwargs):
         return self.wrapped.get(**kwargs)
 
+    def find_by_unique_key(self, **kwargs):
+        return self.wrapped.find_by_unique_key(**kwargs)
+
     def list(self, **kwargs):
         return self.wrapped.list(**kwargs)
 

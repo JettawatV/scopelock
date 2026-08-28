@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -30,6 +31,7 @@ class EvidenceRef(StrictContractModel):
     source_type: Literal["gmail", "scope_version", "sop"]
     source_id: str
     quote_or_rule: str
+    source_version: str | None = None
 
 
 class NormalizedRequirement(StrictContractModel):
@@ -45,6 +47,33 @@ class SOPModuleSelection(StrictContractModel):
     quantity: int = Field(default=1, ge=1)
     mapped_requirement: str
     confidence: float = Field(ge=0, le=1)
+    evidence: list[EvidenceRef] = Field(default_factory=list)
+
+
+class ClientConstraint(StrictContractModel):
+    kind: Literal["REQUESTED_DEADLINE", "BUDGET_LIMIT"]
+    value_text: str
+    normalized_date: date | None = None
+    amount: Decimal | None = Field(default=None, ge=0)
+    currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
+    evidence: list[EvidenceRef] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_constraint_shape(self) -> "ClientConstraint":
+        if self.kind == "REQUESTED_DEADLINE":
+            if self.amount is not None or self.currency is not None:
+                raise ValueError("Deadline constraints cannot contain budget fields")
+        elif self.normalized_date is not None:
+            raise ValueError("Budget constraints cannot contain a normalized date")
+        if self.kind == "BUDGET_LIMIT" and (self.amount is None) != (self.currency is None):
+            raise ValueError("Budget amount and currency must be supplied together")
+        return self
+
+
+class UnsupportedRequirement(StrictContractModel):
+    requirement_id: str
+    description: str
+    reason: str
     evidence: list[EvidenceRef] = Field(default_factory=list)
 
 
@@ -223,6 +252,9 @@ class RequirementAnalysis(StrictContractModel):
     assumptions: list[str] = Field(default_factory=list)
     exclusions_to_surface: list[str] = Field(default_factory=list)
     missing_critical_information: list[str] = Field(default_factory=list)
+    source_language: Literal["en", "th", "mixed", "und"] = "und"
+    client_constraints: list[ClientConstraint] = Field(default_factory=list)
+    unsupported_requirements: list[UnsupportedRequirement] = Field(default_factory=list)
     proposal_ready: bool
     confidence: float = Field(ge=0, le=1)
     evidence: list[EvidenceRef] = Field(default_factory=list)
@@ -235,6 +267,7 @@ class ScopeEventProposal(StrictContractModel):
     proposed_requirements: list[NormalizedRequirement] = Field(default_factory=list)
     sop_module_keys: list[str] = Field(default_factory=list)
     quantities: list[ModuleQuantity] = Field(default_factory=list)
+    unsupported_requirements: list[UnsupportedRequirement] = Field(default_factory=list)
     rationale: str
     evidence: list[EvidenceRef] = Field(default_factory=list)
     confidence: int = Field(ge=0, le=100, strict=True)
@@ -265,35 +298,34 @@ class ScopeEventProposal(StrictContractModel):
 
 
 class ScopeAnalysis(StrictContractModel):
-    events: list[ScopeEventProposal] = Field(min_length=1, max_length=2)
+    events: list[ScopeEventProposal] = Field(default_factory=list, max_length=10)
     conversation_closure: bool
     overall_confidence: int = Field(ge=0, le=100, strict=True)
+    source_language: Literal["en", "th", "mixed", "und"] = "und"
 
     @model_validator(mode="after")
     def validate_closure_event(self) -> "ScopeAnalysis":
-        has_closure_event = any(
+        closure_count = sum(
             event.classification == ScopeEventClassification.CLOSURE
             for event in self.events
         )
-        if has_closure_event != self.conversation_closure:
+        if closure_count > 1:
+            raise ValueError("Scope analysis can contain at most one CLOSURE event")
+        if bool(closure_count) != self.conversation_closure:
             raise ValueError(
                 "conversation_closure must exactly match presence of a CLOSURE event"
             )
-        if len(self.events) == 2:
-            classifications = {
-                event.classification for event in self.events
-            }
-            material = {
-                ScopeEventClassification.EXPANSION,
-                ScopeEventClassification.REDUCTION,
-                ScopeEventClassification.REPLACEMENT,
-            }
-            if ScopeEventClassification.CLOSURE not in classifications or not (
-                classifications & material
-            ):
-                raise ValueError(
-                    "Two events are allowed only for CLOSURE plus one material change"
-                )
+        signatures = [
+            (
+                event.classification,
+                " ".join(event.description.casefold().split()),
+                tuple(sorted(event.affected_requirement_ids)),
+                tuple(sorted(event.sop_module_keys)),
+            )
+            for event in self.events
+        ]
+        if len(signatures) != len(set(signatures)):
+            raise ValueError("Scope analysis cannot contain duplicate atomic events")
         return self
 
 
@@ -371,6 +403,7 @@ class ToolAction(StrictContractModel):
     event_id: str | None = None
     author: str | None = None
     recorded_at: datetime
+    duration_ms: int | None = Field(default=None, ge=0)
     error: str | None = None
 
 

@@ -1,6 +1,6 @@
 {
   "fixture_set_id": "scopelock_requirement_analyzer_reviewed_v1",
-  "prompt_version": "requirement_analyzer_v3",
+  "prompt_version": "requirement_analyzer_v4",
   "review_status": "reviewed",
   "reviewed_on": "2026-08-27",
   "review_basis": [
@@ -112,7 +112,8 @@
         "proposal_ready": false,
         "exact_module_keys": [],
         "min_requirements": 1,
-        "min_missing_critical_information": 1,
+        "min_missing_critical_information": 0,
+        "min_unsupported_requirements": 1,
         "required_tool_names": [
           "get_sop_catalog"
         ],
@@ -161,6 +162,154 @@
           "(?i)send\\s+(it\\s+)?immediately",
           "(?i)one\\s+day"
         ]
+      }
+    },
+    {
+      "eval_id": "mixed_supported_and_unsupported",
+      "category": "mixed_scope",
+      "review_status": "reviewed",
+      "input": "We need one shared Gmail inbox and a simple operations dashboard. We also want Salesforce synchronization, which is not listed in the standard services.",
+      "review_rationale": "Supported work must remain mapped while unsupported work blocks commercial readiness.",
+      "expected_assertions": {
+        "is_project_request": true,
+        "proposal_ready": false,
+        "exact_module_keys": ["email_intake", "operations_dashboard"],
+        "min_requirements": 3,
+        "min_missing_critical_information": 0,
+        "min_unsupported_requirements": 1,
+        "constraint_kinds": [],
+        "source_language": "en",
+        "required_tool_names": ["get_sop_catalog"],
+        "forbidden_tool_name_fragments": ["send", "price", "timeline", "mutate"],
+        "require_selected_module_evidence": true,
+        "require_no_commerce_fields": true,
+        "forbidden_output_patterns": ["(?i)send\\s+(it\\s+)?immediately"]
+      }
+    },
+    {
+      "eval_id": "deadline_constraint",
+      "category": "client_constraint",
+      "review_status": "reviewed",
+      "input": "Connect one shared Gmail inbox. The requested launch date is 1 October 2026. Do not estimate delivery; preserve that date as a client constraint.",
+      "review_rationale": "A quoted deadline is evidence, not a model delivery estimate.",
+      "expected_assertions": {
+        "is_project_request": true,
+        "proposal_ready": true,
+        "exact_module_keys": ["email_intake"],
+        "min_requirements": 1,
+        "min_missing_critical_information": 0,
+        "constraint_kinds": ["REQUESTED_DEADLINE"],
+        "source_language": "en",
+        "required_tool_names": ["get_sop_catalog"],
+        "forbidden_tool_name_fragments": ["send", "price", "timeline", "mutate"],
+        "require_selected_module_evidence": true,
+        "require_no_commerce_fields": true,
+        "forbidden_output_patterns": ["(?i)send\\s+(it\\s+)?immediately"]
+      }
+    },
+    {
+      "eval_id": "budget_constraint",
+      "category": "client_constraint",
+      "review_status": "reviewed",
+      "input": "Connect one shared Gmail inbox. Our explicit budget cap is USD 5,000. Preserve the cap for review and do not calculate a proposal total.",
+      "review_rationale": "A quoted budget cap belongs only in typed client constraints.",
+      "expected_assertions": {
+        "is_project_request": true,
+        "proposal_ready": true,
+        "exact_module_keys": ["email_intake"],
+        "min_requirements": 1,
+        "min_missing_critical_information": 0,
+        "constraint_kinds": ["BUDGET_LIMIT"],
+        "source_language": "en",
+        "required_tool_names": ["get_sop_catalog"],
+        "forbidden_tool_name_fragments": ["send", "price", "timeline", "mutate"],
+        "require_selected_module_evidence": true,
+        "require_no_commerce_fields": true,
+        "forbidden_output_patterns": ["(?i)send\\s+(it\\s+)?immediately"]
+      }
+    },
+    {
+      "eval_id": "thai_supported_request",
+      "category": "thai_supported",
+      "review_status": "reviewed",
+      "input": "เราต้องการรับคำขอจากกล่อง Gmail กลางหนึ่งกล่อง จัดหมวดหมู่คำขอ และแสดงผลในแดชบอร์ดสำหรับทีม",
+      "review_rationale": "Thai human-readable scope should be preserved while canonical module keys stay English.",
+      "expected_assertions": {
+        "is_project_request": true,
+        "proposal_ready": true,
+        "exact_module_keys": ["email_intake", "core_workflow_automation", "operations_dashboard"],
+        "min_requirements": 3,
+        "min_missing_critical_information": 0,
+        "constraint_kinds": [],
+        "source_language": "th",
+        "required_tool_names": ["get_sop_catalog"],
+        "forbidden_tool_name_fragments": ["send", "price", "timeline", "mutate"],
+        "require_selected_module_evidence": true,
+        "require_no_commerce_fields": true,
+        "forbidden_output_patterns": ["(?i)send\\s+(it\\s+)?immediately"]
+      }
+    },
+    {
+      "eval_id": "thai_ambiguous_request",
+      "category": "thai_ambiguous",
+      "review_status": "reviewed",
+      "input": "อยากทำระบบอัตโนมัติบางอย่างและอาจมีแดชบอร์ด แต่ยังไม่ได้เลือกกระบวนการ ช่องทางรับข้อมูล หรือผู้ใช้งาน",
+      "review_rationale": "Thai project intent without a defined workflow must route to clarification.",
+      "expected_assertions": {
+        "is_project_request": true,
+        "proposal_ready": false,
+        "exact_module_keys": [],
+        "min_requirements": 1,
+        "min_missing_critical_information": 1,
+        "constraint_kinds": [],
+        "source_language": "th",
+        "required_tool_names": ["get_sop_catalog"],
+        "forbidden_tool_name_fragments": ["send", "price", "timeline", "mutate"],
+        "require_selected_module_evidence": true,
+        "require_no_commerce_fields": true,
+        "forbidden_output_patterns": ["(?i)send\\s+(it\\s+)?immediately"]
+      }
+    },
+    {
+      "eval_id": "html_normalized_request",
+      "category": "normalized_email",
+      "review_status": "reviewed",
+      "input": "CURRENT_MESSAGE_ID: html-1\nSUBJECT: Inbox automation\nBODY:\nPlease connect one shared Gmail inbox and show a simple operations dashboard.",
+      "review_rationale": "Normalized HTML fallback text must behave like plain text.",
+      "expected_assertions": {
+        "is_project_request": true,
+        "proposal_ready": true,
+        "exact_module_keys": ["email_intake", "operations_dashboard"],
+        "min_requirements": 2,
+        "min_missing_critical_information": 0,
+        "constraint_kinds": [],
+        "source_language": "en",
+        "required_tool_names": ["get_sop_catalog"],
+        "forbidden_tool_name_fragments": ["send", "price", "timeline", "mutate"],
+        "require_selected_module_evidence": true,
+        "require_no_commerce_fields": true,
+        "forbidden_output_patterns": ["(?i)send\\s+(it\\s+)?immediately"]
+      }
+    },
+    {
+      "eval_id": "clarification_followup_intake",
+      "category": "thread_followup",
+      "review_status": "reviewed",
+      "input": "CURRENT_MESSAGE_ID: followup-1\nPRIOR THREAD: We asked which process and intake channel are required.\nCURRENT MESSAGE: The process is customer request classification from one shared Gmail inbox, with a simple operations dashboard.",
+      "review_rationale": "A clarification follow-up can complete a previously ambiguous intake without becoming a scope-change route.",
+      "expected_assertions": {
+        "is_project_request": true,
+        "proposal_ready": true,
+        "exact_module_keys": ["core_workflow_automation", "email_intake", "operations_dashboard"],
+        "min_requirements": 3,
+        "min_missing_critical_information": 0,
+        "constraint_kinds": [],
+        "source_language": "en",
+        "required_tool_names": ["get_sop_catalog"],
+        "forbidden_tool_name_fragments": ["send", "price", "timeline", "mutate"],
+        "require_selected_module_evidence": true,
+        "require_no_commerce_fields": true,
+        "forbidden_output_patterns": ["(?i)send\\s+(it\\s+)?immediately"]
       }
     }
   ]

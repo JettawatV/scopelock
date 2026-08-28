@@ -83,16 +83,23 @@ class InitialProposalWorkflow:
         analyzer: RequirementAnalyzer,
         artifact_root: str | Path,
         model_name: str = "gemini-3.5-flash",
-        prompt_version: str = "requirement_analyzer_v3",
+        prompt_version: str = "requirement_analyzer_v4",
+        bounded_persistence: bool = False,
     ) -> None:
         self._catalog = catalog
-        self._store = ModelStore(repository)
+        self._store = ModelStore(repository, use_boundaries=bounded_persistence)
         self._analyzer = analyzer
         self._renderer = ProposalRenderer(artifact_root)
         self._model_name = model_name
         self._prompt_version = prompt_version
 
-    def run(self, email: InboundEmail) -> LocalInitialProposalResult:
+    def run(
+        self,
+        email: InboundEmail,
+        *,
+        analysis: RequirementAnalysis | None = None,
+        agent_run: AgentRun | None = None,
+    ) -> LocalInitialProposalResult:
         input_hash = stable_hash(email.subject, email.body)
         idempotency_key = stable_hash(
             "initial-proposal",
@@ -109,9 +116,13 @@ class InitialProposalWorkflow:
         if prior is not None:
             return prior.model_copy(update={"replayed": True})
 
-        correlation_id = stable_id("corr", idempotency_key)
+        correlation_id = (
+            agent_run.correlation_id
+            if agent_run is not None
+            else stable_id("corr", idempotency_key)
+        )
         project_id = stable_id("project", email.thread_id)
-        run_id = stable_id("run", idempotency_key)
+        run_id = agent_run.id if agent_run is not None else stable_id("run", idempotency_key)
         project = self._create_project(email, project_id, correlation_id)
         project, analyzing_transition = advance_project(
             project,
@@ -126,6 +137,8 @@ class InitialProposalWorkflow:
             input_hash=input_hash,
             idempotency_key=idempotency_key,
             correlation_id=correlation_id,
+            provided_analysis=analysis,
+            provided_agent_run=agent_run,
         )
         commercial = self._run_commercial_stage(
             email=email,
@@ -186,6 +199,14 @@ class InitialProposalWorkflow:
         project_id: str,
         correlation_id: str,
     ) -> ProjectRecord:
+        existing = self._store.find_by_unique_key(
+            CollectionName.PROJECTS,
+            key_name="gmail_thread_id",
+            key_value=IdempotencyKeys.gmail_thread(email.thread_id),
+            model_type=ProjectRecord,
+        )
+        if existing is not None:
+            return existing
         project = ProjectRecord(
             id=project_id,
             client_name=email.sender_name,
@@ -197,14 +218,14 @@ class InitialProposalWorkflow:
             created_at=email.received_at,
             updated_at=email.received_at,
         )
-        self._store.create(
+        stored = self._store.create(
             CollectionName.PROJECTS,
             project,
             unique_keys={
                 "gmail_thread_id": IdempotencyKeys.gmail_thread(email.thread_id)
             },
         )
-        return project
+        return ProjectRecord.model_validate(stored.payload)
 
     def _run_semantic_stage(
         self,
@@ -215,41 +236,69 @@ class InitialProposalWorkflow:
         input_hash: str,
         idempotency_key: str,
         correlation_id: str,
+        provided_analysis: RequirementAnalysis | None = None,
+        provided_agent_run: AgentRun | None = None,
     ) -> _SemanticStage:
         try:
-            analysis = self._analyzer(email)
+            analysis = provided_analysis or self._analyzer(email)
             validate_requirement_analysis(
                 analysis,
                 valid_module_keys={module.key for module in self._catalog.modules},
+                expected_message_id=email.message_id,
+                normalized_message_body=email.body,
+                expected_sop_version=self._catalog.version,
+                quantity_limits={
+                    module.key: (module.quantity.minimum, module.quantity.maximum)
+                    for module in self._catalog.modules
+                },
             )
             if not analysis.is_project_request or not analysis.proposal_ready:
                 raise SemanticContractViolation(
                     "Initial proposal workflow requires proposal-ready analysis"
                 )
         except Exception as exc:
-            failed_run = AgentRun(
-                id=run_id,
-                correlation_id=correlation_id,
-                project_id=project_id,
-                trigger_type="gmail_message",
-                trigger_ref=email.message_id,
-                agent_name="requirement_analyzer",
-                model=self._model_name,
-                prompt_version=self._prompt_version,
-                started_at=email.received_at,
-                completed_at=email.received_at,
-                status=(
-                    AgentRunStatus.NEEDS_REVIEW
-                    if isinstance(exc, SemanticContractViolation)
-                    else AgentRunStatus.FAILED
-                ),
-                input_hash=input_hash,
-                error=AgentRunError(
-                    category=type(exc).__name__,
-                    message=str(exc),
-                    retryable=False,
-                ),
-            )
+            if provided_agent_run is not None:
+                failed_run = provided_agent_run.model_copy(
+                    update={
+                        "project_id": project_id,
+                        "completed_at": email.received_at,
+                        "status": (
+                            AgentRunStatus.NEEDS_REVIEW
+                            if isinstance(exc, SemanticContractViolation)
+                            else AgentRunStatus.FAILED
+                        ),
+                        "output": None,
+                        "error": AgentRunError(
+                            category=type(exc).__name__,
+                            message=str(exc),
+                            retryable=False,
+                        ),
+                    }
+                )
+            else:
+                failed_run = AgentRun(
+                    id=run_id,
+                    correlation_id=correlation_id,
+                    project_id=project_id,
+                    trigger_type="gmail_message",
+                    trigger_ref=email.message_id,
+                    agent_name="requirement_analyzer",
+                    model=self._model_name,
+                    prompt_version=self._prompt_version,
+                    started_at=email.received_at,
+                    completed_at=email.received_at,
+                    status=(
+                        AgentRunStatus.NEEDS_REVIEW
+                        if isinstance(exc, SemanticContractViolation)
+                        else AgentRunStatus.FAILED
+                    ),
+                    input_hash=input_hash,
+                    error=AgentRunError(
+                        category=type(exc).__name__,
+                        message=str(exc),
+                        retryable=False,
+                    ),
+                )
             self._store.create(
                 CollectionName.AGENT_RUNS,
                 failed_run,
@@ -267,23 +316,34 @@ class InitialProposalWorkflow:
         for selection in selected:
             self._catalog.module(selection.module_key)
 
-        tool_actions = self._tool_actions(run_id, email.received_at)
-        agent_run = AgentRun(
-            id=run_id,
-            correlation_id=correlation_id,
-            project_id=project_id,
-            trigger_type="gmail_message",
-            trigger_ref=email.message_id,
-            agent_name="requirement_analyzer",
-            model=self._model_name,
-            prompt_version=self._prompt_version,
-            started_at=email.received_at,
-            completed_at=email.received_at,
-            status=AgentRunStatus.COMPLETED,
-            input_hash=input_hash,
-            output=analysis,
-            tool_trajectory=list(tool_actions),
-        )
+        if provided_agent_run is not None:
+            tool_actions = tuple(provided_agent_run.tool_trajectory)
+            agent_run = provided_agent_run.model_copy(
+                update={
+                    "project_id": project_id,
+                    "status": AgentRunStatus.COMPLETED,
+                    "output": analysis,
+                    "error": None,
+                }
+            )
+        else:
+            tool_actions = self._tool_actions(run_id, email.received_at)
+            agent_run = AgentRun(
+                id=run_id,
+                correlation_id=correlation_id,
+                project_id=project_id,
+                trigger_type="gmail_message",
+                trigger_ref=email.message_id,
+                agent_name="requirement_analyzer",
+                model=self._model_name,
+                prompt_version=self._prompt_version,
+                started_at=email.received_at,
+                completed_at=email.received_at,
+                status=AgentRunStatus.COMPLETED,
+                input_hash=input_hash,
+                output=analysis,
+                tool_trajectory=list(tool_actions),
+            )
         self._store.create(
             CollectionName.AGENT_RUNS,
             agent_run,
