@@ -8,6 +8,7 @@ from scopelock.repositories.contracts import (
     StoredDocument,
 )
 from scopelock.repositories.in_memory import InMemoryApplicationRepository
+from scopelock.repositories.model_store import CollectionName, ModelStore
 
 __all__ = [
     "ApplicationRepository",
@@ -15,5 +16,7 @@ __all__ = [
     "DocumentNotFoundError",
     "ImmutableDocumentError",
     "InMemoryApplicationRepository",
+    "CollectionName",
+    "ModelStore",
     "StoredDocument",
 ]

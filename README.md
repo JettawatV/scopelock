@@ -21,6 +21,7 @@ context documents if there is a conflict.
 - `docs/RISK_REGISTER.md` — active delivery, safety, integration, and demo risks
 - `docs/FIRESTORE_SCHEMA.md` — persistent collection ownership, unique keys, and CAS rules
 - `docs/LOCAL_DEMO_RUNBOOK.md` — exact non-UI golden-path rehearsal
+- `docs/MIDPOINT_REFACTOR.md` — shared persistence, identity, state, and workflow boundaries
 - `docs/HACKATHON_REQUIREMENTS.md` — concise guardrails; official uploaded rules override it
 - `docs/DEMO_GOLDEN_PATH.md` — one scenario the entire build should optimize around
 - `config/jvl_sop.example.yaml` — illustrative machine-readable SOP
@@ -56,7 +57,7 @@ python -m pytest -q
 
 The project `uv.lock` pins the resolved dependency set. Verified on
 2026-08-28 with Python 3.13.14, ADK 2.8.0, Firestore 2.29.0, 144 locked
-packages, successful ADK discovery, and 117 passing tests. This uv-managed environment does not require an
+packages, successful ADK discovery, and 121 passing tests. This uv-managed environment does not require an
 embedded `pip` module.
 
 ## Development workflow

@@ -43,7 +43,7 @@ Next unlock: **Day 12 remains locked until the Day 11 live Gmail event gate is c
 - [x] Requirement Analyzer v2 readiness policy implemented for the golden path.
 - [x] Requirement mapping instruction updated to require ID plus human-readable description.
 - [x] Day 0 risk register added with blocking risks and exit evidence.
-- [x] Python 3.13.14 environment, 144-package lockfile, clean install, ADK discovery, and current 117-test suite verified.
+- [x] Python 3.13.14 environment, 144-package lockfile, clean install, ADK discovery, and current 121-test suite verified.
 - [x] Day 3 strict SOP validation, deterministic USD PricingEngine, immutable pricing records, and golden pricing fixture verified.
 - [x] Day 4 deterministic timeline, explicit state transitions, immutable ScopeVersion records, and proposal/change-order numbering verified.
 - [x] Day 5 typed Scope Analyzer and 25-case native ADK corpus verified with measured 100% exact classification, 100% evidence coverage, and 0% invalid modules in the recorded run.
@@ -52,6 +52,7 @@ Next unlock: **Day 12 remains locked until the Day 11 live Gmail event gate is c
 - [x] Day 8 scope buffering, consolidation, stale-artifact preservation, revisions, change orders, reductions, and replacements verified.
 - [x] Day 9 complete local post-acceptance change-order rehearsal verified in under four minutes without frontend or Gmail dependencies.
 - [x] Day 10 repository contracts, Firestore 2.29.0 adapter, unique keys, CAS transactions, replay, concurrency, recovery, and immutable storage verified.
+- [x] Midpoint behavior-preserving refactor centralized typed persistence, deterministic identity, transition helpers, and readable workflow stages before Day 11.
 - [x] Frontend/UI work explicitly held until the ADK agent gates pass.
 
 ### Evidence gates

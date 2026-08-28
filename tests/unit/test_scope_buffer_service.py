@@ -16,7 +16,7 @@ from scopelock.services.commercial_artifact_service import (
     create_next_commercial_artifact,
     create_scope_version,
 )
-from scopelock.services.initial_proposal_workflow import stable_id
+from scopelock.services.identity import stable_id
 from scopelock.services.pricing_engine import PricingEngine
 from scopelock.services.scope_buffer_service import ScopeBufferService
 from scopelock.services.sop_service import load_sop

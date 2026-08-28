@@ -2,27 +2,26 @@
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
-from pydantic import BaseModel
 
 from scopelock.domain.enums import ArtifactStatus, ProjectLifecycleStatus
 from scopelock.domain.models import (
     AgentRun,
     AgentRunStatus,
+    CommercialArtifact,
     EvidenceRef,
     ModuleQuantity,
     RequirementAnalysis,
+    ScopeVersion,
     ScopeRequirementSnapshot,
     ToolAction,
     ToolActionPhase,
     ToolActionStatus,
 )
-from scopelock.domain.state_machines import transition_project
 from scopelock.domain.workflow_models import (
     ArtifactEventRecord,
     AuditRecord,
@@ -30,10 +29,12 @@ from scopelock.domain.workflow_models import (
     LocalInitialProposalResult,
     ProjectRecord,
     ProposalData,
+    RenderedProposal,
     ScopeDecisionRecord,
     StateTransitionRecord,
 )
 from scopelock.repositories.contracts import ApplicationRepository
+from scopelock.repositories.model_store import CollectionName, ModelStore
 from scopelock.services.approval_policy import seal_artifact_for_review
 from scopelock.services.commercial_artifact_service import (
     create_next_commercial_artifact,
@@ -43,34 +44,29 @@ from scopelock.services.pricing_engine import PricingEngine
 from scopelock.services.proposal_service import ProposalRenderer
 from scopelock.services.sop_service import SOPCatalog
 from scopelock.services.timeline_engine import TimelineEngine
+from scopelock.services.identity import stable_hash, stable_id
+from scopelock.services.idempotency_service import IdempotencyKeys
+from scopelock.services.workflow_state import advance_project
 
 
 RequirementAnalyzer = Callable[[InboundEmail], RequirementAnalysis]
 
 
-def stable_hash(*parts: str) -> str:
-    return hashlib.sha256("\x1f".join(parts).encode("utf-8")).hexdigest()
+@dataclass(frozen=True)
+class _SemanticStage:
+    analysis: RequirementAnalysis
+    selections: tuple[ModuleQuantity, ...]
+    agent_run: AgentRun
+    decision: ScopeDecisionRecord
 
 
-def stable_id(prefix: str, *parts: str) -> str:
-    return f"{prefix}-{stable_hash(*parts)[:24]}"
-
-
-def _save_model(
-    repository: ApplicationRepository,
-    collection: str,
-    model: BaseModel,
-    *,
-    unique_keys: dict[str, str] | None = None,
-    immutable: bool = False,
-) -> None:
-    repository.create_or_get(
-        collection=collection,
-        document_id=str(getattr(model, "id")),
-        payload=model.model_dump(mode="json"),
-        unique_keys=unique_keys,
-        immutable=immutable,
-    )
+@dataclass(frozen=True)
+class _CommercialStage:
+    scope: ScopeVersion
+    artifact: CommercialArtifact
+    proposal: ProposalData
+    rendered: RenderedProposal
+    audit: tuple[AuditRecord, ...]
 
 
 class InitialProposalWorkflow:
@@ -85,7 +81,7 @@ class InitialProposalWorkflow:
         prompt_version: str = "requirement_analyzer_v2",
     ) -> None:
         self._catalog = catalog
-        self._repository = repository
+        self._store = ModelStore(repository)
         self._analyzer = analyzer
         self._renderer = ProposalRenderer(artifact_root)
         self._model_name = model_name
@@ -100,18 +96,91 @@ class InitialProposalWorkflow:
             self._catalog.version,
             self._prompt_version,
         )
-        prior = self._repository.get(
-            collection="workflow_results", document_id=idempotency_key
+        prior = self._store.get(
+            CollectionName.WORKFLOW_RESULTS,
+            idempotency_key,
+            LocalInitialProposalResult,
         )
         if prior is not None:
-            return LocalInitialProposalResult.model_validate(prior.payload).model_copy(
-                update={"replayed": True}
-            )
+            return prior.model_copy(update={"replayed": True})
 
         correlation_id = stable_id("corr", idempotency_key)
         project_id = stable_id("project", email.thread_id)
         run_id = stable_id("run", idempotency_key)
-        now = email.received_at
+        project = self._create_project(email, project_id, correlation_id)
+        project, analyzing_transition = advance_project(
+            project,
+            ProjectLifecycleStatus.ANALYZING_REQUIREMENTS,
+            reason="inbound project email",
+            at=email.received_at,
+        )
+        semantic = self._run_semantic_stage(
+            email=email,
+            project_id=project_id,
+            run_id=run_id,
+            input_hash=input_hash,
+            idempotency_key=idempotency_key,
+            correlation_id=correlation_id,
+        )
+        commercial = self._run_commercial_stage(
+            email=email,
+            project_id=project_id,
+            idempotency_key=idempotency_key,
+            correlation_id=correlation_id,
+            semantic=semantic,
+        )
+        project = project.model_copy(
+            update={
+                "active_scope_version_id": commercial.scope.id,
+                "active_proposal_id": commercial.artifact.id,
+                "current_price_usd": commercial.proposal.total_usd,
+                "current_timeline_days": commercial.proposal.timeline.total_days,
+            }
+        )
+        project, review_transition = advance_project(
+            project,
+            ProjectLifecycleStatus.AWAITING_USER_REVIEW,
+            reason="deterministic proposal sealed for review",
+            at=email.received_at,
+        )
+        self._store.replace(CollectionName.PROJECTS, project)
+        self._record_completion(
+            artifact=commercial.artifact,
+            transitions=(analyzing_transition, review_transition),
+            audit=commercial.audit,
+            correlation_id=correlation_id,
+            recorded_at=email.received_at,
+        )
+
+        result = LocalInitialProposalResult(
+            idempotency_key=idempotency_key,
+            correlation_id=correlation_id,
+            project=project,
+            scope_version_id=commercial.scope.id,
+            artifact=commercial.artifact,
+            proposal=commercial.proposal,
+            rendered_proposal=commercial.rendered,
+            agent_run_id=semantic.agent_run.id,
+            scope_decision_id=semantic.decision.id,
+            audit_record_ids=tuple(record.id for record in commercial.audit),
+        )
+        self._store.create(
+            CollectionName.WORKFLOW_RESULTS,
+            result,
+            document_id=idempotency_key,
+            unique_keys={
+                "gmail_message_id": IdempotencyKeys.gmail_message(email.message_id)
+            },
+            immutable=True,
+        )
+        return result
+
+    def _create_project(
+        self,
+        email: InboundEmail,
+        project_id: str,
+        correlation_id: str,
+    ) -> ProjectRecord:
         project = ProjectRecord(
             id=project_id,
             client_name=email.sender_name,
@@ -120,26 +189,28 @@ class InitialProposalWorkflow:
             title=email.subject,
             lifecycle_status=ProjectLifecycleStatus.NEW,
             correlation_id=correlation_id,
-            created_at=now,
-            updated_at=now,
+            created_at=email.received_at,
+            updated_at=email.received_at,
         )
-        _save_model(
-            self._repository,
-            "projects",
+        self._store.create(
+            CollectionName.PROJECTS,
             project,
-            unique_keys={"gmail_thread_id": email.thread_id},
+            unique_keys={
+                "gmail_thread_id": IdempotencyKeys.gmail_thread(email.thread_id)
+            },
         )
+        return project
 
-        transitions: list[StateTransitionRecord] = []
-        audit: list[AuditRecord] = []
-        project = self._transition_project(
-            project,
-            ProjectLifecycleStatus.ANALYZING_REQUIREMENTS,
-            reason="inbound project email",
-            now=now,
-            transitions=transitions,
-        )
-
+    def _run_semantic_stage(
+        self,
+        *,
+        email: InboundEmail,
+        project_id: str,
+        run_id: str,
+        input_hash: str,
+        idempotency_key: str,
+        correlation_id: str,
+    ) -> _SemanticStage:
         analysis = self._analyzer(email)
         if not analysis.is_project_request or not analysis.proposal_ready:
             raise ValueError("Initial proposal workflow requires proposal-ready analysis")
@@ -152,7 +223,7 @@ class InitialProposalWorkflow:
         for selection in selected:
             self._catalog.module(selection.module_key)
 
-        tool_actions = self._tool_actions(run_id, now)
+        tool_actions = self._tool_actions(run_id, email.received_at)
         agent_run = AgentRun(
             id=run_id,
             correlation_id=correlation_id,
@@ -162,21 +233,20 @@ class InitialProposalWorkflow:
             agent_name="requirement_analyzer",
             model=self._model_name,
             prompt_version=self._prompt_version,
-            started_at=now,
-            completed_at=now,
+            started_at=email.received_at,
+            completed_at=email.received_at,
             status=AgentRunStatus.COMPLETED,
             input_hash=input_hash,
             output=analysis,
             tool_trajectory=list(tool_actions),
         )
-        _save_model(
-            self._repository,
-            "agent_runs",
+        self._store.create(
+            CollectionName.AGENT_RUNS,
             agent_run,
             unique_keys={"trigger_agent": f"{email.message_id}:{self._prompt_version}"},
         )
         for action in tool_actions:
-            _save_model(self._repository, "tool_actions", action)
+            self._store.create(CollectionName.TOOL_ACTIONS, action)
 
         decision = ScopeDecisionRecord(
             id=stable_id("decision", idempotency_key),
@@ -187,17 +257,34 @@ class InitialProposalWorkflow:
             rationale="Validated proposal-ready semantic mapping to the loaded SOP",
             evidence=self._deduplicate_evidence(analysis),
             correlation_id=correlation_id,
-            created_at=now,
+            created_at=email.received_at,
         )
-        _save_model(
-            self._repository,
-            "scope_decisions",
+        self._store.create(
+            CollectionName.SCOPE_DECISIONS,
             decision,
-            unique_keys={"gmail_message_id": email.message_id},
+            unique_keys={
+                "gmail_message_id": IdempotencyKeys.gmail_message(email.message_id)
+            },
+        )
+        return _SemanticStage(
+            analysis=analysis,
+            selections=selected,
+            agent_run=agent_run,
+            decision=decision,
         )
 
-        pricing = PricingEngine(self._catalog).calculate(selected)
-        timeline = TimelineEngine(self._catalog).calculate(selected)
+    def _run_commercial_stage(
+        self,
+        *,
+        email: InboundEmail,
+        project_id: str,
+        idempotency_key: str,
+        correlation_id: str,
+        semantic: _SemanticStage,
+    ) -> _CommercialStage:
+        analysis = semantic.analysis
+        pricing = PricingEngine(self._catalog).calculate(semantic.selections)
+        timeline = TimelineEngine(self._catalog).calculate(semantic.selections)
         requirements = tuple(
             ScopeRequirementSnapshot(
                 requirement_id=item.requirement_id,
@@ -220,11 +307,10 @@ class InitialProposalWorkflow:
             assumptions=analysis.assumptions,
             exclusions=analysis.exclusions_to_surface,
             scope_version_id=scope_id,
-            created_at=now,
+            created_at=email.received_at,
         )
-        _save_model(
-            self._repository,
-            "scope_versions",
+        self._store.create(
+            CollectionName.SCOPE_VERSIONS,
             scope,
             unique_keys={"artifact_version": f"{project_id}:scope:1"},
         )
@@ -235,12 +321,11 @@ class InitialProposalWorkflow:
             proposed_scope=scope,
             existing=(),
             artifact_id=artifact_id,
-            created_at=now,
+            created_at=email.received_at,
         )
         artifact = seal_artifact_for_review(draft)
-        _save_model(
-            self._repository,
-            "artifacts",
+        self._store.create(
+            CollectionName.ARTIFACTS,
             artifact,
             unique_keys={"artifact_version": f"{project_id}:proposal:1"},
         )
@@ -265,7 +350,7 @@ class InitialProposalWorkflow:
             source_scope_version_id=scope.id,
             source_scope_version_number=scope.version_number,
             sop_version=self._catalog.version,
-            generated_at=now,
+            generated_at=email.received_at,
         )
         rendered = self._renderer.render(
             proposal,
@@ -273,64 +358,53 @@ class InitialProposalWorkflow:
             artifact_version=artifact.version_number,
         )
 
-        audit.extend(
-            (
-                self._audit(
-                    "deterministic_pricing",
-                    artifact.id,
-                    "calculate_price",
-                    correlation_id,
-                    now,
-                    {"currency": pricing.currency, "total_usd": pricing.total_usd},
-                ),
-                self._audit(
-                    "deterministic_timeline",
-                    artifact.id,
-                    "calculate_timeline",
-                    correlation_id,
-                    now,
-                    {"total_days": timeline.total_days},
-                ),
-                self._audit(
-                    "proposal_artifact",
-                    artifact.id,
-                    "render_fixed_template",
-                    correlation_id,
-                    now,
-                    {
-                        "proposal_checksum": rendered.content_checksum,
-                        "scope_version_id": scope.id,
-                        "sop_version": scope.sop_version,
-                    },
-                ),
-            )
+        audit = (
+            self._audit(
+                "deterministic_pricing",
+                artifact.id,
+                "calculate_price",
+                correlation_id,
+                email.received_at,
+                {"currency": pricing.currency, "total_usd": pricing.total_usd},
+            ),
+            self._audit(
+                "deterministic_timeline",
+                artifact.id,
+                "calculate_timeline",
+                correlation_id,
+                email.received_at,
+                {"total_days": timeline.total_days},
+            ),
+            self._audit(
+                "proposal_artifact",
+                artifact.id,
+                "render_fixed_template",
+                correlation_id,
+                email.received_at,
+                {
+                    "proposal_checksum": rendered.content_checksum,
+                    "scope_version_id": scope.id,
+                    "sop_version": scope.sop_version,
+                },
+            ),
         )
-        project = project.model_copy(
-            update={
-                "active_scope_version_id": scope.id,
-                "active_proposal_id": artifact.id,
-                "current_price_usd": pricing.total_usd,
-                "current_timeline_days": timeline.total_days,
-            }
-        )
-        project = self._transition_project(
-            project,
-            ProjectLifecycleStatus.AWAITING_USER_REVIEW,
-            reason="deterministic proposal sealed for review",
-            now=now,
-            transitions=transitions,
-        )
-        project_document = self._repository.get(
-            collection="projects", document_id=project.id
-        )
-        assert project_document is not None
-        self._repository.compare_and_set(
-            collection="projects",
-            document_id=project.id,
-            expected_revision=project_document.revision,
-            payload=project.model_dump(mode="json"),
+        return _CommercialStage(
+            scope=scope,
+            artifact=artifact,
+            proposal=proposal,
+            rendered=rendered,
+            audit=audit,
         )
 
+    def _record_completion(
+        self,
+        *,
+        artifact: CommercialArtifact,
+        transitions: tuple[StateTransitionRecord, ...],
+        audit: tuple[AuditRecord, ...],
+        correlation_id: str,
+        recorded_at: datetime,
+    ) -> None:
         artifact_event = ArtifactEventRecord(
             id=stable_id("artifact-event", artifact.id, "awaiting-review"),
             artifact_id=artifact.id,
@@ -339,59 +413,13 @@ class InitialProposalWorkflow:
             action="SEALED_FOR_USER_REVIEW",
             checksum=artifact.checksum,
             correlation_id=correlation_id,
-            created_at=now,
+            created_at=recorded_at,
         )
-        _save_model(self._repository, "artifact_events", artifact_event)
+        self._store.create(CollectionName.ARTIFACT_EVENTS, artifact_event)
         for transition in transitions:
-            _save_model(self._repository, "state_transitions", transition)
+            self._store.create(CollectionName.STATE_TRANSITIONS, transition)
         for record in audit:
-            _save_model(self._repository, "audit_records", record)
-
-        result = LocalInitialProposalResult(
-            idempotency_key=idempotency_key,
-            correlation_id=correlation_id,
-            project=project,
-            scope_version_id=scope.id,
-            artifact=artifact,
-            proposal=proposal,
-            rendered_proposal=rendered,
-            agent_run_id=agent_run.id,
-            scope_decision_id=decision.id,
-            audit_record_ids=tuple(record.id for record in audit),
-        )
-        self._repository.create_or_get(
-            collection="workflow_results",
-            document_id=idempotency_key,
-            payload=result.model_dump(mode="json"),
-            unique_keys={"gmail_message_id": email.message_id},
-            immutable=True,
-        )
-        return result
-
-    def _transition_project(
-        self,
-        project: ProjectRecord,
-        target: ProjectLifecycleStatus,
-        *,
-        reason: str,
-        now: datetime,
-        transitions: list[StateTransitionRecord],
-    ) -> ProjectRecord:
-        source = project.lifecycle_status
-        transition_project(source, target)
-        transitions.append(
-            StateTransitionRecord(
-                id=stable_id("transition", project.id, source.value, target.value),
-                entity_type="project",
-                entity_id=project.id,
-                from_status=source.value,
-                to_status=target.value,
-                reason=reason,
-                correlation_id=project.correlation_id,
-                created_at=now,
-            )
-        )
-        return project.model_copy(update={"lifecycle_status": target, "updated_at": now})
+            self._store.create(CollectionName.AUDIT_RECORDS, record)
 
     @staticmethod
     def _deduplicate_evidence(analysis: RequirementAnalysis) -> tuple[EvidenceRef, ...]:
