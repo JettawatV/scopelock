@@ -8,7 +8,7 @@ from scopelock.domain.models import ScopeAnalysis
 from scopelock.settings import agent_generate_config, build_model
 
 
-PROMPT_VERSION = "scope_analyzer_v2"
+PROMPT_VERSION = "scope_analyzer_v3"
 
 
 INSTRUCTION = """You analyze one new inbound message against an existing project.
@@ -36,6 +36,11 @@ Atomic event policy:
   message and verify that each appears in exactly one event. For example,
   "set A; rename B; filter by C; and color D" requires four events, not one
   summary event. A message with ten independent clauses requires ten events.
+- A coordinated noun list can contain multiple atomic changes even when it
+  shares one verb. If each listed capability can be accepted, rejected, or
+  estimated independently, create one event per list item. For example,
+  "Add department permissions, custom layouts, and custom metrics" requires
+  three EXPANSION events, not one bundled expansion.
 - NO_CHANGE means a relevant presentation, branding, label, title, color, or
   wording request already covered by the baseline package.
 - CLARIFICATION supplies precise details for existing work without new work.

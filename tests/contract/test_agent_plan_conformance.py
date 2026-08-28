@@ -85,8 +85,8 @@ def test_frozen_agent_roster_schemas_and_least_privilege_tools():
 
 
 def test_agent_prompts_keep_routing_tool_order_and_commerce_boundaries_explicit():
-    assert REQUIREMENT_PROMPT_VERSION == "requirement_analyzer_v4"
-    assert SCOPE_PROMPT_VERSION == "scope_analyzer_v2"
+    assert REQUIREMENT_PROMPT_VERSION == "requirement_analyzer_v5"
+    assert SCOPE_PROMPT_VERSION == "scope_analyzer_v3"
     assert "immediately transfer to requirement_analyzer" in root_agent.instruction
     assert "immediately\ntransfer to the scope_analyzer" in root_agent.instruction
     assert "Do not calculate price" in root_agent.instruction
@@ -96,6 +96,8 @@ def test_agent_prompts_keep_routing_tool_order_and_commerce_boundaries_explicit(
     assert "Always call get_sop_catalog before selecting" in requirement_prompt
     assert "semantic catalog only" in requirement_prompt
     assert "retain all supported mappings" in requirement_prompt
+    assert "Decompose compound sentences into atomic requirements" in requirement_prompt
+    assert "does not replace a primary workflow module" in requirement_prompt
     assert "Never calculate or promise a project total" in requirement_prompt
     assert "Never change project state or send email" in requirement_prompt
     assert "Return only RequirementAnalysis" in requirement_prompt
@@ -109,6 +111,7 @@ def test_agent_prompts_keep_routing_tool_order_and_commerce_boundaries_explicit(
     positions = [scope_prompt.index(value) for value in required_order]
     assert positions == sorted(positions)
     assert "one event for each independent client change" in scope_prompt
+    assert "A coordinated noun list can contain multiple atomic changes" in scope_prompt
     assert "Never mutate state" in scope_prompt
     assert "or send email" in scope_prompt
     assert "Return only ScopeAnalysis" in scope_prompt

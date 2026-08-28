@@ -83,7 +83,7 @@ class InitialProposalWorkflow:
         analyzer: RequirementAnalyzer,
         artifact_root: str | Path,
         model_name: str = "gemini-3.5-flash",
-        prompt_version: str = "requirement_analyzer_v4",
+        prompt_version: str = "requirement_analyzer_v5",
         bounded_persistence: bool = False,
     ) -> None:
         self._catalog = catalog

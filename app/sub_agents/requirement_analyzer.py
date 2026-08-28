@@ -7,7 +7,7 @@ from scopelock.domain.models import RequirementAnalysis
 from scopelock.settings import agent_generate_config, build_model
 
 
-PROMPT_VERSION = "requirement_analyzer_v4"
+PROMPT_VERSION = "requirement_analyzer_v5"
 
 
 INSTRUCTION = """You analyze an inbound client email for a possible new project.
@@ -27,6 +27,15 @@ Classification and mapping policy:
   unsupported requirements and set proposal_ready false.
 - Extract each independent supported requirement and map every supported module,
   even when the same email also requests unsupported work.
+- Decompose compound sentences into atomic requirements. Keep the primary
+  business process or transformation separate from its intake/output channel,
+  dashboard, notification, or approval surface; do not merge them merely
+  because the client described them in one sentence.
+- A channel or integration module does not replace a primary workflow module.
+  When the catalog separately supports both the business processing behavior
+  (for example classification, business rules, or structured transformation)
+  and its intake/output channel, map both modules and create a distinct
+  requirement for each.
 - For unsupported work, add an unsupported_requirements item with Gmail evidence,
   retain all supported mappings, set proposal_ready false, and do not invent a
   module.

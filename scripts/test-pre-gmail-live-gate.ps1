@@ -68,14 +68,14 @@ try {
             -EvalSelector $requirements `
             -AgentPath $requirementAgent `
             -ConfigPath "tests\eval\requirement_analyzer.config.json" `
-            -ResultPattern "scopelock_requirement_analyzer_v4" `
+            -ResultPattern "scopelock_requirement_analyzer_v5" `
             -ExpectedCases 5 `
             -Iteration $iteration
         $runs += Invoke-ReviewedEval `
             -EvalSelector $scope `
             -AgentPath $scopeAgent `
             -ConfigPath "tests\eval\scope_analyzer.config.json" `
-            -ResultPattern "scopelock_scope_analyzer_v2" `
+            -ResultPattern "scopelock_scope_analyzer_v3" `
             -ExpectedCases 1 `
             -Iteration $iteration
     }
@@ -83,8 +83,8 @@ try {
     $report = [ordered]@{
         gate = "pre_gmail_flexibility_live_repeatability"
         prompt_versions = @(
-            "requirement_analyzer_v4",
-            "scope_analyzer_v2"
+            "requirement_analyzer_v5",
+            "scope_analyzer_v3"
         )
         expected_runs = 18
         passed_runs = ($runs | Measure-Object -Property passed -Sum).Sum

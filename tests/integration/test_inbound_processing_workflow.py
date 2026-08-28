@@ -63,7 +63,7 @@ class FakeGateway:
             self.requirement_analysis,
             correlation_id=correlation_id,
             agent_name="requirement_analyzer",
-            prompt_version="requirement_analyzer_v4",
+            prompt_version="requirement_analyzer_v5",
         )
 
     async def analyze_scope(self, context, *, correlation_id=None, **_):
@@ -74,7 +74,7 @@ class FakeGateway:
             output,
             correlation_id=correlation_id,
             agent_name="scope_analyzer",
-            prompt_version="scope_analyzer_v2",
+            prompt_version="scope_analyzer_v3",
         )
 
 

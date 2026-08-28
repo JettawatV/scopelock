@@ -143,10 +143,12 @@ Never commit tokens or client secrets.
 
 ### Pre-activation hold
 
-OAuth client setup and credential verification may proceed during Day 11. Do
-not activate `users.watch`, Pub/Sub delivery into the agent workflow, or any
-automatic Gmail-event invocation until the pre-Gmail flexibility gate passes.
-The frontend remains locked during this hold.
+The pre-Gmail flexibility gate passed on 2026-08-28, so OAuth client setup,
+credential verification, History API integration, Pub/Sub delivery, and
+`users.watch` implementation may proceed during Day 11. Keep continuous
+mailbox delivery disabled until the Day 11 read, history-resolution,
+duplicate-delivery, and same-thread checks pass. The frontend remains locked
+until the Gmail agent path is reliable.
 
 ---
 

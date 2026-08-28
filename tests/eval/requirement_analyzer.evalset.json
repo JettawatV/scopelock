@@ -1,5 +1,5 @@
 {
-  "eval_set_id": "scopelock_requirement_analyzer_v4",
+  "eval_set_id": "scopelock_requirement_analyzer_v5",
   "name": "ScopeLock Requirement Analyzer",
   "description": "Specification-reviewed cases evaluated by the deterministic requirement_contract custom metric.",
   "eval_cases": [
