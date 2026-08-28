@@ -5,6 +5,10 @@ from pathlib import Path
 import app as app_package
 from app.agent import app, root_agent
 from app.sub_agents.requirement_analyzer import PROMPT_VERSION, requirement_analyzer
+from app.sub_agents.scope_analyzer import (
+    PROMPT_VERSION as SCOPE_PROMPT_VERSION,
+    scope_analyzer,
+)
 
 
 def test_app_package_exposes_agent_module_for_adk_eval():
@@ -39,15 +43,19 @@ def test_adk_eval_loader_discovers_root_agent_once():
 def test_root_agent_exposes_scope_lock_hierarchy():
     assert app.name == "app"
     assert root_agent.name == "scopelock"
-    assert [agent.name for agent in root_agent.sub_agents] == ["requirement_analyzer"]
-    assert len(root_agent.sub_agents[0].tools) == 3
-    tool_names = {tool.__name__ for tool in root_agent.sub_agents[0].tools}
-    assert tool_names == {
-        "get_current_scope",
-        "get_recent_thread_context",
-        "get_sop_catalog",
-    }
-    assert all("send" not in tool_name for tool_name in tool_names)
+    assert [agent.name for agent in root_agent.sub_agents] == [
+        "requirement_analyzer",
+        "scope_analyzer",
+    ]
+    for sub_agent in root_agent.sub_agents:
+        assert len(sub_agent.tools) == 3
+        tool_names = {tool.__name__ for tool in sub_agent.tools}
+        assert tool_names == {
+            "get_current_scope",
+            "get_recent_thread_context",
+            "get_sop_catalog",
+        }
+        assert all("send" not in tool_name for tool_name in tool_names)
 
 
 def test_requirement_analyzer_contains_golden_readiness_policy():
@@ -57,3 +65,14 @@ def test_requirement_analyzer_contains_golden_readiness_policy():
     assert "mapped_requirement must contain both" in requirement_analyzer.instruction
     assert "Never calculate, mention, estimate, or invent price" in requirement_analyzer.instruction
     assert "Ordinary coordination, lunch, social, or other non-project mail" in requirement_analyzer.instruction
+
+
+def test_scope_analyzer_has_typed_read_only_scope_policy():
+    assert SCOPE_PROMPT_VERSION == "scope_analyzer_v1"
+    assert scope_analyzer.output_schema.__name__ == "ScopeAnalysis"
+    assert "get_current_scope(project_id)" in scope_analyzer.instruction
+    assert "get_recent_thread_context(project_id)" in scope_analyzer.instruction
+    assert "get_sop_catalog()" in scope_analyzer.instruction
+    assert "CLOSURE" in scope_analyzer.instruction
+    assert "Never calculate, mention, estimate, or invent price" in scope_analyzer.instruction
+    assert "Never mutate project state" in scope_analyzer.instruction

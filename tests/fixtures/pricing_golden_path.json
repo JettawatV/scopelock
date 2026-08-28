@@ -1,0 +1,56 @@
+{
+  "description": "Golden-path requirement selections priced only from jvl-demo-v1 SOP rules.",
+  "selections": [
+    {"module_key": "core_workflow_automation", "quantity": 1},
+    {"module_key": "email_intake", "quantity": 1},
+    {"module_key": "operations_dashboard", "quantity": 1},
+    {"module_key": "email_notifications", "quantity": 1}
+  ],
+  "expected_result": {
+    "currency": "USD",
+    "sop_version": "jvl-demo-v1",
+    "line_items": [
+      {
+        "module_key": "core_workflow_automation",
+        "quantity": 1,
+        "unit_rule": "fixed",
+        "unit": null,
+        "unit_amount_usd": 4000,
+        "subtotal_usd": 4000,
+        "currency": "USD",
+        "sop_version": "jvl-demo-v1"
+      },
+      {
+        "module_key": "email_intake",
+        "quantity": 1,
+        "unit_rule": "fixed",
+        "unit": null,
+        "unit_amount_usd": 500,
+        "subtotal_usd": 500,
+        "currency": "USD",
+        "sop_version": "jvl-demo-v1"
+      },
+      {
+        "module_key": "operations_dashboard",
+        "quantity": 1,
+        "unit_rule": "fixed",
+        "unit": null,
+        "unit_amount_usd": 750,
+        "subtotal_usd": 750,
+        "currency": "USD",
+        "sop_version": "jvl-demo-v1"
+      },
+      {
+        "module_key": "email_notifications",
+        "quantity": 1,
+        "unit_rule": "fixed",
+        "unit": null,
+        "unit_amount_usd": 400,
+        "subtotal_usd": 400,
+        "currency": "USD",
+        "sop_version": "jvl-demo-v1"
+      }
+    ],
+    "total_usd": 5650
+  }
+}

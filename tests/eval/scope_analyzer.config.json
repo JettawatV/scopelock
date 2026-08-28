@@ -1,0 +1,13 @@
+{
+  "criteria": {
+    "scope_contract": 1.0
+  },
+  "custom_metrics": {
+    "scope_contract": {
+      "code_config": {
+        "name": "scopelock.testing.scope_eval_metrics.scope_contract_metric"
+      },
+      "description": "Checks ScopeAnalysis structure, reviewed labels and modules, baseline/message/SOP evidence, confidence routing, read-only tool ordering, and the no-commerce/no-send boundary."
+    }
+  }
+}

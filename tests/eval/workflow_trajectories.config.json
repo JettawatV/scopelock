@@ -1,0 +1,13 @@
+{
+  "criteria": {
+    "trajectory_safety": 1.0
+  },
+  "custom_metrics": {
+    "trajectory_safety": {
+      "code_config": {
+        "name": "scopelock.testing.trajectory_eval_metrics.trajectory_safety_metric"
+      },
+      "description": "Checks required read-only ADK tool order, rejects unexpected or forbidden actions, and validates the application-owned pre-approval stop gate."
+    }
+  }
+}

@@ -91,7 +91,7 @@ ScopeLock immediately:
 
 Dashboard headline example:
 
-> **Scope expansion detected — +THB 27,000 / +5 days**
+> **Scope expansion detected — +USD 1,500 / +5 days**
 
 Do not instantly send.
 

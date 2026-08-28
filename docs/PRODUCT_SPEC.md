@@ -108,7 +108,7 @@ Client:
 > Can you add an OCR intake flow as well?
 
 ScopeLock:
-- classifies as `SCOPE_EXPANSION`;
+- classifies as `EXPANSION`;
 - generates a commercial delta;
 - adds it to pending changes;
 - produces `Change Order #001`;
@@ -127,9 +127,9 @@ Allowed classifications:
 - `NO_CHANGE`
 - `CLARIFICATION`
 - `AMBIGUOUS`
-- `SCOPE_EXPANSION`
-- `SCOPE_REDUCTION`
-- `SCOPE_REPLACEMENT`
+- `EXPANSION`
+- `REDUCTION`
+- `REPLACEMENT`
 
 Do not call every change "scope creep." `ScopeEvent` is the neutral system primitive.
 
@@ -224,10 +224,10 @@ Show deltas, not only a new total.
 
 Example:
 
-- Existing project: THB 80,000 / 4 weeks
-- + LINE integration: +THB 15,000 / +3 days
-- + Manager approval workflow: +THB 12,000 / +2 days
-- Revised: THB 107,000 / 5 weeks
+- Existing project: USD 4,000 / 4 weeks
+- + LINE integration: +USD 750 / +3 days
+- + Manager approval workflow: +USD 750 / +2 days
+- Revised: USD 5,500 / 5 weeks
 
 The user/client should understand:
 **new request → additional work → commercial impact.**

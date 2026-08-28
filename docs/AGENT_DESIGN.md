@@ -12,8 +12,9 @@ P0 may be implemented with **two primary LLM agents and one optional reviewer**.
 
 Use one ADK-native root agent named `scopelock` in `app/agent.py`. It delegates
 to the active P0 sub-agent in `app/sub_agents/`. Start with only
-`requirement_analyzer`; add `scope_analyzer` only after the Requirement Analyzer
-passes typed-output, evidence, tool-trajectory, and safety evaluations.
+`requirement_analyzer`; the `scope_analyzer` is added only after the Requirement
+Analyzer passes typed-output, evidence, tool-trajectory, and safety evaluations.
+Both agents now exist, and both expose read-only tools only.
 
 Develop through `adk web .` and `adk run app`. Keep deterministic commerce in
 the separate `scopelock/` package. Frontend work is blocked until this ADK gate
@@ -80,7 +81,7 @@ Determine how the message semantically changes the currently authoritative/propo
 ScopeAnalysis:
     events: list[ScopeEventProposal]
     conversation_closure: bool
-    overall_confidence: float
+    overall_confidence: int  # percentage, 0 through 100
 ```
 
 Each event:
@@ -91,18 +92,19 @@ ScopeEventProposal:
         "NO_CHANGE",
         "CLARIFICATION",
         "AMBIGUOUS",
-        "SCOPE_EXPANSION",
-        "SCOPE_REDUCTION",
-        "SCOPE_REPLACEMENT",
+        "EXPANSION",
+        "REDUCTION",
+        "REPLACEMENT",
+        "CLOSURE",
     ]
     description: str
     affected_requirement_ids: list[str]
     proposed_requirements: list[NormalizedRequirement]
     sop_module_keys: list[str]
-    quantities: dict
+    quantities: list[ModuleQuantity]
     rationale: str
     evidence: list[EvidenceRef]
-    confidence: float
+    confidence: int  # percentage, 0 through 100
 ```
 
 ### Core reasoning question
@@ -194,11 +196,13 @@ The UI should show concise user-facing justification:
 
 Suggested starting thresholds:
 
-- `>= 0.85`: classification may proceed automatically to pricing/buffering.
-- `0.60–0.84`: proceed with analysis but mark user review recommended.
-- `< 0.60`: `AMBIGUOUS` / needs review.
+- `85–100`: classification may proceed automatically to deterministic processing.
+- `60–84`: proceed with analysis but mark user review recommended.
+- `0–59`: `AMBIGUOUS` / needs review.
 
-Thresholds must be configurable and evaluated rather than treated as truth.
+Thresholds are configurable as integer percentages. The settings loader also
+accepts legacy 0-to-1 decimal environment values and converts them to whole
+percentages. Thresholds must be evaluated rather than treated as truth.
 
 A large commercial delta may force review even with high confidence.
 

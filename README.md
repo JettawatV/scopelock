@@ -24,7 +24,8 @@ context documents if there is a conflict.
 - `config/jvl_sop.example.yaml` — illustrative machine-readable SOP
 - `evals/scopelock_eval_cases.jsonl` — 25 starter semantic eval cases
 - `app/agent.py` — ADK-native `ScopeLock` root agent
-- `app/sub_agents/requirement_analyzer.py` — first active sub-agent
+- `app/sub_agents/requirement_analyzer.py` — typed new-project analyzer
+- `app/sub_agents/scope_analyzer.py` — typed existing-project scope analyzer
 - `app/tools/` — narrow, read-only ADK tools
 - `scopelock/` — deterministic domain and application code, outside agents
 - `tests/` — unit, integration, and native ADK evaluation assets
@@ -52,8 +53,8 @@ python -m pytest -q
 ```
 
 The project `uv.lock` pins the resolved dependency set. Verified on
-2026-08-27 with Python 3.13.14, ADK 2.8.0, 107 locked packages, successful ADK
-discovery, and 14 passing tests. This uv-managed environment does not require an
+2026-08-28 with Python 3.13.14, ADK 2.8.0, 143 locked packages, successful ADK
+discovery, and 96 passing tests. This uv-managed environment does not require an
 embedded `pip` module.
 
 ## Development workflow
@@ -62,12 +63,13 @@ ScopeLock is developed ADK-first. The current hierarchy is:
 
 ```text
 ScopeLock (root agent)
-└── Requirement Analyzer (active P0 sub-agent)
+├── Requirement Analyzer (typed new-project analysis)
+└── Scope Analyzer (typed existing-project change analysis)
 ```
 
-The Scope Analyzer is deliberately not created until the Requirement Analyzer
-passes its typed-output, evidence, tool-trajectory, and safety gates. Do not
-build frontend UI/UX before those gates pass.
+The Requirement Analyzer gate, 25-case Scope Analyzer corpus, and two native
+ADK trajectory cases pass. Frontend UI/UX remains locked until the later cloud
+integration gates in `docs/DAILY_IMPLEMENTATION_PLAN.md` pass.
 
 The ADK app selector displays `app` because that name must match the
 discoverable `app/` package. The root agent inside it is named `scopelock`.
@@ -80,11 +82,15 @@ adk run app
 adk eval app tests/eval/requirement_analyzer.evalset.json `
   --config_file_path tests/eval/requirement_analyzer.config.json `
   --print_detailed_results
+adk eval app tests/eval/scope_analyzer.evalset.json `
+  --config_file_path tests/eval/scope_analyzer.config.json
+adk eval app tests/eval/workflow_trajectories.evalset.json `
+  --config_file_path tests/eval/workflow_trajectories.config.json
 ```
 
 `adk web` should be the main interactive development loop. The local `.adk/`
-directory it creates is ignored. The JSONL corpus remains the human-labelled
-source set; promote reviewed cases into `tests/eval/` for native ADK runs.
+directory it creates is ignored. The JSONL corpus remains the curated source
+set; promote specification-reviewed cases into `tests/eval/` for native ADK runs.
 
 ### Audited Requirement Analyzer runner
 

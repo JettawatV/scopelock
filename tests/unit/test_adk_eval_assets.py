@@ -67,3 +67,71 @@ def test_native_adk_eval_config_uses_requirement_contract_metric():
         config.custom_metrics["requirement_contract"].code_config.name
         == "scopelock.testing.adk_eval_metrics.requirement_contract_metric"
     )
+
+
+def test_scope_native_eval_assets_cover_all_reviewed_cases():
+    fixture_data = json.loads(
+        Path("tests/fixtures/scope_analyzer_cases.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    eval_set = EvalSet.model_validate_json(
+        Path("tests/eval/scope_analyzer.evalset.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    config = EvalConfig.model_validate_json(
+        Path("tests/eval/scope_analyzer.config.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert fixture_data["review_status"] == "specification_reviewed"
+    assert fixture_data["reviewer"]
+    assert len(fixture_data["cases"]) == 25
+    assert len(eval_set.eval_cases) == 25
+    assert {case["eval_id"] for case in fixture_data["cases"]} == {
+        case.eval_id for case in eval_set.eval_cases
+    }
+    classes = {
+        classification
+        for case in fixture_data["cases"]
+        for classification in case["expected_assertions"]["exact_classifications"]
+    }
+    assert classes == {
+        "NO_CHANGE",
+        "CLARIFICATION",
+        "AMBIGUOUS",
+        "EXPANSION",
+        "REDUCTION",
+        "REPLACEMENT",
+        "CLOSURE",
+    }
+    assert config.criteria == {"scope_contract": 1.0}
+    assert (
+        config.custom_metrics["scope_contract"].code_config.name
+        == "scopelock.testing.scope_eval_metrics.scope_contract_metric"
+    )
+
+
+def test_day_6_native_trajectory_eval_assets_are_valid():
+    eval_set = EvalSet.model_validate_json(
+        Path("tests/eval/workflow_trajectories.evalset.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    config = EvalConfig.model_validate_json(
+        Path("tests/eval/workflow_trajectories.config.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert {case.eval_id for case in eval_set.eval_cases} == {
+        "initial_proposal",
+        "scope_expansion",
+    }
+    assert config.criteria == {"trajectory_safety": 1.0}
+    assert (
+        config.custom_metrics["trajectory_safety"].code_config.name
+        == "scopelock.testing.trajectory_eval_metrics.trajectory_safety_metric"
+    )

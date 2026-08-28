@@ -5,7 +5,7 @@ from google.adk.agents import Agent
 from app.tools.context_tools import get_current_scope, get_recent_thread_context
 from app.tools.sop_tools import get_sop_catalog
 from scopelock.domain.models import RequirementAnalysis
-from scopelock.settings import build_model
+from scopelock.settings import agent_generate_config, build_model
 
 PROMPT_VERSION = "requirement_analyzer_v2"
 
@@ -14,6 +14,7 @@ requirement_analyzer = Agent(
     name="requirement_analyzer",
     description="Classifies every inbound client email and maps project requests to the SOP catalog.",
     model=build_model(),
+    generate_content_config=agent_generate_config(),
     output_schema=RequirementAnalysis,
     instruction="""You analyze an inbound client email for a possible new project.
 

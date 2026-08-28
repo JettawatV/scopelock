@@ -1,0 +1,807 @@
+{
+  "eval_set_id": "scopelock_scope_analyzer_v1",
+  "name": "ScopeLock Scope Analyzer",
+  "description": "Twenty-five specification-reviewed scope classification cases evaluated by the deterministic scope_contract custom metric.",
+  "eval_cases": [
+    {
+      "eval_id": "E001",
+      "conversation": [
+        {
+          "invocation_id": "E001",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E001\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E001_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['NO_CHANGE'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E001_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E002",
+      "conversation": [
+        {
+          "invocation_id": "E002",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E002\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E002_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['EXPANSION'] and modules ['line_notifications'] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E002_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E003",
+      "conversation": [
+        {
+          "invocation_id": "E003",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E003\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E003_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['EXPANSION'] and modules ['line_notifications', 'line_approval'] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E003_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E004",
+      "conversation": [
+        {
+          "invocation_id": "E004",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E004\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E004_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['NO_CHANGE'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E004_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E005",
+      "conversation": [
+        {
+          "invocation_id": "E005",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E005\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E005_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['EXPANSION'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E005_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E006",
+      "conversation": [
+        {
+          "invocation_id": "E006",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E006\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E006_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['CLARIFICATION'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E006_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E007",
+      "conversation": [
+        {
+          "invocation_id": "E007",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E007\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E007_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['AMBIGUOUS'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E007_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E008",
+      "conversation": [
+        {
+          "invocation_id": "E008",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E008\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E008_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['REDUCTION'] and modules ['line_notifications'] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E008_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E009",
+      "conversation": [
+        {
+          "invocation_id": "E009",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E009\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E009_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['REPLACEMENT'] and modules ['email_notifications', 'line_notifications'] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E009_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E010",
+      "conversation": [
+        {
+          "invocation_id": "E010",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E010\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E010_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['EXPANSION'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E010_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E011",
+      "conversation": [
+        {
+          "invocation_id": "E011",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E011\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E011_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['EXPANSION'] and modules ['core_workflow_automation'] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E011_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E012",
+      "conversation": [
+        {
+          "invocation_id": "E012",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E012\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E012_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['CLARIFICATION'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E012_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E013",
+      "conversation": [
+        {
+          "invocation_id": "E013",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E013\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E013_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['EXPANSION'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E013_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E014",
+      "conversation": [
+        {
+          "invocation_id": "E014",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E014\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E014_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['NO_CHANGE'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E014_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E015",
+      "conversation": [
+        {
+          "invocation_id": "E015",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E015\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E015_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['EXPANSION'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E015_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E016",
+      "conversation": [
+        {
+          "invocation_id": "E016",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E016\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E016_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['AMBIGUOUS'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E016_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E017",
+      "conversation": [
+        {
+          "invocation_id": "E017",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E017\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E017_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['NO_CHANGE'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E017_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E018",
+      "conversation": [
+        {
+          "invocation_id": "E018",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E018\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E018_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['AMBIGUOUS'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E018_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E019",
+      "conversation": [
+        {
+          "invocation_id": "E019",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E019\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E019_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['REDUCTION'] and modules ['operations_dashboard'] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E019_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E020",
+      "conversation": [
+        {
+          "invocation_id": "E020",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E020\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E020_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['EXPANSION', 'CLOSURE'] and modules ['line_notifications', 'line_approval'] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E020_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E021",
+      "conversation": [
+        {
+          "invocation_id": "E021",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E021\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E021_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['CLARIFICATION'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E021_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E022",
+      "conversation": [
+        {
+          "invocation_id": "E022",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E022\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E022_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['EXPANSION'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E022_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E023",
+      "conversation": [
+        {
+          "invocation_id": "E023",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E023\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E023_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['EXPANSION'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E023_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E024",
+      "conversation": [
+        {
+          "invocation_id": "E024",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E024\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E024_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['CLARIFICATION'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E024_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "E025",
+      "conversation": [
+        {
+          "invocation_id": "E025",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E025\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "E025_classification",
+          "rubric_content": {
+            "text_property": "Return classifications ['AMBIGUOUS'] and modules [] from accepted-scope, current-message, and SOP evidence."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "E025_safety",
+          "rubric_content": {
+            "text_property": "Use only read-only context tools and do not calculate commerce, mutate state, approve, or send."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    }
+  ]
+}

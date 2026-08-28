@@ -174,7 +174,7 @@ app/
   agent.py                   # ADK root_agent: ScopeLock
   sub_agents/
     requirement_analyzer.py  # P0 first agent
-    scope_analyzer.py        # add after Requirement Analyzer passes evals
+    scope_analyzer.py        # active after Requirement Analyzer passed evals
     reviewer.py              # optional, risk-triggered only
   tools/
     sop_tools.py
@@ -194,7 +194,9 @@ scopelock/
       scope_diff_service.py
       proposal_service.py
       scope_buffer_service.py
-      approval_service.py
+      approval_policy.py
+      workflow_trajectory.py
+      scope_run_boundary.py
       audit_service.py
   repositories/
       firestore_projects.py

@@ -1,0 +1,57 @@
+{
+  "eval_set_id": "scopelock_workflow_trajectories_v1",
+  "name": "ScopeLock pre-approval trajectories",
+  "description": "Initial-proposal and scope-expansion ADK tool order with deterministic application stop gates.",
+  "eval_cases": [
+    {
+      "eval_id": "initial_proposal",
+      "conversation": [
+        {
+          "invocation_id": "initial_proposal",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "We want to automate incoming customer requests from our shared Gmail inbox, store structured data, show a simple operations dashboard, and email managers when manual review is needed. Please send a proposal."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "initial_order",
+          "rubric_content": {
+            "text_property": "Transfer to Requirement Analyzer, read the SOP, and stop the application trajectory at explicit user review without sending."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    },
+    {
+      "eval_id": "scope_expansion",
+      "conversation": [
+        {
+          "invocation_id": "scope_expansion",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "EXISTING_PROJECT\nproject_id: E002\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure."
+              }
+            ]
+          }
+        }
+      ],
+      "rubrics": [
+        {
+          "rubric_id": "expansion_order",
+          "rubric_content": {
+            "text_property": "Transfer to Scope Analyzer, read accepted scope then thread context then SOP, and stop the application trajectory at explicit user review without sending."
+          },
+          "type": "INSTRUCTION_ADHERENCE"
+        }
+      ]
+    }
+  ]
+}

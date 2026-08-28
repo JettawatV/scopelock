@@ -32,7 +32,7 @@ Measure:
 A false negative can cause unpaid work.
 
 Track:
-- `SCOPE_EXPANSION` recall;
+- `EXPANSION` recall;
 - false-negative count;
 - weighted commercial-loss score.
 
@@ -118,8 +118,11 @@ resolve_gmail_message
 -> consolidate
 -> create_revision
 -> await_user_approval
--> send_after_approval
 ```
+
+The pre-approval trajectory ends there. A separate approved continuation may
+call the deterministic send service only after artifact ID, version, and
+checksum match a current explicit approval.
 
 Use ADK trajectory evals where practical and supplement with application integration tests.
 

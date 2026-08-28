@@ -1,0 +1,1028 @@
+{
+  "fixture_set_id": "scopelock_scope_analyzer_reviewed_v1",
+  "prompt_version": "scope_analyzer_v1",
+  "review_status": "specification_reviewed",
+  "reviewer": "Codex implementation review against the user-approved Day 5 checklist and ScopeLock domain/eval specifications",
+  "reviewed_on": "2026-08-27",
+  "source": "evals/scopelock_eval_cases.jsonl",
+  "cases": [
+    {
+      "eval_id": "E001",
+      "project_id": "E001",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E001",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E001",
+        "text": "Dashboard module includes standard charts and status table."
+      },
+      "current_message": {
+        "message_id": "message-E001",
+        "text": "Can you rename the dashboard to Operations Overview?"
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E001\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "NO_CHANGE"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E001",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E002",
+      "project_id": "E002",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E002",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E002",
+        "text": "Integrations: Gmail only."
+      },
+      "current_message": {
+        "message_id": "message-E002",
+        "text": "Can managers receive LINE alerts too?"
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E002\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "EXPANSION"
+        ],
+        "exact_module_keys": [
+          "line_notifications"
+        ],
+        "conversation_closure": false,
+        "require_affected_baseline": false,
+        "baseline_requirement_id": "BASE-E002",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E003",
+      "project_id": "E003",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E003",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E003",
+        "text": "Integrations: Gmail only."
+      },
+      "current_message": {
+        "message_id": "message-E003",
+        "text": "Can managers approve requests directly from LINE?"
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E003\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "EXPANSION"
+        ],
+        "exact_module_keys": [
+          "line_notifications",
+          "line_approval"
+        ],
+        "conversation_closure": false,
+        "require_affected_baseline": false,
+        "baseline_requirement_id": "BASE-E003",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E004",
+      "project_id": "E004",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E004",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E004",
+        "text": "Dashboard includes standard charts."
+      },
+      "current_message": {
+        "message_id": "message-E004",
+        "text": "Could you add a bar chart for request status?"
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E004\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "NO_CHANGE"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E004",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E005",
+      "project_id": "E005",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E005",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E005",
+        "text": "One Gmail mailbox included."
+      },
+      "current_message": {
+        "message_id": "message-E005",
+        "text": "We actually need this connected to three different inboxes."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E005\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "EXPANSION"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": false,
+        "baseline_requirement_id": "BASE-E005",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E006",
+      "project_id": "E006",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E006",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E006",
+        "text": "Email notifications are included."
+      },
+      "current_message": {
+        "message_id": "message-E006",
+        "text": "By notification, we mean send it whenever manual review is required."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E006\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "CLARIFICATION"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E006",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E007",
+      "project_id": "E007",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E007",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E007",
+        "text": "Simple operations dashboard included."
+      },
+      "current_message": {
+        "message_id": "message-E007",
+        "text": "Can you make the dashboard more advanced?"
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E007\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "AMBIGUOUS"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E007",
+        "require_needs_review": true,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E008",
+      "project_id": "E008",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E008",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E008",
+        "text": "Email notifications are included; LINE notifications are currently proposed as an addition."
+      },
+      "current_message": {
+        "message_id": "message-E008",
+        "text": "Forget LINE. Email alerts are enough."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E008\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "REDUCTION"
+        ],
+        "exact_module_keys": [
+          "line_notifications"
+        ],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E008",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E009",
+      "project_id": "E009",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E009",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E009",
+        "text": "Email notifications are proposed."
+      },
+      "current_message": {
+        "message_id": "message-E009",
+        "text": "Instead of email alerts, we'd prefer LINE alerts."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E009\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "REPLACEMENT"
+        ],
+        "exact_module_keys": [
+          "email_notifications",
+          "line_notifications"
+        ],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E009",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E010",
+      "project_id": "E010",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E010",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E010",
+        "text": "Workflow classifies requests and stores structured data."
+      },
+      "current_message": {
+        "message_id": "message-E010",
+        "text": "Can you also have the AI draft a personalized response to every customer?"
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E010\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "EXPANSION"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": false,
+        "baseline_requirement_id": "BASE-E010",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E011",
+      "project_id": "E011",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E011",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E011",
+        "text": "One primary workflow is included."
+      },
+      "current_message": {
+        "message_id": "message-E011",
+        "text": "We also want to automate our invoice approval process while you're at it."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E011\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "EXPANSION"
+        ],
+        "exact_module_keys": [
+          "core_workflow_automation"
+        ],
+        "conversation_closure": false,
+        "require_affected_baseline": false,
+        "baseline_requirement_id": "BASE-E011",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E012",
+      "project_id": "E012",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E012",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E012",
+        "text": "Project includes Gmail intake."
+      },
+      "current_message": {
+        "message_id": "message-E012",
+        "text": "The shared inbox is ops@example.com, not support@example.com."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E012\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "CLARIFICATION"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E012",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E013",
+      "project_id": "E013",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E013",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E013",
+        "text": "Dashboard is web-based."
+      },
+      "current_message": {
+        "message_id": "message-E013",
+        "text": "Can we have a native iOS app too?"
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E013\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "EXPANSION"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": false,
+        "baseline_requirement_id": "BASE-E013",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E014",
+      "project_id": "E014",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E014",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E014",
+        "text": "Basic filters are included."
+      },
+      "current_message": {
+        "message_id": "message-E014",
+        "text": "Please add a date filter."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E014\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "NO_CHANGE"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E014",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E015",
+      "project_id": "E015",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E015",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E015",
+        "text": "No 24/7 managed operations."
+      },
+      "current_message": {
+        "message_id": "message-E015",
+        "text": "Can your team monitor failures around the clock after launch?"
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E015\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "EXPANSION"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": false,
+        "baseline_requirement_id": "BASE-E015",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E016",
+      "project_id": "E016",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E016",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E016",
+        "text": "Manager approval is not in scope."
+      },
+      "current_message": {
+        "message_id": "message-E016",
+        "text": "Maybe managers should be able to approve some things too."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E016\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "AMBIGUOUS"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E016",
+        "require_needs_review": true,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E017",
+      "project_id": "E017",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E017",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E017",
+        "text": "Email notifications are included."
+      },
+      "current_message": {
+        "message_id": "message-E017",
+        "text": "Please use the new company logo in notification emails."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E017\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "NO_CHANGE"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E017",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E018",
+      "project_id": "E018",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E018",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E018",
+        "text": "One Gmail mailbox included."
+      },
+      "current_message": {
+        "message_id": "message-E018",
+        "text": "Could we add another mailbox later? No need to quote it yet."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E018\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "AMBIGUOUS"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E018",
+        "require_needs_review": true,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E019",
+      "project_id": "E019",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E019",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E019",
+        "text": "Proposal currently includes dashboard."
+      },
+      "current_message": {
+        "message_id": "message-E019",
+        "text": "We don't need the dashboard anymore."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E019\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "REDUCTION"
+        ],
+        "exact_module_keys": [
+          "operations_dashboard"
+        ],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E019",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E020",
+      "project_id": "E020",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E020",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E020",
+        "text": "Gmail intake + operations dashboard + email alerts."
+      },
+      "current_message": {
+        "message_id": "message-E020",
+        "text": "Add LINE alerts and LINE approvals. That's everything \u2014 please send the revised quote."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E020\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "EXPANSION",
+          "CLOSURE"
+        ],
+        "exact_module_keys": [
+          "line_notifications",
+          "line_approval"
+        ],
+        "conversation_closure": true,
+        "require_affected_baseline": false,
+        "baseline_requirement_id": "BASE-E020",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E021",
+      "project_id": "E021",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E021",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E021",
+        "text": "Request classification is included."
+      },
+      "current_message": {
+        "message_id": "message-E021",
+        "text": "Can the system classify requests into Sales, Support, and Billing?"
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E021\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "CLARIFICATION"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E021",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E022",
+      "project_id": "E022",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E022",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E022",
+        "text": "Workflow stores structured request data."
+      },
+      "current_message": {
+        "message_id": "message-E022",
+        "text": "Can it also sync every record into Salesforce?"
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E022\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "EXPANSION"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": false,
+        "baseline_requirement_id": "BASE-E022",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E023",
+      "project_id": "E023",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E023",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E023",
+        "text": "Simple dashboard includes basic filters."
+      },
+      "current_message": {
+        "message_id": "message-E023",
+        "text": "Can every department have its own permissions, layouts, and custom metrics?"
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E023\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "EXPANSION"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": false,
+        "baseline_requirement_id": "BASE-E023",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E024",
+      "project_id": "E024",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E024",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E024",
+        "text": "Email notifications on manual-review events."
+      },
+      "current_message": {
+        "message_id": "message-E024",
+        "text": "Please send those alerts to manager@example.com."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E024\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "CLARIFICATION"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E024",
+        "require_needs_review": false,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    },
+    {
+      "eval_id": "E025",
+      "project_id": "E025",
+      "review_status": "specification_reviewed",
+      "baseline": {
+        "scope_version_id": "scope-E025",
+        "status": "ACCEPTED",
+        "requirement_id": "BASE-E025",
+        "text": "LINE integration is excluded."
+      },
+      "current_message": {
+        "message_id": "message-E025",
+        "text": "It would be nice if the team could use LINE somehow."
+      },
+      "input": "EXISTING_PROJECT\nproject_id: E025\nAnalyze the current inbound client message against the accepted scope. Return only the ScopeAnalysis structure.",
+      "expected_assertions": {
+        "exact_classifications": [
+          "AMBIGUOUS"
+        ],
+        "exact_module_keys": [],
+        "conversation_closure": false,
+        "require_affected_baseline": true,
+        "baseline_requirement_id": "BASE-E025",
+        "require_needs_review": true,
+        "required_tool_order": [
+          "get_current_scope",
+          "get_recent_thread_context",
+          "get_sop_catalog"
+        ],
+        "forbidden_tool_name_fragments": [
+          "send",
+          "price",
+          "timeline",
+          "approve",
+          "mutate"
+        ],
+        "require_evidence": true,
+        "require_no_commerce_fields": true
+      }
+    }
+  ]
+}

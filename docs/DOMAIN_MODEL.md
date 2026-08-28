@@ -48,11 +48,15 @@ ScopeVersion:
     version_number
     status  # proposed / accepted / superseded
     requirements[]
-    service_modules[]
+    module_selections[]
     assumptions[]
     exclusions[]
-    total_price
+    pricing_result
+    timeline_result
+    total_price_usd
     timeline_days
+    currency  # USD
+    sop_version
     source_artifact_id
     created_at
 ```
@@ -126,6 +130,34 @@ SOPModule:
     dependencies[]
     aliases[]
 ```
+
+### Deterministic pricing records
+
+```python
+ModuleQuantity:
+    module_key
+    quantity
+
+PriceLineItem:  # immutable
+    module_key
+    quantity
+    unit_rule  # fixed / per_unit
+    unit
+    unit_amount_usd
+    subtotal_usd
+    currency  # USD
+    sop_version
+
+PricingResult:  # immutable
+    currency  # USD
+    sop_version
+    line_items[]
+    total_usd
+```
+
+Only `module_key` and `quantity` cross from semantic analysis into pricing.
+Amounts, subtotals, totals, currency, and SOP version are application-owned and
+come from the validated catalog plus deterministic arithmetic.
 
 ### AgentRun
 
@@ -289,23 +321,28 @@ There is insufficient evidence to safely decide.
 Example:
 > Can you make the dashboard more advanced?
 
-### `SCOPE_EXPANSION`
+### `EXPANSION`
 Adds new work/capability/integration/deliverable.
 
 Example:
 > Add LINE notifications.
 
-### `SCOPE_REDUCTION`
+### `REDUCTION`
 Removes previously proposed/accepted work.
 
 Example:
 > We no longer need the dashboard.
 
-### `SCOPE_REPLACEMENT`
+### `REPLACEMENT`
 Replaces one meaningful component with another.
 
 Example:
 > Forget Slack alerts; use LINE instead.
+
+### `CLOSURE`
+Client explicitly says requirements are complete or requests the updated
+commercial artifact. CLOSURE is a separate event so a material change in the
+same message is preserved.
 
 ---
 

@@ -20,13 +20,13 @@ The frozen P0 loop is the priority: inbound Gmail event → requirement analysis
 
 ## Current progress checklist
 
-Last reviewed: **2026-08-27**
+Last reviewed: **2026-08-28**
 
-Current active day: **Day 3 — SOP validation and deterministic pricing**
+Current active day: **Day 7 — Local initial-proposal vertical path**
 
-Immediate next evidence: Day 2 native eval passed; begin Day 3 SOP validation and deterministic pricing.
+Immediate next evidence: compose the already-tested Requirement Analyzer, SOP validation, PricingEngine, TimelineEngine, immutable proposal artifact, audit records, and approval stop into one repeatable local command.
 
-Next unlock: **Day 4 remains locked until the Day 3 move-on gate is checked.**
+Next unlock: **Day 8 remains locked until the Day 7 local vertical-path gate is checked.**
 
 ### Completed implementation
 
@@ -43,7 +43,11 @@ Next unlock: **Day 4 remains locked until the Day 3 move-on gate is checked.**
 - [x] Requirement Analyzer v2 readiness policy implemented for the golden path.
 - [x] Requirement mapping instruction updated to require ID plus human-readable description.
 - [x] Day 0 risk register added with blocking risks and exit evidence.
-- [x] Python 3.13.14 environment, 107-package lockfile, clean install, ADK discovery, and current 14-test suite verified.
+- [x] Python 3.13.14 environment, 143-package lockfile, clean install, ADK discovery, and current 96-test suite verified.
+- [x] Day 3 strict SOP validation, deterministic USD PricingEngine, immutable pricing records, and golden pricing fixture verified.
+- [x] Day 4 deterministic timeline, explicit state transitions, immutable ScopeVersion records, and proposal/change-order numbering verified.
+- [x] Day 5 typed Scope Analyzer and 25-case native ADK corpus verified with measured 100% exact classification, 100% evidence coverage, and 0% invalid modules in the recorded run.
+- [x] Day 6 native ADK trajectories, approval/checksum policy, reviewable failure paths, and idempotent non-sending intent stub verified.
 - [x] Frontend/UI work explicitly held until the ADK agent gates pass.
 
 ### Evidence gates
@@ -60,6 +64,7 @@ Next unlock: **Day 4 remains locked until the Day 3 move-on gate is checked.**
 - [x] Resolve the Python 3.13 environment requirement and pass the reproducible-install gate.
 - [ ] Remove the preserved legacy `backend/` scaffold only after explicit approval.
 - [x] Pass the Requirement Analyzer gate before starting deterministic pricing or any frontend work.
+- [x] Pass the deterministic pricing gate with no model-controlled commercial values.
 
 ## How to use the daily checklists
 
@@ -68,7 +73,7 @@ Next unlock: **Day 4 remains locked until the Day 3 move-on gate is checked.**
 - Put the command, test output, trace screenshot, artifact path, or log link beside the evidence item.
 - A later day stays LOCKED until the current move-on gate is checked.
 - If a check fails, add the failure under that day, mark the day BLOCKED, and do not hide or delete the evidence.
-- Current execution focus is Day 3. Days 0–2 are complete.
+- Current execution focus is Day 7. Days 0–6 are complete.
 
 ## Delivery phase gates
 
@@ -228,7 +233,7 @@ Move-on gate:
 
 ### Day 3 — SOP validation and deterministic pricing
 
-Status: ACTIVE — Days 0–2 passed on 2026-08-27.
+Status: COMPLETE — strict SOP validation and all deterministic pricing tests passed on 2026-08-27.
 
 Daily outcome: application code converts validated SOP selections into reproducible USD line items and totals.
 
@@ -239,152 +244,152 @@ Implementation checklist:
 - [x] Reject unsupported pricing-rule types.
 - [x] Validate unique SOP module keys.
 - [x] Validate non-negative USD amounts and minimum units.
-- [ ] Validate dependency keys, aliases, inclusions, exclusions, and materiality settings.
-- [ ] Implement a PricingEngine separate from all agents.
-- [ ] Accept only module keys and quantities, never model totals.
-- [ ] Normalize duplicate module selections according to one documented policy.
-- [ ] Produce immutable price line items with module key, quantity, unit rule, unit amount, subtotal, and SOP version.
-- [ ] Reject unknown modules, zero/negative quantities, malformed rules, and currency mismatches.
-- [ ] Add an explicit USD currency field to pricing results.
+- [x] Validate dependency keys, aliases, inclusions, exclusions, and materiality settings.
+- [x] Implement a PricingEngine separate from all agents.
+- [x] Accept only module keys and quantities, never model totals.
+- [x] Normalize duplicate module selections according to one documented policy.
+- [x] Produce immutable price line items with module key, quantity, unit rule, unit amount, subtotal, and SOP version.
+- [x] Reject unknown modules, zero/negative quantities, malformed rules, and currency mismatches.
+- [x] Add an explicit USD currency field to pricing results.
 
 Verification and success checklist:
 
-- [ ] Fixed-price module test passes.
-- [ ] Per-unit module test passes.
-- [ ] Minimum-unit test passes.
-- [ ] Duplicate-module policy test passes.
-- [ ] Unknown-module and invalid-quantity tests fail safely.
-- [ ] Same SOP version and selections always produce the same total.
-- [ ] Every price line can be traced to one SOP rule.
-- [ ] No model output field can override a calculated amount.
+- [x] Fixed-price module test passes.
+- [x] Per-unit module test passes.
+- [x] Minimum-unit test passes.
+- [x] Duplicate-module policy test passes.
+- [x] Unknown-module and invalid-quantity tests fail safely.
+- [x] Same SOP version and selections always produce the same total.
+- [x] Every price line can be traced to one SOP rule.
+- [x] No model output field can override a calculated amount.
 
 Evidence to record:
 
-- [ ] Pricing test command and passing output: ____________________.
-- [ ] Golden-path expected line items and total fixture: ____________________.
-- [ ] Example trace from module selection to SOP rule to subtotal: ____________________.
+- [x] Pricing test command and passing output: `docs/evidence/DAY_3_PRICING_EVIDENCE.md` — 32 focused tests and 51 full-suite tests passed.
+- [x] Golden-path expected line items and total fixture: `tests/fixtures/pricing_golden_path.json` — USD 5,650 from four SOP modules.
+- [x] Example trace from module selection to SOP rule to subtotal: `docs/evidence/DAY_3_PRICING_EVIDENCE.md`.
 
 Move-on gate:
 
-- [ ] DAY 3 PASS — all pricing tests pass and zero commercial values originate from model prose.
+- [x] DAY 3 PASS — all pricing tests pass and zero commercial values originate from model prose.
 
 ### Day 4 — Deterministic timeline, immutable scope versions, and state machines
 
-Status: LOCKED.
+Status: COMPLETE — deterministic timeline, state, and immutable-version gates passed on 2026-08-28.
 
 Daily outcome: duration and workflow transitions are deterministic, legal, and unable to mutate an accepted baseline.
 
 Implementation checklist:
 
-- [ ] Implement the documented base-duration plus non-parallel incremental-days algorithm.
-- [ ] Resolve and validate module dependencies before calculating duration.
-- [ ] Honor each module parallelizable rule.
-- [ ] Define project, artifact, proposal, change-order, and scope-event enums.
-- [ ] Define allowed state transitions in code.
-- [ ] Reject illegal transitions with a typed domain error.
-- [ ] Implement immutable ScopeVersion snapshots.
-- [ ] Implement proposal and change-order version numbering.
-- [ ] Separate pre-acceptance proposal revision from post-acceptance change order.
-- [ ] Include SOP version and calculation inputs in every commercial artifact.
+- [x] Implement the documented base-duration plus non-parallel incremental-days algorithm.
+- [x] Resolve and validate module dependencies before calculating duration.
+- [x] Honor each module parallelizable rule.
+- [x] Define project, artifact, proposal, change-order, and scope-event enums.
+- [x] Define allowed state transitions in code.
+- [x] Reject illegal transitions with a typed domain error.
+- [x] Implement immutable ScopeVersion snapshots.
+- [x] Implement proposal and change-order version numbering.
+- [x] Separate pre-acceptance proposal revision from post-acceptance change order.
+- [x] Include SOP version and calculation inputs in every commercial artifact.
 
 Verification and success checklist:
 
-- [ ] Same inputs always produce the same duration.
-- [ ] Dependency-order and parallelizable-module tests pass.
-- [ ] Draft cannot transition directly to sent.
-- [ ] Rejected or stale artifacts cannot be approved or sent.
-- [ ] Accepted ScopeVersion cannot be edited in place.
-- [ ] Pre-acceptance change creates a proposal revision.
-- [ ] Post-acceptance change creates a change order.
+- [x] Same inputs always produce the same duration.
+- [x] Dependency-order and parallelizable-module tests pass.
+- [x] Draft cannot transition directly to sent.
+- [x] Rejected or stale artifacts cannot be approved or sent.
+- [x] Accepted ScopeVersion cannot be edited in place.
+- [x] Pre-acceptance change creates a proposal revision.
+- [x] Post-acceptance change creates a change order.
 
 Evidence to record:
 
-- [ ] Timeline test output: ____________________.
-- [ ] State-transition matrix and test output: ____________________.
-- [ ] Immutable-baseline test output: ____________________.
+- [x] Timeline test output: `docs/evidence/DAY_4_TIMELINE_AND_STATE_EVIDENCE.md`.
+- [x] State-transition matrix and test output: `scopelock/domain/state_machines.py` and `docs/evidence/DAY_4_TIMELINE_AND_STATE_EVIDENCE.md`.
+- [x] Immutable-baseline test output: `docs/evidence/DAY_4_TIMELINE_AND_STATE_EVIDENCE.md`.
 
 Move-on gate:
 
-- [ ] DAY 4 PASS — deterministic timeline, legal transitions, and immutable-baseline tests all pass.
+- [x] DAY 4 PASS — deterministic timeline, legal transitions, and immutable-baseline tests all pass.
 
 ### Day 5 — Scope Analyzer and semantic classification corpus
 
-Status: LOCKED.
+Status: COMPLETE — reviewed 25-case native ADK corpus and measured semantic metrics passed on 2026-08-28.
 
 Daily outcome: a second typed ADK agent compares new messages with accepted scope and proposes evidence-backed scope events.
 
 Implementation checklist:
 
-- [ ] Define typed ScopeEventProposal and ScopeAnalysis contracts.
-- [ ] Implement the scope_analyzer ADK sub-agent.
-- [ ] Expose only read-only baseline, thread-context, and SOP tools.
-- [ ] Require evidence from the current message, accepted baseline, and SOP when applicable.
-- [ ] Add labels for NO_CHANGE, CLARIFICATION, AMBIGUOUS, EXPANSION, REDUCTION, REPLACEMENT, and CLOSURE.
-- [ ] Add configurable high, medium, and low confidence thresholds.
-- [ ] Route low-confidence commercial cases to NEEDS_REVIEW.
-- [ ] Prevent the agent from calculating commercial deltas.
-- [ ] Create 20–30 reviewed labeled cases covering all classes and multiple-change messages.
+- [x] Define typed ScopeEventProposal and ScopeAnalysis contracts.
+- [x] Implement the scope_analyzer ADK sub-agent.
+- [x] Expose only read-only baseline, thread-context, and SOP tools.
+- [x] Require evidence from the current message, accepted baseline, and SOP when applicable.
+- [x] Add labels for NO_CHANGE, CLARIFICATION, AMBIGUOUS, EXPANSION, REDUCTION, REPLACEMENT, and CLOSURE.
+- [x] Add configurable high, medium, and low confidence thresholds.
+- [x] Route low-confidence commercial cases to NEEDS_REVIEW.
+- [x] Prevent the agent from calculating commercial deltas.
+- [x] Create 20–30 reviewed labeled cases covering all classes and multiple-change messages.
 
 Verification and success checklist:
 
-- [ ] Dashboard-title rename produces NO_CHANGE or CLARIFICATION and zero proposed commercial change.
-- [ ] LINE integration request produces EXPANSION with a valid module key.
-- [ ] Manager-approval request produces the expected material classification.
-- [ ] Reduction and replacement cases reference the affected baseline requirements.
-- [ ] Ambiguous and low-confidence cases require human review.
-- [ ] Invalid-module rate and evidence coverage are calculated from the corpus.
-- [ ] Accuracy, per-class precision/recall, and expansion recall are recorded without invented metrics.
+- [x] Dashboard-title rename produces NO_CHANGE or CLARIFICATION and zero proposed commercial change.
+- [x] LINE integration request produces EXPANSION with a valid module key.
+- [x] Manager-approval request produces the expected material classification.
+- [x] Reduction and replacement cases reference the affected baseline requirements.
+- [x] Ambiguous and low-confidence cases require human review.
+- [x] Invalid-module rate and evidence coverage are calculated from the corpus.
+- [x] Accuracy, per-class precision/recall, and expansion recall are recorded without invented metrics.
 
 Evidence to record:
 
-- [ ] Labeled corpus path and reviewer: ____________________.
-- [ ] Native ADK eval output: ____________________.
-- [ ] Baseline metrics report: ____________________.
+- [x] Labeled corpus path and reviewer: `tests/fixtures/scope_analyzer_cases.json`; specification review recorded in the fixture metadata.
+- [x] Native ADK eval output: `docs/evidence/DAY_5_SCOPE_ANALYZER_EVIDENCE.md` — 25 passed, 0 failed.
+- [x] Baseline metrics report: `docs/evidence/DAY_5_SCOPE_METRICS.json` and `docs/evidence/DAY_5_SCOPE_ANALYZER_EVIDENCE.md`.
 
 Move-on gate:
 
-- [ ] DAY 5 PASS — the reviewed corpus runs and measured semantic metrics are recorded with no unreviewed commercial action.
+- [x] DAY 5 PASS — the reviewed corpus runs and measured semantic metrics are recorded with no unreviewed commercial action.
 
 ### Day 6 — ADK trajectories and approval safety suite
 
-Status: LOCKED.
+Status: COMPLETE — native ADK trajectory and deterministic approval safety gates passed on 2026-08-28.
 
 Daily outcome: tests prove required tool order and make all unapproved commercial sends impossible.
 
 Implementation checklist:
 
-- [ ] Add the initial-proposal ADK trajectory case.
-- [ ] Add the scope-expansion ADK trajectory case.
-- [ ] Assert required read-only tool ordering.
-- [ ] Assert forbidden tools/actions before approval.
-- [ ] Implement a deterministic approval policy service.
-- [ ] Implement a send stub that rejects missing, stale, rejected, or mismatched approval.
-- [ ] Add tests for failed model runs, malformed outputs, low confidence, stale artifacts, and repeated send requests.
-- [ ] Add correlation and idempotency keys to external-action intents.
+- [x] Add the initial-proposal ADK trajectory case.
+- [x] Add the scope-expansion ADK trajectory case.
+- [x] Assert required read-only tool ordering.
+- [x] Assert forbidden tools/actions before approval.
+- [x] Implement a deterministic approval policy service.
+- [x] Implement a send stub that rejects missing, stale, rejected, or mismatched approval.
+- [x] Add tests for failed model runs, malformed outputs, low confidence, stale artifacts, and repeated send requests.
+- [x] Add correlation and idempotency keys to external-action intents.
 
 Verification and success checklist:
 
-- [ ] Initial trajectory stops at AWAITING_USER_REVIEW.
-- [ ] Expansion trajectory stops at a buffered or consolidated artifact awaiting review.
-- [ ] Missing approval cannot call the send stub.
-- [ ] Approval for an old checksum cannot send a newer artifact.
-- [ ] Repeated send requests result in one send intent.
-- [ ] Failed or ambiguous agent runs produce reviewable failures.
-- [ ] Approval-gate violations equal zero.
+- [x] Initial trajectory stops at AWAITING_USER_REVIEW.
+- [x] Expansion trajectory stops at a buffered or consolidated artifact awaiting review.
+- [x] Missing approval cannot call the send stub.
+- [x] Approval for an old checksum cannot send a newer artifact.
+- [x] Repeated send requests result in one send intent.
+- [x] Failed or ambiguous agent runs produce reviewable failures.
+- [x] Approval-gate violations equal zero.
 
 Evidence to record:
 
-- [ ] ADK trajectory report: ____________________.
-- [ ] Approval-policy test output: ____________________.
-- [ ] Forbidden-action test output: ____________________.
+- [x] ADK trajectory report: `docs/evidence/DAY_6_TRAJECTORY_AND_APPROVAL_EVIDENCE.md` — 2 passed, 0 failed.
+- [x] Approval-policy test output: `docs/evidence/DAY_6_TRAJECTORY_AND_APPROVAL_EVIDENCE.md`.
+- [x] Forbidden-action test output: `docs/evidence/DAY_6_TRAJECTORY_AND_APPROVAL_EVIDENCE.md`.
 
 Move-on gate:
 
-- [ ] DAY 6 PASS — every safety invariant passes; any failure blocks all integrations and UI work.
+- [x] DAY 6 PASS — every safety invariant passes; any failure blocks all integrations and UI work.
 
 ### Day 7 — Local initial-proposal vertical path
 
-Status: LOCKED.
+Status: ACTIVE — Days 4–6 passed on 2026-08-28.
 
 Daily outcome: one local command turns the golden email into a complete deterministic proposal awaiting approval.
 

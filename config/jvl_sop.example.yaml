@@ -2,6 +2,8 @@
 # Replace amounts/timelines with final confirmed JVL demo SOP values.
 # Amounts below are illustrative USD demo values, not live pricing.
 
+version: jvl-demo-v1
+
 business:
   name: JVL
   currency: USD
@@ -35,6 +37,9 @@ modules:
       - additional external integrations
       - custom mobile application
       - 24/7 managed operations
+      - customer-facing AI response generation
+    scope_rules:
+      material_if_added: true
 
   - key: email_intake
     name: Gmail Intake Integration
@@ -54,6 +59,8 @@ modules:
       - inbound email parsing
     excluded:
       - multi-mailbox routing
+    scope_rules:
+      material_if_added: true
 
   - key: operations_dashboard
     name: Operations Dashboard
@@ -75,6 +82,8 @@ modules:
     excluded:
       - advanced BI modeling
       - custom mobile dashboard
+    scope_rules:
+      material_if_added: true
 
   - key: email_notifications
     name: Email Notification Workflow
@@ -92,6 +101,8 @@ modules:
       - predefined notification events
     excluded:
       - marketing campaigns
+    scope_rules:
+      material_if_added: true
 
   - key: line_notifications
     name: LINE Notification Integration
@@ -112,6 +123,8 @@ modules:
     excluded:
       - LINE mini app
       - conversational chatbot
+    scope_rules:
+      material_if_added: true
 
   - key: line_approval
     name: LINE Approval Workflow
@@ -132,3 +145,5 @@ modules:
       - authorized manager flow
     excluded:
       - complex multi-step approval matrix
+    scope_rules:
+      material_if_added: true
