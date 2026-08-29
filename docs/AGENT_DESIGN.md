@@ -63,7 +63,7 @@ RequirementAnalysis:
 ### Constraint
 It may only select SOP module keys that exist in the provided catalog.
 
-Requirement Analyzer v4 is catalog-driven. It retains valid supported mappings
+Requirement Analyzer v5 is catalog-driven. It retains valid supported mappings
 when an email also asks for unsupported work, records the unsupported work with
 Gmail evidence, sets `proposal_ready=false`, and blocks commercial artifacts.
 Requested deadlines and budgets are client constraints only; they never change
@@ -128,7 +128,7 @@ ScopeEventProposal:
 
 > If the business fulfilled this new request, would it perform materially different work from the currently agreed/proposed scope?
 
-Scope Analyzer v2 emits one event per independent change and deduplicates
+Scope Analyzer v4 emits one event per independent change and deduplicates
 equivalent wording. Zero events are allowed only for irrelevant/system noise;
 relevant benign messages remain `NO_CHANGE` or `CLARIFICATION`. A response may
 contain at most one `CLOSURE`, and closure may coexist with several material
@@ -275,8 +275,8 @@ The "improvement" is:
 Store a version string with every AgentRun.
 
 Examples:
-- `requirement_analyzer_v4`
-- `scope_analyzer_v2`
+- `requirement_analyzer_v5`
+- `scope_analyzer_v4`
 
 Any prompt change should:
 1. update version;

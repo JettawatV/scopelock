@@ -1,6 +1,6 @@
 {
   "fixture_set_id": "scopelock_scope_analyzer_reviewed_v1",
-  "prompt_version": "scope_analyzer_v3",
+  "prompt_version": "scope_analyzer_v4",
   "review_status": "specification_reviewed",
   "reviewer": "Codex implementation review against the user-approved Day 5 checklist and ScopeLock domain/eval specifications",
   "reviewed_on": "2026-08-27",

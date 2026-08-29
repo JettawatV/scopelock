@@ -8,18 +8,23 @@ version = "0.1.0"
 description = "ADK-first, approval-gated scope management agent"
 requires-python = ">=3.13"
 dependencies = [
+  "fastapi>=0.116,<1",
   "google-adk[gcp,eval]>=2.8.0,<3",
+  "google-api-python-client>=2.179,<3",
+  "google-auth-oauthlib>=1.2,<2",
   "google-cloud-firestore>=2.21,<3",
   "pydantic>=2.10,<3",
   "python-dotenv>=1.0,<2",
   "pyyaml>=6.0,<7",
+  "uvicorn>=0.35,<1",
 ]
 
 [project.scripts]
 scopelock-local = "scopelock.cli:main"
+scopelock-gmail-auth = "scopelock.services.gmail_oauth:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0,<9"]
+dev = ["pytest>=9.0.3,<10"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

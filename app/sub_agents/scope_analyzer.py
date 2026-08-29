@@ -8,7 +8,7 @@ from scopelock.domain.models import ScopeAnalysis
 from scopelock.settings import agent_generate_config, build_model
 
 
-PROMPT_VERSION = "scope_analyzer_v3"
+PROMPT_VERSION = "scope_analyzer_v4"
 
 
 INSTRUCTION = """You analyze one new inbound message against an existing project.
@@ -43,7 +43,13 @@ Atomic event policy:
   three EXPANSION events, not one bundled expansion.
 - NO_CHANGE means a relevant presentation, branding, label, title, color, or
   wording request already covered by the baseline package.
-- CLARIFICATION supplies precise details for existing work without new work.
+- Coverage takes precedence: when the baseline or a selected module inclusion
+  explicitly covers the requested implementation item or detail, classify it
+  as NO_CHANGE even when the client says "add". For example, a standard date
+  filter is NO_CHANGE when basic filters are already included.
+- CLARIFICATION supplies a previously unspecified operational value for
+  existing work—such as a trigger condition, mailbox address, category set, or
+  recipient—without requesting a new implementation item.
 - AMBIGUOUS is tentative, contradictory, future, or insufficiently specified.
 - A grammatically complete capability request is not AMBIGUOUS merely because
   it is phrased as a question. Explicit future language, deferral, or a request
@@ -53,9 +59,11 @@ Atomic event policy:
 - Use REPLACEMENT only for one explicitly substitutive change such as "replace"
   or "instead of". When the client separately says to remove one item and add
   another, return independent REDUCTION and EXPANSION events.
-- A separately stated recipient, schedule, category, filter, label, or other
-  operational value is its own CLARIFICATION event, including when it follows a
-  material event and describes the newly requested work.
+- A separately stated recipient, schedule, category set, trigger value, or
+  other previously unspecified operational value is its own CLARIFICATION
+  event, including when it follows a material event and describes newly
+  requested work. If the baseline explicitly includes that exact detail,
+  classify it as NO_CHANGE instead.
 - CLOSURE records explicit completion/finalization language and may coexist with
   any number of independent material events. Return at most one CLOSURE event.
 

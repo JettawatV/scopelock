@@ -5,6 +5,10 @@
 *.json.key
 *service-account*.json
 *application_default_credentials*.json
+client_secret*.json
+credentials.json
+gmail_token*.json
+token.json
 
 # Python
 .venv/

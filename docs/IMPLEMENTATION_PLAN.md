@@ -54,6 +54,8 @@ Do not build UI polish before this works.
 
 ## Phase 2 — Gmail autonomous trigger
 
+Implementation state: **CODE COMPLETE; LIVE GOOGLE CONFIGURATION PENDING.**
+
 Build:
 - Google OAuth setup;
 - Gmail `users.watch`;
@@ -71,6 +73,8 @@ Sending an email to demo mailbox causes a new Firestore project/event without ma
 
 ## Phase 3 — Proposal approval and send
 
+Implementation state: **CODE COMPLETE; LIVE SAME-THREAD SEND PENDING.**
+
 Build:
 - proposal generator;
 - artifact storage;
@@ -86,6 +90,8 @@ Inbound requirement email -> generated proposal -> user approval -> Gmail reply 
 ---
 
 ## Phase 4 — Scope Buffer and revision
+
+Implementation state: **CODE COMPLETE; LIVE THREAD ACCEPTANCE PATH PENDING.**
 
 Build:
 - project/thread continuation detection;

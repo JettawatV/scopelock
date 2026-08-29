@@ -235,7 +235,10 @@ class AdkAgentGateway:
     @staticmethod
     def _input_text(route: AgentRoute, context: AnalysisContext) -> str:
         if route == AgentRoute.SCOPE_ANALYSIS:
-            assert context.current_scope is not None
+            if context.current_scope is None:
+                raise SemanticContractViolation(
+                    "Scope analysis requires an active immutable scope"
+                )
             return (
                 f"CURRENT_MESSAGE_ID: {context.current_email.message_id}\n"
                 f"PROJECT_ID: {context.current_scope.project_id}\n"

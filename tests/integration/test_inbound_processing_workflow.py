@@ -74,7 +74,7 @@ class FakeGateway:
             output,
             correlation_id=correlation_id,
             agent_name="scope_analyzer",
-            prompt_version="scope_analyzer_v3",
+            prompt_version="scope_analyzer_v4",
         )
 
 

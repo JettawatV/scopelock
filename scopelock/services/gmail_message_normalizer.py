@@ -19,11 +19,17 @@ from scopelock.domain.workflow_models import (
     InboundEmail,
     ThreadMessageContext,
 )
+from scopelock.security import require_bounded_identifier, require_email_address
 
 
 CURRENT_BODY_LIMIT = 20_000
 PRIOR_MESSAGE_LIMIT = 4_000
 PRIOR_MESSAGE_COUNT = 5
+MAX_MIME_PARTS = 200
+MAX_MIME_DEPTH = 20
+MAX_ENCODED_TEXT_PART_LENGTH = 512 * 1024
+MAX_ATTACHMENTS = 50
+MAX_HEADERS = 200
 
 
 class _TextExtractor(HTMLParser):
@@ -59,6 +65,9 @@ class _TextExtractor(HTMLParser):
 def _decode_data(value: str | None) -> str:
     if not value:
         return ""
+    if len(value) > MAX_ENCODED_TEXT_PART_LENGTH:
+        value = value[:MAX_ENCODED_TEXT_PART_LENGTH]
+        value = value[: len(value) - (len(value) % 4)]
     padding = "=" * (-len(value) % 4)
     try:
         return base64.urlsafe_b64decode(value + padding).decode("utf-8", errors="replace")
@@ -68,17 +77,35 @@ def _decode_data(value: str | None) -> str:
 
 def _headers(payload: Mapping[str, Any]) -> dict[str, str]:
     return {
-        str(item.get("name", "")).casefold(): str(item.get("value", ""))
-        for item in payload.get("headers", [])
+        str(item.get("name", ""))[:128].casefold(): _clean_header(
+            str(item.get("value", ""))
+        )
+        for item in (payload.get("headers", []) or [])[:MAX_HEADERS]
         if isinstance(item, Mapping)
     }
 
 
 def _walk_parts(payload: Mapping[str, Any]) -> Iterable[Mapping[str, Any]]:
-    yield payload
-    for part in payload.get("parts", []) or []:
-        if isinstance(part, Mapping):
-            yield from _walk_parts(part)
+    stack: list[tuple[Mapping[str, Any], int]] = [(payload, 0)]
+    observed = 0
+    while stack and observed < MAX_MIME_PARTS:
+        part, depth = stack.pop()
+        observed += 1
+        yield part
+        if depth >= MAX_MIME_DEPTH:
+            continue
+        children = part.get("parts", []) or []
+        if isinstance(children, list):
+            stack.extend(
+                (child, depth + 1)
+                for child in reversed(children)
+                if isinstance(child, Mapping)
+            )
+
+
+def _clean_header(value: str, *, limit: int = 998) -> str:
+    cleaned = "".join(" " if ord(character) < 32 else character for character in value)
+    return " ".join(cleaned.split())[:limit]
 
 
 def _html_to_text(value: str) -> str:
@@ -147,14 +174,17 @@ def normalize_gmail_message(
         filename = str(part.get("filename", ""))
         attachment_id = body.get("attachmentId")
         if filename or attachment_id:
-            attachments.append(
-                EmailAttachmentMetadata(
-                    filename=filename,
-                    mime_type=mime_type or "application/octet-stream",
-                    size=int(body.get("size") or 0),
-                    attachment_id=str(attachment_id) if attachment_id else None,
+            if len(attachments) < MAX_ATTACHMENTS:
+                attachments.append(
+                    EmailAttachmentMetadata(
+                        filename=_clean_header(filename, limit=255),
+                        mime_type=(mime_type or "application/octet-stream")[:255],
+                        size=min(int(body.get("size") or 0), 50 * 1024 * 1024),
+                        attachment_id=(
+                            str(attachment_id)[:256] if attachment_id else None
+                        ),
+                    )
                 )
-            )
             continue
         decoded = _decode_data(body.get("data"))
         if not decoded:
@@ -175,23 +205,32 @@ def normalize_gmail_message(
         body_format = EmailBodyFormat.EMPTY
 
     body_text = strip_quoted_history_and_signature(raw_body)[:CURRENT_BODY_LIMIT]
-    sender_name, sender_email = parseaddr(headers.get("from", ""))
+    sender_name, parsed_sender_email = parseaddr(headers.get("from", ""))
+    try:
+        sender_email = require_email_address(
+            parsed_sender_email, label="Gmail sender address"
+        )
+    except ValueError:
+        sender_email = ""
     recipients = tuple(
-        address.casefold()
+        normalized
         for _, address in getaddresses(
             [headers.get("to", ""), headers.get("cc", "")]
         )
         if address
+        for normalized in _validated_email(address)
     )
     normalized_account = account_email.casefold() if account_email else None
     auto_submitted = headers.get("auto-submitted", "").casefold()
     precedence = headers.get("precedence", "").casefold()
-    if normalized_account and sender_email.casefold() == normalized_account:
+    if normalized_account and sender_email == normalized_account:
         direction = EmailDirection.OUTBOUND
     elif (
+        not sender_email
+        or
         (auto_submitted and auto_submitted != "no")
         or precedence in {"bulk", "junk", "list"}
-        or "mailer-daemon" in sender_email.casefold()
+        or "mailer-daemon" in sender_email
     ):
         direction = EmailDirection.AUTOMATED
     else:
@@ -202,12 +241,18 @@ def normalize_gmail_message(
             "utf-8"
         )
     ).hexdigest()
+    message_id = require_bounded_identifier(
+        str(message.get("id") or ""), label="Gmail message id"
+    )
+    thread_id = require_bounded_identifier(
+        str(message.get("threadId") or ""), label="Gmail thread id"
+    )
     return InboundEmail(
-        message_id=str(message.get("id") or ""),
-        thread_id=str(message.get("threadId") or ""),
+        message_id=message_id,
+        thread_id=thread_id,
         history_id=str(message.get("historyId")) if message.get("historyId") else None,
-        sender_name=sender_name or sender_email,
-        sender_email=sender_email.casefold(),
+        sender_name=_clean_header(sender_name or sender_email, limit=320),
+        sender_email=sender_email,
         recipient_emails=recipients,
         subject=headers.get("subject", "").strip(),
         body=body_text,
@@ -217,6 +262,13 @@ def normalize_gmail_message(
         raw_content_hash=raw_hash,
         attachments=tuple(attachments),
     )
+
+
+def _validated_email(value: str) -> tuple[str, ...]:
+    try:
+        return (require_email_address(value, label="Gmail recipient address"),)
+    except ValueError:
+        return ()
 
 
 def bounded_thread_context(

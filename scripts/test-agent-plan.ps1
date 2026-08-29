@@ -27,7 +27,7 @@ try {
         }
         $evals = @(
             @("tests\eval\requirement_analyzer.evalset.json", "tests\eval\requirement_analyzer.config.json", "scopelock_requirement_analyzer_v5"),
-            @("tests\eval\scope_analyzer.evalset.json", "tests\eval\scope_analyzer.config.json", "scopelock_scope_analyzer_v3"),
+            @("tests\eval\scope_analyzer.evalset.json", "tests\eval\scope_analyzer.config.json", "scopelock_scope_analyzer_v4"),
             @("tests\eval\workflow_trajectories.evalset.json", "tests\eval\workflow_trajectories.config.json", "scopelock_workflow_trajectories_v1")
         )
         foreach ($eval in $evals) {

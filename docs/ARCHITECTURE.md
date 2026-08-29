@@ -143,12 +143,39 @@ Never commit tokens or client secrets.
 
 ### Pre-activation hold
 
-The pre-Gmail flexibility gate passed on 2026-08-28, so OAuth client setup,
-credential verification, History API integration, Pub/Sub delivery, and
-`users.watch` implementation may proceed during Day 11. Keep continuous
-mailbox delivery disabled until the Day 11 read, history-resolution,
-duplicate-delivery, and same-thread checks pass. The frontend remains locked
-until the Gmail agent path is reliable.
+The pre-Gmail flexibility gate and the Days 11–13 code gate passed on
+2026-08-29. `scopelock.http_api` now exposes the authenticated Pub/Sub endpoint
+and operator commands; application services own watch/history checkpoints,
+approval-bound drafts/sends, and scope revision acceptance. Keep continuous
+mailbox delivery disabled until the Day 11 real read, history-resolution,
+duplicate-delivery, and same-thread checks pass. The frontend remains locked.
+
+OAuth files are ignored for local development. Hosted refresh-token JSON must
+come from Secret Manager through `SCOPELOCK_GMAIL_TOKEN_JSON`; it must never be
+placed in an image, agent session state, log, or source file. Operator commands
+require a separate `X-ScopeLock-Operator-Key`, while Pub/Sub push requires a
+verified Google OIDC token with the configured audience and exact push service
+account.
+
+The production runtime has no OIDC-disable setting. HTTP request bodies are
+bounded, API documentation is disabled, external errors are redacted, and
+operator secrets are checked using fixed-length constant-time digests. Cloud Run
+must remain IAM-authenticated, with separate runtime and Pub/Sub push service
+accounts and Secret Manager access limited to the runtime identity.
+
+Pub/Sub processing records carry an atomic expiring worker lease. Active leases
+block duplicate work, expired leases can be reclaimed after a crash, and Gmail
+history checkpoints advance through monotonic compare-and-set updates so
+concurrent events cannot roll the mailbox backward. Page/message/MIME/thread
+limits fail closed to durable recovery instead of sending unbounded content to
+ADK.
+
+Commercial reply composition validates RFC headers and binds the recipient and
+source message to the project's client and Gmail thread. Scope acceptance is a
+separate human command, but it must cite a persisted inbound Gmail message from
+that same client/thread; operator free text cannot create acceptance evidence.
+The complete activation and incident controls are in
+`docs/GMAIL_SECURITY_GATE.md`.
 
 ---
 

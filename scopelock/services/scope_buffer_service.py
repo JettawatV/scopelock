@@ -191,6 +191,7 @@ class ScopeBufferService:
 
         pricing = self._pricing.calculate(buffer.proposed_module_selections)
         timeline = self._timeline.calculate(buffer.proposed_module_selections)
+        artifact_id = stable_id("artifact", baseline.project_id, buffer.id)
         proposed_scope = create_scope_version(
             project_id=baseline.project_id,
             existing=existing_scopes,
@@ -201,8 +202,9 @@ class ScopeBufferService:
             assumptions=baseline.assumptions,
             exclusions=baseline.exclusions,
             scope_version_id=stable_id(
-                "scope", baseline.project_id, buffer.id, str(len(existing_scopes) + 1)
+                "scope", baseline.project_id, buffer.id
             ),
+            source_artifact_id=artifact_id,
             created_at=created_at,
         )
         invalidated: CommercialArtifact | None = None
@@ -229,11 +231,9 @@ class ScopeBufferService:
             proposed_scope=proposed_scope,
             existing=existing_artifacts,
             accepted_baseline=accepted_baseline,
-            artifact_id=stable_id(
-                "artifact", baseline.project_id, buffer.id, str(len(existing_artifacts) + 1)
-            ),
+            artifact_id=artifact_id,
             created_at=created_at,
-        )
+        ).model_copy(update={"source_buffer_id": buffer.id})
         return BufferArtifactResult(
             buffer=buffer,
             proposed_scope=proposed_scope,

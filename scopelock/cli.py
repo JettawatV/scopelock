@@ -25,7 +25,8 @@ def _initial_proposal(args: argparse.Namespace) -> int:
     result = None
     for _ in range(args.repeat):
         result = workflow.run(email)
-    assert result is not None
+    if result is None:
+        raise RuntimeError("Initial proposal rehearsal did not execute")
     print(
         json.dumps(
             {

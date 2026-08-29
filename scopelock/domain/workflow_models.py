@@ -33,34 +33,36 @@ from scopelock.domain.models import (
 
 
 class InboundEmail(StrictFrozenContractModel):
-    message_id: str
-    thread_id: str
-    sender_name: str
-    sender_email: str
-    subject: str
-    body: str
+    message_id: str = Field(min_length=1, max_length=256)
+    thread_id: str = Field(min_length=1, max_length=256)
+    sender_name: str = Field(default="", max_length=320)
+    sender_email: str = Field(default="", max_length=320)
+    subject: str = Field(default="", max_length=998)
+    body: str = Field(default="", max_length=20_000)
     received_at: datetime
-    history_id: str | None = None
-    recipient_emails: tuple[str, ...] = ()
+    history_id: str | None = Field(default=None, max_length=32, pattern=r"^\d+$")
+    recipient_emails: tuple[str, ...] = Field(default=(), max_length=100)
     direction: EmailDirection = EmailDirection.INBOUND
     body_format: EmailBodyFormat = EmailBodyFormat.PLAIN
     raw_content_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
-    attachments: tuple["EmailAttachmentMetadata", ...] = ()
+    attachments: tuple["EmailAttachmentMetadata", ...] = Field(
+        default=(), max_length=50
+    )
 
 
 class EmailAttachmentMetadata(StrictFrozenContractModel):
-    filename: str
-    mime_type: str
-    size: int = Field(default=0, ge=0, strict=True)
-    attachment_id: str | None = None
+    filename: str = Field(default="", max_length=255)
+    mime_type: str = Field(min_length=1, max_length=255)
+    size: int = Field(default=0, ge=0, le=50 * 1024 * 1024, strict=True)
+    attachment_id: str | None = Field(default=None, max_length=256)
 
 
 class ThreadMessageContext(StrictFrozenContractModel):
-    message_id: str
+    message_id: str = Field(min_length=1, max_length=256)
     direction: EmailDirection
-    sender_email: str
-    subject: str
-    body: str
+    sender_email: str = Field(default="", max_length=320)
+    subject: str = Field(default="", max_length=998)
+    body: str = Field(default="", max_length=4_000)
     received_at: datetime
 
 
@@ -212,6 +214,77 @@ class AuditRecord(StrictFrozenContractModel):
     correlation_id: str
     payload: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
+
+
+class GmailWatchRecord(StrictFrozenContractModel):
+    id: str
+    mailbox: str
+    topic_name: str
+    history_id: str
+    expiration: datetime
+    created_at: datetime
+
+
+class GmailHistoryCheckpoint(StrictFrozenContractModel):
+    id: str
+    mailbox: str
+    history_id: str
+    updated_at: datetime
+
+
+class GmailEventBatchResult(StrictFrozenContractModel):
+    id: str
+    pubsub_message_id: str
+    mailbox: str
+    notification_history_id: str
+    status: Literal[
+        "PROCESSING",
+        "IGNORED_OUT_OF_ORDER",
+        "COMPLETED",
+        "FAILED",
+        "FULL_SYNC_REQUIRED",
+    ]
+    start_history_id: str | None = None
+    checkpoint_history_id: str | None = None
+    gmail_message_ids: tuple[str, ...] = ()
+    processing_result_ids: tuple[str, ...] = ()
+    error: str | None = None
+    replayed: bool = False
+    processing_attempt_id: str | None = Field(default=None, max_length=64)
+    lease_expires_at: datetime | None = None
+    created_at: datetime
+    completed_at: datetime | None = None
+
+
+class GmailDraftRecord(StrictFrozenContractModel):
+    id: str
+    artifact_id: str
+    approval_id: str
+    artifact_checksum: str = Field(pattern=r"^[0-9a-f]{64}$")
+    gmail_thread_id: str
+    gmail_draft_id: str | None = None
+    gmail_message_id: str | None = None
+    status: Literal["CREATING", "CREATED", "FAILED_UNCERTAIN"]
+    idempotency_key: str = Field(pattern=r"^[0-9a-f]{64}$")
+    correlation_id: str
+    created_at: datetime
+
+
+class GmailSendRecord(StrictFrozenContractModel):
+    id: str
+    send_intent_id: str
+    artifact_id: str
+    approval_id: str
+    artifact_checksum: str = Field(pattern=r"^[0-9a-f]{64}$")
+    gmail_thread_id: str
+    gmail_draft_id: str
+    gmail_message_id: str | None = None
+    status: Literal["SENDING", "SENT", "FAILED_UNCERTAIN"]
+    idempotency_key: str = Field(pattern=r"^[0-9a-f]{64}$")
+    correlation_id: str
+    error: str | None = None
+    attempted_at: datetime
+    completed_at: datetime | None = None
 
 
 class ModuleReplacement(StrictFrozenContractModel):

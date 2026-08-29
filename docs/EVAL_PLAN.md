@@ -152,8 +152,8 @@ Any violation is a release blocker.
 
 ## 8. Eval corpus
 
-The reviewed native ADK corpora currently contain 12 Requirement Analyzer v4
-cases and 35 Scope Analyzer v2 cases.
+The reviewed native ADK corpora currently contain 12 Requirement Analyzer v5
+cases and 35 Scope Analyzer v4 cases.
 
 `evals/scopelock_eval_cases.jsonl` contains starter cases.
 
@@ -241,8 +241,8 @@ The gate passes only when all of the following are true:
 4. Typed schemas expose no pricing, timeline, approval, or send fields.
 5. Unknown modules, missing evidence, commercial language, malformed output,
    and model exceptions fail closed before any commercial record or send.
-6. Requirement Analyzer v4 passes all 12 reviewed native cases.
-7. Scope Analyzer v2 passes all 35 reviewed native cases.
+6. Requirement Analyzer v5 passes all 12 reviewed native cases.
+7. Scope Analyzer v4 passes all 35 reviewed native cases.
 8. Both live ADK trajectory cases pass with no unexpected or forbidden action.
 9. Golden, mixed-scope, Thai, deadline, prompt-injection, and multi-change cases
    each pass three consecutive live runs: 18/18 total.

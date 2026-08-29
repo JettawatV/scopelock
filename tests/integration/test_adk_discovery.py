@@ -84,7 +84,7 @@ def test_requirement_analyzer_contains_golden_readiness_policy():
 
 
 def test_scope_analyzer_has_typed_read_only_scope_policy():
-    assert SCOPE_PROMPT_VERSION == "scope_analyzer_v3"
+    assert SCOPE_PROMPT_VERSION == "scope_analyzer_v4"
     assert scope_analyzer.output_schema.__name__ == "ScopeAnalysis"
     assert "get_current_scope(project_id)" in scope_analyzer.instruction
     assert "get_recent_thread_context(project_id)" in scope_analyzer.instruction

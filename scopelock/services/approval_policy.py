@@ -28,17 +28,21 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def artifact_content_checksum(artifact: CommercialArtifact) -> str:
-    """Hash immutable commercial content while excluding workflow metadata."""
-
+def artifact_content_bytes(artifact: CommercialArtifact) -> bytes:
+    """Canonical reviewed commercial bytes, excluding workflow metadata."""
     payload = artifact.model_dump(mode="json", exclude={"status", "checksum"})
-    canonical = json.dumps(
+    return json.dumps(
         payload,
         ensure_ascii=True,
         separators=(",", ":"),
         sort_keys=True,
     ).encode("utf-8")
-    return hashlib.sha256(canonical).hexdigest()
+
+
+def artifact_content_checksum(artifact: CommercialArtifact) -> str:
+    """Hash immutable commercial content while excluding workflow metadata."""
+
+    return hashlib.sha256(artifact_content_bytes(artifact)).hexdigest()
 
 
 def _copy_artifact(
@@ -218,8 +222,14 @@ class InMemorySendStub:
         created_at: datetime | None = None,
     ) -> SendIntent:
         self._policy.authorize_send(artifact, approval)
-        assert approval is not None
-        assert artifact.checksum is not None
+        if approval is None:
+            raise ApprovalPolicyViolation(
+                "MISSING_APPROVAL", "An explicit approval is required"
+            )
+        if artifact.checksum is None:
+            raise ApprovalPolicyViolation(
+                "MISSING_CHECKSUM", "Artifact is not sealed for review"
+            )
 
         key = send_idempotency_key(
             artifact,

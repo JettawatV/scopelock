@@ -32,6 +32,11 @@ class CollectionName(StrEnum):
     AUDIT_RECORDS = "audit_records"
     APPROVALS = "approvals"
     SENDS = "sends"
+    GMAIL_WATCHES = "gmail_watches"
+    GMAIL_CHECKPOINTS = "gmail_checkpoints"
+    PUBSUB_EVENTS = "pubsub_events"
+    GMAIL_DRAFTS = "gmail_drafts"
+    GMAIL_SEND_RESULTS = "gmail_send_results"
     EVAL_RESULTS = "eval_results"
     WORKFLOW_RESULTS = "workflow_results"
     GOLDEN_PATH_RESULTS = "golden_path_results"
@@ -88,6 +93,20 @@ class ModelStore:
         )
         return model_type.model_validate(stored.payload) if stored else None
 
+    def get_document(
+        self,
+        collection: CollectionName,
+        document_id: str,
+    ) -> StoredDocument | None:
+        """Return persistence metadata for workflows that need explicit CAS."""
+
+        return self._persist(
+            lambda: self.repository.get(
+                collection=collection.value,
+                document_id=document_id,
+            )
+        )
+
     def find_by_unique_key(
         self,
         collection: CollectionName,
@@ -128,14 +147,20 @@ class ModelStore:
         model: BaseModel,
         *,
         make_immutable: bool = False,
+        expected_revision: int | None = None,
     ) -> StoredDocument:
         document_id = self._model_id(model)
-        current = self.require_document(collection, document_id)
+        current = (
+            self.require_document(collection, document_id)
+            if expected_revision is None
+            else None
+        )
+        revision = expected_revision if expected_revision is not None else current.revision
         return self._persist(
             lambda: self.repository.compare_and_set(
                 collection=collection.value,
                 document_id=document_id,
-                expected_revision=current.revision,
+                expected_revision=revision,
                 payload=model.model_dump(mode="json"),
                 make_immutable=make_immutable,
             )

@@ -75,7 +75,7 @@ try {
             -EvalSelector $scope `
             -AgentPath $scopeAgent `
             -ConfigPath "tests\eval\scope_analyzer.config.json" `
-            -ResultPattern "scopelock_scope_analyzer_v3" `
+            -ResultPattern "scopelock_scope_analyzer_v4" `
             -ExpectedCases 1 `
             -Iteration $iteration
     }
@@ -84,7 +84,7 @@ try {
         gate = "pre_gmail_flexibility_live_repeatability"
         prompt_versions = @(
             "requirement_analyzer_v5",
-            "scope_analyzer_v3"
+            "scope_analyzer_v4"
         )
         expected_runs = 18
         passed_runs = ($runs | Measure-Object -Property passed -Sum).Sum

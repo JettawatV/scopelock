@@ -20,16 +20,19 @@ The frozen P0 loop is the priority: inbound Gmail event → requirement analysis
 
 ## Current progress checklist
 
-Last reviewed: **2026-08-28**
+Last reviewed: **2026-08-29**
 
 Current active day: **Day 11 — real Gmail OAuth and event integration**
 
-Immediate next evidence: configure a dedicated Gmail OAuth client with
-least-privilege scopes, complete a real read-only mailbox/thread smoke test,
-then prove History API resolution and duplicate-safe Pub/Sub handling before
-enabling continuous `users.watch` delivery.
+Immediate next evidence: complete the owner-only controls in
+`docs/GMAIL_SECURITY_GATE.md` and the Google Cloud/Gmail steps in
+`docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md`, then run the real mailbox replay and
+same-thread continuation checks. The Days 11–13 code and automated security gate
+are complete; live external activation remains intentionally off.
 
-Next unlock: **Day 12 remains locked until the Day 11 live Gmail event gate is checked.**
+Next unlock: **Day 12 and Day 13 live gates remain locked until the Day 11 real
+Gmail event gate is checked. Their application code and automated tests are
+already implemented.**
 
 ### Completed implementation
 
@@ -46,7 +49,7 @@ Next unlock: **Day 12 remains locked until the Day 11 live Gmail event gate is c
 - [x] Requirement Analyzer v2 readiness policy implemented for the golden path.
 - [x] Requirement mapping instruction updated to require ID plus human-readable description.
 - [x] Day 0 risk register added with blocking risks and exit evidence.
-- [x] Python 3.13.14 environment, 144-package lockfile, clean install, ADK discovery, and current 121-test suite verified.
+- [x] Python 3.13.14 environment, 152-package lockfile, clean install, ADK discovery, and current 187-test suite verified.
 - [x] Day 3 strict SOP validation, deterministic USD PricingEngine, immutable pricing records, and golden pricing fixture verified.
 - [x] Day 4 deterministic timeline, explicit state transitions, immutable ScopeVersion records, and proposal/change-order numbering verified.
 - [x] Day 5 typed Scope Analyzer and 25-case native ADK corpus verified with measured 100% exact classification, 100% evidence coverage, and 0% invalid modules in the recorded run.
@@ -59,8 +62,12 @@ Next unlock: **Day 12 remains locked until the Day 11 live Gmail event gate is c
 - [x] Pre-Day 11 hardening added least-privilege tool contracts, semantic fail-closed validation, failure-isolation tests, approval/evidence invariants, and a one-command 133-test gate.
 - [x] Live Scope Analyzer rerun passed 25/25 and live workflow trajectories passed 2/2 on 2026-08-28.
 - [x] Requirement Analyzer v3 focused live rerun passed 5/5 on 2026-08-28; this narrow result is preserved as superseded evidence.
-- [x] Pre-Gmail flexibility/runtime patch implemented with deterministic routing, direct sub-agent invocation, realistic Gmail normalization, Thai/mixed-scope handling, source-bound evidence, and 166 passing tests under Python 3.13.14.
-- [x] Requirement Analyzer v4 passed 12/12, Scope Analyzer v2 passed 35/35, workflow trajectories passed 2/2, and the production-shaped repeatability gate passed 18/18.
+- [x] Pre-Gmail flexibility/runtime patch implemented with deterministic routing, direct sub-agent invocation, realistic Gmail normalization, Thai/mixed-scope handling, and source-bound evidence.
+- [x] Requirement Analyzer v5 passed 12/12, Scope Analyzer v4 passed 35/35, workflow trajectories passed 2/2, and the final repeatability gate passed 18/18 on 2026-08-29.
+- [x] Days 11–13 application code added for OAuth loading, users.watch, authenticated Pub/Sub push, History API checkpoints, approval-bound same-thread draft/send, scope revision finalization, and explicit acceptance.
+- [x] Pre-OAuth security/refactor gate added exact-scope token validation, mandatory OIDC, bounded HTTP/Gmail input, atomic event leases, monotonic checkpoints, recipient/thread binding, evidence-bound acceptance, and redacted errors.
+- [x] Python 3.13 deterministic suite expanded to 187 passing tests, including 21 Gmail/security/approval/revision integration tests.
+- [x] Bandit and final dependency audit pass with zero findings; pytest was upgraded to 9.1.1 to remove `PYSEC-2026-1845`.
 - [x] Frontend/UI work explicitly held until the ADK agent gates pass.
 
 ### Evidence gates
@@ -550,9 +557,9 @@ Move-on gate:
 
 ### Day 11 — Gmail OAuth, watch, Pub/Sub, and History API
 
-Status: ACTIVE — the flexibility/runtime hardening gate has passed. Real Gmail
-OAuth and event plumbing may now be implemented; continuous mailbox delivery
-stays disabled until the Day 11 live integration checks pass.
+Status: CODE COMPLETE / LIVE GATE ACTIVE — continuous mailbox delivery stays
+disabled until the project owner completes OAuth/Pub/Sub configuration and the
+Day 11 real integration checks pass.
 
 Daily outcome: a real inbound Gmail message wakes ScopeLock and resolves exactly one new thread message.
 
@@ -578,41 +585,61 @@ Pre-Gmail flexibility/runtime hardening checklist:
 - [x] Support 0–10 atomic scope events, compound changes, and closure plus material events; fail 11+ closed.
 - [x] Bind Gmail, baseline, quote, module, quantity, and SOP-version evidence to authoritative application records.
 - [x] Persist application-owned inbound results, AgentRuns, redacted ToolActions, decisions, events, and replay outcomes.
-- [x] Pass the expanded deterministic gate: 166 passed, 0 failed under Python 3.13.14.
-- [x] Pass Requirement Analyzer v4 native ADK eval: 12/12.
-- [x] Pass Scope Analyzer v2 native ADK eval: 35/35.
+- [x] Pass the expanded deterministic gate: 187 passed, 0 failed under Python 3.13.14.
+- [x] Pass Requirement Analyzer v5 native ADK eval: 12/12.
+- [x] Pass Scope Analyzer v4 native ADK eval: 35/35.
 - [x] Pass workflow trajectory native ADK eval: 2/2.
 - [x] Pass focused live repeatability: 18/18 across golden, mixed, Thai, deadline, prompt-injection, and multi-change cases.
 - [x] Prove `adk run app` and `adk web` remain discoverable with the current package.
 - [x] Record result filenames and final decision in `docs/evidence/PRE_GMAIL_FLEXIBILITY_PATCH.md`.
 
+Pre-OAuth security/refactor checklist:
+
+- [x] Threat-model Gmail OAuth, Pub/Sub push, untrusted email, operator commands, Firestore state, commercial sends, and hosted logs.
+- [x] Remove the production OIDC-disable switch and verify audience, exact service-account email, and verified-email claim.
+- [x] Limit HTTP bodies, Pub/Sub data, Gmail batches/pages, MIME parts/depth, headers, body text, attachments, and thread context.
+- [x] Add atomic expiring Pub/Sub processing leases and monotonic CAS history checkpoints.
+- [x] Reject OAuth tokens with missing or extra scopes and harden local credential reads/writes.
+- [x] Bind same-thread commercial drafts to the project client as sender/recipient and reject RFC header injection.
+- [x] Require persisted same-client/same-thread Gmail evidence before canonical scope acceptance.
+- [x] Redact external/runtime error messages and disable production API docs/OpenAPI.
+- [x] Run secret/credential filename scans, Bandit, package compatibility, and `pip-audit`.
+- [x] Upgrade pytest to 9.1.1 and pass the final vulnerability audit with no known findings.
+- [ ] Complete the owner-only IAM, Secret Manager, dedicated-mailbox, logging, quota, retry/dead-letter, and token-revocation controls in `docs/GMAIL_SECURITY_GATE.md`.
+- [ ] Record sanitized hosted attack/recovery checks before activating `users.watch` and real Pub/Sub delivery.
+
 - [ ] Create or confirm the dedicated demo Gmail account.
-- [ ] Configure the least-privilege Gmail OAuth scopes.
-- [ ] Store OAuth client configuration and tokens outside source control.
+- [x] Enforce exactly `gmail.readonly` plus `gmail.compose` in application code; reject broad mailbox scope.
+- [ ] Complete the OAuth consent screen and authorize the dedicated demo account.
+- [x] Ignore local OAuth files and support Secret Manager-injected token JSON for Cloud Run.
+- [ ] Store the real OAuth client/token through the documented local/Secret Manager path.
 - [ ] Configure the Pub/Sub topic and push subscription.
-- [ ] After the hardening gate passes, implement Gmail users.watch setup and renewal tracking.
-- [ ] Implement the Pub/Sub push endpoint and notification decoding.
-- [ ] Persist the last processed Gmail history checkpoint.
-- [ ] Resolve notifications through the Gmail History API.
-- [ ] Parse sender, recipients, subject, body, message ID, thread ID, and timestamps.
-- [ ] Ignore sent mail and unrelated mailbox changes.
-- [ ] Associate continuation messages with the correct project/thread.
+- [x] Implement Gmail users.watch setup, project/topic validation, expiration, and checkpoint-preserving renewal.
+- [x] Implement the Pub/Sub push endpoint, OIDC verification, and notification decoding.
+- [x] Persist the last processed Gmail history checkpoint.
+- [x] Resolve notifications through paginated Gmail History API `messagesAdded` records.
+- [x] Parse sender, recipients, subject, body, message ID, thread ID, timestamps, and attachment metadata.
+- [x] Ignore sent/automated/empty mail before model invocation and ignore irrelevant project mail without artifact creation.
+- [x] Associate continuation messages with the project through the unique Gmail thread key.
 
 Verification and success checklist:
 
 - [x] Pre-Gmail flexibility/runtime hardening gate is fully checked.
 - [ ] A real inbound email creates one Firestore project/event without opening ScopeLock.
 - [ ] The history ID resolves the expected message and thread.
-- [ ] Replayed Pub/Sub delivery creates no duplicate record or artifact.
+- [x] Automated replay, active/stale lease, concurrent checkpoint, and out-of-order Pub/Sub tests create no second workflow call or checkpoint regression.
 - [ ] A second real message in the same thread attaches to the same project.
-- [ ] OAuth scopes and secret handling are documented.
-- [ ] Watch expiration and renewal behavior are visible.
+- [x] OAuth scopes and secret handling are documented in `docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md`.
+- [x] Pre-connection threat model, code controls, owner controls, attack checks, and incident stop conditions are documented in `docs/GMAIL_SECURITY_GATE.md`.
+- [x] Watch expiration and renewal behavior are persisted and covered by automated tests.
 
 Evidence to record:
 
 - [ ] Sanitized Gmail/Pub/Sub configuration record: ____________________.
 - [ ] First real inbound-event logs: ____________________.
-- [ ] Replay and same-thread test output: ____________________.
+- [x] Automated replay and same-thread test output: `tests/integration/test_gmail_days_11_13.py`.
+- [x] Code and agent evidence: `docs/evidence/DAY_11_13_CODE_EVIDENCE.md`.
+- [x] Automated security evidence: `docs/evidence/PRE_GMAIL_SECURITY_EVIDENCE.md`.
 
 Move-on gate:
 
@@ -620,35 +647,35 @@ Move-on gate:
 
 ### Day 12 — Approval API and Gmail draft/send integration
 
-Status: LOCKED.
+Status: CODE COMPLETE / LIVE GATE LOCKED BY DAY 11.
 
 Daily outcome: an operator can review an artifact and send it in the original Gmail thread only after explicit approval.
 
 Implementation checklist:
 
-- [ ] Implement read, approve, reject, and edit/revise application commands or endpoints.
-- [ ] Bind approval to artifact ID, version, checksum, approver, and timestamp.
-- [ ] Implement Gmail draft creation in the original thread.
-- [ ] Implement a deterministic send service behind approval policy.
-- [ ] Attach or link the deterministic proposal artifact.
-- [ ] Add send idempotency keys.
-- [ ] Record approval, draft, send attempt, Gmail message ID, thread ID, checksum, result, and error.
-- [ ] Prevent agent tools from calling Gmail send directly.
+- [x] Implement operator-key-protected read, approve, reject, revise, draft, and send endpoints.
+- [x] Bind approval to artifact ID, version, checksum, approver, correlation ID, and timestamp.
+- [x] Implement Gmail draft creation with thread ID, matching subject, `In-Reply-To`, and `References`.
+- [x] Implement deterministic send execution behind `ApprovalPolicy` with no blind external retry.
+- [x] Attach the exact canonical reviewed commercial bytes.
+- [x] Add draft/send idempotency keys and durable pending/result records.
+- [x] Record approval, draft, send attempt, Gmail message ID, thread ID, checksum, result, and error.
+- [x] Keep Gmail send absent from every ADK tool allowlist.
 
 Verification and success checklist:
 
 - [ ] Initial inbound email can reach generated artifact and explicit approval.
 - [ ] Approved artifact sends in the original Gmail thread.
-- [ ] Missing, rejected, stale, or checksum-mismatched approval is rejected and logged.
-- [ ] Repeating the send request does not duplicate the email.
-- [ ] Editing an artifact invalidates the previous approval.
-- [ ] Sent message and artifact are traceable to the exact approved bytes/data.
+- [x] Automated policy tests reject missing, rejected, stale, or checksum-mismatched approval.
+- [x] Automated replay returns the existing send result and invokes the Gmail gateway once.
+- [x] Revision requests make the reviewed artifact stale and invalidate its approval for draft/send.
+- [x] Draft/send records trace the intent, approval, artifact checksum, Gmail IDs, and exact attached bytes.
 
 Evidence to record:
 
-- [ ] Approval-policy integration test: ____________________.
+- [x] Approval-policy integration test: `tests/integration/test_gmail_days_11_13.py`.
 - [ ] Same-thread Gmail send evidence: ____________________.
-- [ ] Duplicate-send prevention output: ____________________.
+- [x] Automated duplicate-send prevention: `test_approval_creates_same_thread_draft_and_replay_sends_once`.
 
 Move-on gate:
 
@@ -656,7 +683,7 @@ Move-on gate:
 
 ### Day 13 — Live Gmail scope monitoring and revision send
 
-Status: LOCKED.
+Status: CODE COMPLETE / LIVE GATE LOCKED BY DAY 11.
 
 Daily outcome: real follow-up messages become scope events, consolidate correctly, and produce an approval-gated revision.
 
@@ -665,26 +692,26 @@ Implementation checklist:
 - [ ] Send the harmless clarification through the live Gmail thread.
 - [ ] Send the material expansion through the same thread.
 - [ ] Send the closure message through the same thread.
-- [ ] Persist every ScopeEvent and ScopeBuffer update.
-- [ ] Recalculate deterministic commercial impact immediately after material input.
-- [ ] Consolidate related changes on closure or finalize.
-- [ ] Expose operator review and approval for the revision/change order.
-- [ ] Send the approved artifact in the original thread.
-- [ ] Create a new canonical ScopeVersion only after the documented acceptance rule.
+- [x] Persist every ScopeEvent and ScopeBuffer update through the application repository.
+- [x] Recalculate deterministic commercial impact immediately after material input.
+- [x] Consolidate related changes on semantic closure, quiet-window expiry, or manual finalize.
+- [x] Expose protected finalize, review, approval, draft, send, and acceptance commands.
+- [x] Route an approved revision through the same original-thread send service.
+- [x] Create and activate the canonical ScopeVersion only after a sent artifact is explicitly accepted with persisted same-client/same-thread Gmail evidence.
 
 Verification and success checklist:
 
-- [ ] Clarification creates no commercial artifact.
-- [ ] Expansion displays the correct immediate price/timeline delta.
-- [ ] Closure creates one consolidated artifact.
-- [ ] The artifact remains unsent until approval.
+- [x] Automated workflow tests prove clarification creates no commercial artifact.
+- [x] Automated buffer tests prove expansion immediately records deterministic price/timeline delta.
+- [x] Automated closure/finalize tests create one consolidated review artifact.
+- [x] Approval-policy tests prove the artifact remains unsent until approval.
 - [ ] Approved revision/change order sends once in the same Gmail thread.
 - [ ] Accepted baseline history remains intact.
 
 Evidence to record:
 
 - [ ] Live thread message IDs and sanitized event log: ____________________.
-- [ ] Scope buffer and delta evidence: ____________________.
+- [x] Automated scope buffer, delta, and canonical acceptance evidence: `tests/integration/test_gmail_days_11_13.py`.
 - [ ] Approved revision/send evidence: ____________________.
 
 Move-on gate:

@@ -175,6 +175,7 @@ class CommercialArtifact(StrictFrozenContractModel):
     change_order_number: int | None = Field(default=None, ge=1, strict=True)
     baseline_scope_version_id: str | None = None
     proposed_scope_version_id: str
+    source_buffer_id: str | None = None
     status: ArtifactStatus
     sop_version: str
     calculation_inputs: tuple[ModuleQuantity, ...]

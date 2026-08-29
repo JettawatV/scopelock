@@ -86,7 +86,7 @@ def test_frozen_agent_roster_schemas_and_least_privilege_tools():
 
 def test_agent_prompts_keep_routing_tool_order_and_commerce_boundaries_explicit():
     assert REQUIREMENT_PROMPT_VERSION == "requirement_analyzer_v5"
-    assert SCOPE_PROMPT_VERSION == "scope_analyzer_v3"
+    assert SCOPE_PROMPT_VERSION == "scope_analyzer_v4"
     assert "immediately transfer to requirement_analyzer" in root_agent.instruction
     assert "immediately\ntransfer to the scope_analyzer" in root_agent.instruction
     assert "Do not calculate price" in root_agent.instruction
@@ -112,6 +112,7 @@ def test_agent_prompts_keep_routing_tool_order_and_commerce_boundaries_explicit(
     assert positions == sorted(positions)
     assert "one event for each independent client change" in scope_prompt
     assert "A coordinated noun list can contain multiple atomic changes" in scope_prompt
+    assert "Coverage takes precedence" in scope_prompt
     assert "Never mutate state" in scope_prompt
     assert "or send email" in scope_prompt
     assert "Return only ScopeAnalysis" in scope_prompt

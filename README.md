@@ -20,6 +20,7 @@ context documents if there is a conflict.
 - `docs/DAILY_IMPLEMENTATION_PLAN.md` — granular daily checklists, evidence, and move-on gates
 - `docs/RISK_REGISTER.md` — active delivery, safety, integration, and demo risks
 - `docs/FIRESTORE_SCHEMA.md` — persistent collection ownership, unique keys, and CAS rules
+- `docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md` — exact owner actions and live Gmail gate
 - `docs/LOCAL_DEMO_RUNBOOK.md` — exact non-UI golden-path rehearsal
 - `docs/MIDPOINT_REFACTOR.md` — shared persistence, identity, state, and workflow boundaries
 - `docs/HACKATHON_REQUIREMENTS.md` — concise guardrails; official uploaded rules override it
@@ -39,9 +40,8 @@ ScopeLock turns an inbound client email into an SOP-aligned proposal for review,
 
 ## Reproducible local setup
 
-ScopeLock requires Python 3.13. The verified development environment is
-`.venv313`; the older `.venv` uses Python 3.11 and is preserved only so an
-existing ADK session is not disrupted.
+ScopeLock requires Python 3.13. The verified ADK development environment is
+`.venv313`.
 
 From the repository root:
 
@@ -56,9 +56,9 @@ python -m pytest -q
 ```
 
 The project `uv.lock` pins the resolved dependency set. Verified on
-2026-08-28 with Python 3.13.14, ADK 2.8.0, Firestore 2.29.0, 144 locked
-packages, successful ADK discovery, and 121 passing tests. This uv-managed environment does not require an
-embedded `pip` module.
+2026-08-29 with Python 3.13.14, ADK 2.8.0, the Gmail API/OAuth clients,
+successful ADK discovery, and 176 passing tests. This uv-managed environment
+does not require an embedded `pip` module.
 
 ## Development workflow
 
@@ -70,11 +70,12 @@ ScopeLock (root agent)
 └── Scope Analyzer (typed existing-project change analysis)
 ```
 
-The Requirement Analyzer v3 corpus passes 5/5, the Scope Analyzer corpus passes
-25/25, and both native ADK trajectory cases pass. The agents are cleared for
-the Day 11 Gmail OAuth/event integration path. Frontend UI/UX remains locked
-until the later cloud integration gates in `docs/DAILY_IMPLEMENTATION_PLAN.md`
-pass.
+Requirement Analyzer v5 passes 12/12, Scope Analyzer v4 passes 35/35, both
+native ADK trajectory cases pass, and the focused repeatability gate passes
+18/18. The Days 11–13 application code is implemented; real Gmail/Google Cloud
+activation remains held until the owner completes
+`docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md` and records the live mailbox gates.
+Frontend UI/UX remains locked.
 
 The ADK app selector displays `app` because that name must match the
 discoverable `app/` package. The root agent inside it is named `scopelock`.
@@ -163,6 +164,20 @@ is enabled. To check configuration without changing cloud state:
 ```powershell
 .\scripts\configure-gcp.ps1 -VerifyOnly
 ```
+
+### Gmail runtime
+
+The FastAPI-compatible Gmail/event and operator-command surface lives at
+`scopelock.http_api:app`. It keeps OAuth, History API, approval, draft/send,
+and scope-version mutation outside ADK tools.
+
+```powershell
+uvicorn scopelock.http_api:app --host 127.0.0.1 --port 8080
+```
+
+Follow `docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md` before calling `/gmail/watch` or
+connecting a Pub/Sub push subscription. No commercial email is sent without a
+current approval bound to the exact artifact version and checksum.
 
 ## Repository layout
 
