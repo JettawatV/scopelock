@@ -37,15 +37,21 @@ class PubSubOidcVerifier:
         ):
             raise PubSubAuthenticationError("Malformed Pub/Sub bearer token")
         try:
+            from google.auth import exceptions as auth_exceptions
             from google.auth.transport.requests import Request
             from google.oauth2 import id_token
         except ImportError as error:  # pragma: no cover - dependency guard
             raise RuntimeError("Install google-auth to verify Pub/Sub OIDC") from error
-        claims = WorkflowExecutionBoundaries.external_read(
-            lambda: id_token.verify_oauth2_token(
-                token, Request(), audience=self._audience
+        try:
+            claims = WorkflowExecutionBoundaries.external_read(
+                lambda: id_token.verify_oauth2_token(
+                    token, Request(), audience=self._audience
+                )
             )
-        )
+        except auth_exceptions.TransportError as error:
+            raise RuntimeError("Pub/Sub token verification is unavailable") from error
+        except (auth_exceptions.GoogleAuthError, ValueError) as error:
+            raise PubSubAuthenticationError("Invalid Pub/Sub bearer token") from error
         email = str(claims.get("email") or "").casefold()
         if email != self._service_account_email or claims.get("email_verified") is not True:
             raise PubSubAuthenticationError(

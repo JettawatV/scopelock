@@ -49,7 +49,7 @@ already implemented.**
 - [x] Requirement Analyzer v2 readiness policy implemented for the golden path.
 - [x] Requirement mapping instruction updated to require ID plus human-readable description.
 - [x] Day 0 risk register added with blocking risks and exit evidence.
-- [x] Python 3.13.14 environment, 152-package lockfile, clean install, ADK discovery, and current 187-test suite verified.
+- [x] Python 3.13.14 environment, 152-package lockfile, clean install, ADK discovery, and current 191-test suite verified.
 - [x] Day 3 strict SOP validation, deterministic USD PricingEngine, immutable pricing records, and golden pricing fixture verified.
 - [x] Day 4 deterministic timeline, explicit state transitions, immutable ScopeVersion records, and proposal/change-order numbering verified.
 - [x] Day 5 typed Scope Analyzer and 25-case native ADK corpus verified with measured 100% exact classification, 100% evidence coverage, and 0% invalid modules in the recorded run.
@@ -66,7 +66,7 @@ already implemented.**
 - [x] Requirement Analyzer v5 passed 12/12, Scope Analyzer v4 passed 35/35, workflow trajectories passed 2/2, and the final repeatability gate passed 18/18 on 2026-08-29.
 - [x] Days 11–13 application code added for OAuth loading, users.watch, authenticated Pub/Sub push, History API checkpoints, approval-bound same-thread draft/send, scope revision finalization, and explicit acceptance.
 - [x] Pre-OAuth security/refactor gate added exact-scope token validation, mandatory OIDC, bounded HTTP/Gmail input, atomic event leases, monotonic checkpoints, recipient/thread binding, evidence-bound acceptance, and redacted errors.
-- [x] Python 3.13 deterministic suite expanded to 187 passing tests, including 21 Gmail/security/approval/revision integration tests.
+- [x] Python 3.13 deterministic suite expanded to 191 passing tests, including 25 Gmail/security/approval/revision integration tests.
 - [x] Bandit and final dependency audit pass with zero findings; pytest was upgraded to 9.1.1 to remove `PYSEC-2026-1845`.
 - [x] Frontend/UI work explicitly held until the ADK agent gates pass.
 
@@ -585,7 +585,7 @@ Pre-Gmail flexibility/runtime hardening checklist:
 - [x] Support 0–10 atomic scope events, compound changes, and closure plus material events; fail 11+ closed.
 - [x] Bind Gmail, baseline, quote, module, quantity, and SOP-version evidence to authoritative application records.
 - [x] Persist application-owned inbound results, AgentRuns, redacted ToolActions, decisions, events, and replay outcomes.
-- [x] Pass the expanded deterministic gate: 187 passed, 0 failed under Python 3.13.14.
+- [x] Pass the expanded deterministic gate: 191 passed, 0 failed under Python 3.13.14.
 - [x] Pass Requirement Analyzer v5 native ADK eval: 12/12.
 - [x] Pass Scope Analyzer v4 native ADK eval: 35/35.
 - [x] Pass workflow trajectory native ADK eval: 2/2.

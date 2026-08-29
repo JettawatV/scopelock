@@ -122,6 +122,15 @@ def _secret_matches(candidate: str, expected: str) -> bool:
     return hmac.compare_digest(candidate_digest, expected_digest)
 
 
+def _pubsub_verifier() -> PubSubOidcVerifier:
+    return PubSubOidcVerifier(
+        audience=_required_env("SCOPELOCK_PUBSUB_AUDIENCE"),
+        service_account_email=_required_env(
+            "SCOPELOCK_PUBSUB_PUSH_SERVICE_ACCOUNT"
+        ),
+    )
+
+
 def build_default_runtime() -> GmailApiRuntime:
     from google.cloud import firestore
 
@@ -146,12 +155,7 @@ def build_default_runtime() -> GmailApiRuntime:
         repository=repository,
         artifact_root=PROJECT_ROOT / "artifacts",
     )
-    verifier = PubSubOidcVerifier(
-        audience=_required_env("SCOPELOCK_PUBSUB_AUDIENCE"),
-        service_account_email=_required_env(
-            "SCOPELOCK_PUBSUB_PUSH_SERVICE_ACCOUNT"
-        ),
-    )
+    verifier = _pubsub_verifier()
     return GmailApiRuntime(
         event_service=GmailEventService(
             gateway=gateway,
@@ -252,15 +256,38 @@ def create_app(
             ) from error
 
     def operator_runtime(
-        configured: GmailApiRuntime = Depends(runtime),
         operator_key: str | None = Header(
             default=None, alias="X-ScopeLock-Operator-Key"
         ),
     ) -> GmailApiRuntime:
+        if runtime_provider is None:
+            try:
+                expected_key = _operator_secret()
+            except Exception as error:
+                safe_error = redacted_error(
+                    error, operation="operator authentication configuration"
+                )
+                raise HTTPException(status_code=503, detail=safe_error) from error
+            if (
+                not operator_key
+                or len(operator_key) > 512
+                or not _secret_matches(operator_key, expected_key)
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid operator API key",
+                    headers={"WWW-Authenticate": "ScopeLockOperatorKey"},
+                )
+        configured = runtime()
         if (
-            not operator_key
-            or len(operator_key) > 512
-            or not _secret_matches(operator_key, configured.operator_api_key)
+            runtime_provider is not None
+            and (
+                not operator_key
+                or len(operator_key) > 512
+                or not _secret_matches(
+                    operator_key, configured.operator_api_key
+                )
+            )
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -276,12 +303,16 @@ def create_app(
     @app.post("/webhooks/gmail")
     async def gmail_webhook(
         request: Request,
-        configured: GmailApiRuntime = Depends(runtime),
         authorization: str | None = Header(default=None),
     ) -> dict[str, Any]:
         try:
-            if configured.pubsub_verifier is not None:
-                configured.pubsub_verifier.verify(authorization)
+            if runtime_provider is None:
+                _pubsub_verifier().verify(authorization)
+                configured = runtime()
+            else:
+                configured = runtime()
+                if configured.pubsub_verifier is not None:
+                    configured.pubsub_verifier.verify(authorization)
             raw_body = await request.body()
             try:
                 envelope = json.loads(raw_body)

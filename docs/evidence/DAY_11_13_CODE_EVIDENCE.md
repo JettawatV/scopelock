@@ -11,7 +11,7 @@ Command:
 ```
 
 Result after the Gmail runtime and pre-connection security additions:
-`187 passed` under Python 3.13.14 and pytest 9.1.1.
+`191 passed` under Python 3.13.14 and pytest 9.1.1.
 
 The dedicated Gmail integration corpus covers:
 

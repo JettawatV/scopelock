@@ -41,6 +41,8 @@ authorization decision.
   emits no-store/frame/nosniff/referrer security headers, bounds command fields,
   compares fixed-length operator-key hashes, and returns redacted error
   references rather than internal exception text.
+- Default operator and webhook routes reject invalid credentials before loading
+  Gmail OAuth credentials or initializing Gmail/Firestore clients.
 - Gmail notification IDs, history IDs, pagination, messages per event, MIME
   depth/part count, headers, text, attachments, and thread context are bounded.
   Attachment contents are never sent to an agent.

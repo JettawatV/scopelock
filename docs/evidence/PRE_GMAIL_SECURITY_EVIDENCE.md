@@ -16,6 +16,8 @@ draft, or external send was created by this pass.
   environment flag.
 - API request bodies are limited to 64 KiB; docs/OpenAPI are disabled; security
   headers and redacted error references are enforced.
+- Default webhook/operator authentication runs before Gmail OAuth, Gmail API,
+  or Firestore runtime initialization.
 - Operator keys require 32+ characters in the real runtime and are compared as
   fixed-length SHA-256 digests using constant-time comparison.
 - Gmail event processing has atomic expiring leases, bounded pages/messages,
@@ -37,11 +39,12 @@ Command:
 .\.venv313\Scripts\python.exe -m pytest -q
 ```
 
-Result: **187 passed**, 0 failed, under Python 3.13.14 and pytest 9.1.1.
+Result: **191 passed**, 0 failed, under Python 3.13.14 and pytest 9.1.1.
 
-The Gmail integration corpus contains 21 tests, including active/stale
+The Gmail integration corpus contains 25 tests, including active/stale
 processing leases, monotonic checkpoints, event/body limits, future-thread
-exclusion, header injection, exact OAuth scopes, client/thread recipient
+exclusion, OIDC bearer/audience/identity enforcement, header injection, exact
+OAuth scopes, client/thread recipient
 binding, acceptance evidence, error redaction, disabled docs, security headers,
 and invalid topic names.
 
@@ -52,6 +55,9 @@ and invalid topic names.
 - `uv pip check --python .venv313\Scripts\python.exe`: **150 packages compatible**.
 - Tracked/untracked source scan for Google API keys, OAuth access/refresh tokens,
   private-key blocks, and service-account private keys: **0 matches**.
+- All Git revisions were scanned by matching path only (without printing secret
+  values): **0 secret-pattern paths** and **0 suspicious credential filenames**.
+  The origin URL contains no embedded user information.
 - Tracked filename scan: no token, OAuth client-secret, credential, PEM, or P12
   artifact is tracked; `.env.example` is the expected non-secret template.
 - `git check-ignore` confirms `.env`, `secrets/client_secret.json`, and
@@ -61,6 +67,10 @@ and invalid topic names.
   **no known vulnerabilities found** (the local unpublished `scopelock` package
   is correctly reported as not present on PyPI).
 - `git diff --check` and Python compile checks pass.
+
+The final rerun after documentation reconciliation produced the same result:
+**191 tests passed, Bandit 0 findings, pip-audit 0 known vulnerabilities, source
+and Git-history secret scans 0 matches, and package compatibility passed**.
 
 The pytest advisory is local/Unix and development-only, but it was removed
 rather than waived. The patched range starts at pytest 9.0.3:

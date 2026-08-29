@@ -21,6 +21,7 @@ context documents if there is a conflict.
 - `docs/RISK_REGISTER.md` — active delivery, safety, integration, and demo risks
 - `docs/FIRESTORE_SCHEMA.md` — persistent collection ownership, unique keys, and CAS rules
 - `docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md` — exact owner actions and live Gmail gate
+- `docs/GMAIL_SECURITY_GATE.md` — pre-connection threat model, owner controls, attack checks, and stop conditions
 - `docs/LOCAL_DEMO_RUNBOOK.md` — exact non-UI golden-path rehearsal
 - `docs/MIDPOINT_REFACTOR.md` — shared persistence, identity, state, and workflow boundaries
 - `docs/HACKATHON_REQUIREMENTS.md` — concise guardrails; official uploaded rules override it
@@ -57,7 +58,7 @@ python -m pytest -q
 
 The project `uv.lock` pins the resolved dependency set. Verified on
 2026-08-29 with Python 3.13.14, ADK 2.8.0, the Gmail API/OAuth clients,
-successful ADK discovery, and 176 passing tests. This uv-managed environment
+successful ADK discovery, pytest 9.1.1, and 191 passing tests. This uv-managed environment
 does not require an embedded `pip` module.
 
 ## Development workflow
@@ -74,7 +75,8 @@ Requirement Analyzer v5 passes 12/12, Scope Analyzer v4 passes 35/35, both
 native ADK trajectory cases pass, and the focused repeatability gate passes
 18/18. The Days 11–13 application code is implemented; real Gmail/Google Cloud
 activation remains held until the owner completes
-`docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md` and records the live mailbox gates.
+`docs/GMAIL_SECURITY_GATE.md`, `docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md`, and the
+live mailbox gates.
 Frontend UI/UX remains locked.
 
 The ADK app selector displays `app` because that name must match the
@@ -175,9 +177,11 @@ and scope-version mutation outside ADK tools.
 uvicorn scopelock.http_api:app --host 127.0.0.1 --port 8080
 ```
 
-Follow `docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md` before calling `/gmail/watch` or
+Pass `docs/GMAIL_SECURITY_GATE.md`, then follow
+`docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md` before calling `/gmail/watch` or
 connecting a Pub/Sub push subscription. No commercial email is sent without a
-current approval bound to the exact artifact version and checksum.
+current approval bound to the exact artifact version and checksum; accepted
+scope also requires a persisted same-client/same-thread Gmail message.
 
 ## Repository layout
 

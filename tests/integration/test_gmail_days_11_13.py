@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
+import scopelock.http_api as http_api_module
 
 from scopelock.domain.enums import (
     AgentRoute,
@@ -71,6 +72,10 @@ from scopelock.services.scope_buffer_service import ScopeBufferService
 from scopelock.services.scope_revision_workflow import ScopeRevisionWorkflow
 from scopelock.services.sop_service import load_sop
 from scopelock.services.timeline_engine import TimelineEngine
+from scopelock.services.pubsub_auth import (
+    PubSubAuthenticationError,
+    PubSubOidcVerifier,
+)
 
 
 NOW = datetime(2026, 8, 29, 4, 0, tzinfo=timezone.utc)
@@ -886,3 +891,114 @@ def test_watch_rejects_topic_prefix_tricks():
             topic_name="projects/scopelock-506806/topics/../attacker",
             now=NOW,
         )
+
+
+def test_pubsub_oidc_rejects_missing_and_oversized_bearer_tokens():
+    verifier = PubSubOidcVerifier(
+        audience="https://scopelock.example",
+        service_account_email=(
+            "scopelock-push@scopelock-506806.iam.gserviceaccount.com"
+        ),
+    )
+    with pytest.raises(PubSubAuthenticationError, match="Missing"):
+        verifier.verify(None)
+    with pytest.raises(PubSubAuthenticationError, match="Malformed"):
+        verifier.verify("Bearer " + "a" * (16 * 1024 + 1))
+
+
+def test_pubsub_oidc_binds_audience_email_and_verified_claim(monkeypatch):
+    from google.oauth2 import id_token
+
+    expected_audience = "https://scopelock.example"
+    expected_email = "scopelock-push@scopelock-506806.iam.gserviceaccount.com"
+    observed = {}
+
+    def valid_claims(token, request, *, audience):
+        observed.update({"token": token, "audience": audience})
+        return {"email": expected_email, "email_verified": True}
+
+    monkeypatch.setattr(id_token, "verify_oauth2_token", valid_claims)
+    verifier = PubSubOidcVerifier(
+        audience=expected_audience,
+        service_account_email=expected_email,
+    )
+    claims = verifier.verify("Bearer signed-token")
+    assert claims["email"] == expected_email
+    assert observed == {
+        "token": "signed-token",
+        "audience": expected_audience,
+    }
+
+    monkeypatch.setattr(
+        id_token,
+        "verify_oauth2_token",
+        lambda *args, **kwargs: {
+            "email": "attacker@scopelock-506806.iam.gserviceaccount.com",
+            "email_verified": True,
+        },
+    )
+    with pytest.raises(PubSubAuthenticationError, match="not authorized"):
+        verifier.verify("Bearer wrong-identity")
+
+    monkeypatch.setattr(
+        id_token,
+        "verify_oauth2_token",
+        lambda *args, **kwargs: {
+            "email": expected_email,
+            "email_verified": False,
+        },
+    )
+    with pytest.raises(PubSubAuthenticationError, match="not authorized"):
+        verifier.verify("Bearer unverified-identity")
+
+    def invalid_signature(*args, **kwargs):
+        raise ValueError("invalid token signature")
+
+    monkeypatch.setattr(id_token, "verify_oauth2_token", invalid_signature)
+    with pytest.raises(PubSubAuthenticationError, match="Invalid"):
+        verifier.verify("Bearer invalid-signature")
+
+
+def test_webhook_requires_oidc_when_verifier_is_configured():
+    verifier = PubSubOidcVerifier(
+        audience="https://scopelock.example",
+        service_account_email=(
+            "scopelock-push@scopelock-506806.iam.gserviceaccount.com"
+        ),
+    )
+    runtime = GmailApiRuntime(
+        event_service=None,
+        watch_service=None,
+        commercial_service=None,
+        revision_workflow=None,
+        mailbox=MAILBOX,
+        topic_name=TOPIC,
+        operator_api_key="operator-secret",
+        pubsub_verifier=verifier,
+    )
+    response = TestClient(create_app(lambda: runtime)).post(
+        "/webhooks/gmail", json={}
+    )
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Pub/Sub authentication failed"}
+
+
+def test_default_routes_reject_auth_before_runtime_initialization(monkeypatch):
+    calls = []
+
+    def runtime_factory():
+        calls.append("initialized")
+        raise AssertionError("runtime must not initialize before authentication")
+
+    monkeypatch.setattr(http_api_module, "build_default_runtime", runtime_factory)
+    monkeypatch.setenv("SCOPELOCK_OPERATOR_API_KEY", "o" * 64)
+    monkeypatch.setenv("SCOPELOCK_PUBSUB_AUDIENCE", "https://scopelock.example")
+    monkeypatch.setenv(
+        "SCOPELOCK_PUBSUB_PUSH_SERVICE_ACCOUNT",
+        "scopelock-push@scopelock-506806.iam.gserviceaccount.com",
+    )
+    client = TestClient(http_api_module.create_app())
+
+    assert client.post("/gmail/watch").status_code == 401
+    assert client.post("/webhooks/gmail", json={}).status_code == 401
+    assert calls == []
