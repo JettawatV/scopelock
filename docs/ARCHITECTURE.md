@@ -177,6 +177,14 @@ that same client/thread; operator free text cannot create acceptance evidence.
 The complete activation and incident controls are in
 `docs/GMAIL_SECURITY_GATE.md`.
 
+The Cloud Run container starts through `scopelock.cloud_run`, validates hosted
+configuration without retaining secret values, runs as a non-root user, and
+accepts only Secret Manager-injected token JSON and operator credentials.
+Diagnostic proposal renders use `/tmp/scopelock-artifacts`; approved attachment
+bytes come from the immutable Firestore-owned commercial record rather than an
+ephemeral path. Deployment and IAM steps are in
+`docs/CLOUD_RUN_DEPLOYMENT.md`.
+
 ---
 
 ## 6. ADK role

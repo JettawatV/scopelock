@@ -49,7 +49,7 @@ already implemented.**
 - [x] Requirement Analyzer v2 readiness policy implemented for the golden path.
 - [x] Requirement mapping instruction updated to require ID plus human-readable description.
 - [x] Day 0 risk register added with blocking risks and exit evidence.
-- [x] Python 3.13.14 environment, 152-package lockfile, clean install, ADK discovery, and current 191-test suite verified.
+- [x] Python 3.13.14 environment, 152-package lockfile, clean install, ADK discovery, and current 203-test suite verified.
 - [x] Day 3 strict SOP validation, deterministic USD PricingEngine, immutable pricing records, and golden pricing fixture verified.
 - [x] Day 4 deterministic timeline, explicit state transitions, immutable ScopeVersion records, and proposal/change-order numbering verified.
 - [x] Day 5 typed Scope Analyzer and 25-case native ADK corpus verified with measured 100% exact classification, 100% evidence coverage, and 0% invalid modules in the recorded run.
@@ -608,12 +608,13 @@ Pre-OAuth security/refactor checklist:
 - [ ] Complete the owner-only IAM, Secret Manager, dedicated-mailbox, logging, quota, retry/dead-letter, and token-revocation controls in `docs/GMAIL_SECURITY_GATE.md`.
 - [ ] Record sanitized hosted attack/recovery checks before activating `users.watch` and real Pub/Sub delivery.
 
-- [ ] Create or confirm the dedicated demo Gmail account.
+- [X] Create or confirm the dedicated demo Gmail account.
 - [x] Enforce exactly `gmail.readonly` plus `gmail.compose` in application code; reject broad mailbox scope.
-- [ ] Complete the OAuth consent screen and authorize the dedicated demo account.
+- [X] Complete the OAuth consent screen and authorize the dedicated demo account.
 - [x] Ignore local OAuth files and support Secret Manager-injected token JSON for Cloud Run.
-- [ ] Store the real OAuth client/token through the documented local/Secret Manager path.
-- [ ] Configure the Pub/Sub topic and push subscription.
+- [x] Store the real OAuth client/token through the documented protected local path.
+- [ ] Copy the token and operator key into separate pinned Secret Manager versions.
+- [ ] Configure the Pub/Sub topic and authenticated push subscription.
 - [x] Implement Gmail users.watch setup, project/topic validation, expiration, and checkpoint-preserving renewal.
 - [x] Implement the Pub/Sub push endpoint, OIDC verification, and notification decoding.
 - [x] Persist the last processed Gmail history checkpoint.
@@ -635,7 +636,8 @@ Verification and success checklist:
 
 Evidence to record:
 
-- [ ] Sanitized Gmail/Pub/Sub configuration record: ____________________.
+- [x] Sanitized local OAuth configuration record: `docs/evidence/DAY_11_LOCAL_OAUTH_EVIDENCE.md`.
+- [ ] Sanitized hosted Gmail/Pub/Sub configuration record: ____________________.
 - [ ] First real inbound-event logs: ____________________.
 - [x] Automated replay and same-thread test output: `tests/integration/test_gmail_days_11_13.py`.
 - [x] Code and agent evidence: `docs/evidence/DAY_11_13_CODE_EVIDENCE.md`.
@@ -720,19 +722,19 @@ Move-on gate:
 
 ### Day 14 — Cloud Run deployment, IAM, and observability
 
-Status: LOCKED.
+Status: PREPARATION ACTIVE / LIVE DEPLOYMENT LOCKED BY DAYS 11–13.
 
 Daily outcome: the hosted Google Cloud workflow is reliable, visible, and safe under retries.
 
 Implementation checklist:
 
-- [ ] Build a production container for the ADK/FastAPI-compatible service.
+- [x] Build a production container definition for the ADK/FastAPI-compatible service.
 - [ ] Deploy the backend to Cloud Run.
 - [ ] Configure Vertex AI, Firestore, Pub/Sub push, Gmail credentials, and environment settings.
 - [ ] Scope service-account IAM to required services only.
-- [ ] Configure secrets through approved secret storage, not source or logs.
+- [x] Add Secret Manager-only hosted configuration contracts and build-context exclusions.
 - [ ] Add structured logs for correlation ID, project, agent run, tool action, state transition, artifact, approval, and send action.
-- [ ] Add health/readiness behavior.
+- [x] Add a no-runtime-initialization health endpoint and fail-closed hosted startup preflight.
 - [ ] Add timeout, retry, and dead-letter handling where appropriate.
 - [ ] Prepare a short Cloud Logging/Trace view for the demo.
 
@@ -747,7 +749,9 @@ Verification and success checklist:
 
 Evidence to record:
 
-- [ ] Cloud Run revision and deployment command: ____________________.
+- [x] Container/IAM/deployment runbook: `docs/CLOUD_RUN_DEPLOYMENT.md`.
+- [x] Local container-readiness evidence: `docs/evidence/DAY_14_CONTAINER_READINESS_EVIDENCE.md`.
+- [ ] Cloud Run revision and executed deployment command: ____________________.
 - [ ] Sanitized IAM review: ____________________.
 - [ ] Hosted golden-path trace/log link: ____________________.
 - [ ] Retry/idempotency test output: ____________________.

@@ -65,9 +65,9 @@ authorization decision.
 
 ## Owner-only Google Cloud checklist
 
-- [ ] Use a dedicated demo Gmail account with no personal or unrelated client
+- [x] Use a dedicated demo Gmail account with no personal or unrelated client
   mail. Keep the OAuth app in Testing and add only that mailbox as a test user.
-- [ ] Confirm the OAuth consent screen requests only `gmail.readonly` and
+- [x] Confirm the OAuth consent screen requests only `gmail.readonly` and
   `gmail.compose`; never approve `https://mail.google.com/`.
 - [ ] Store the refresh-token JSON and operator key as separate Secret Manager
   secrets. Grant `Secret Manager Secret Accessor` only to the Cloud Run runtime
@@ -91,6 +91,11 @@ authorization decision.
   Manager, and share Cloud Run Invoker only with the operator identity.
 - [ ] Record sanitized IAM, subscription, secret-version, and log-review
   evidence without screenshots containing tokens or client mail.
+
+Local OAuth and local operator-key evidence is recorded in
+`docs/evidence/DAY_11_LOCAL_OAUTH_EVIDENCE.md`. All hosted checklist items remain
+open. The exact private deployment sequence is
+`docs/CLOUD_RUN_DEPLOYMENT.md`.
 
 Google documents that authenticated Pub/Sub push uses a signed OIDC token and
 that subscribers should validate its audience, email, and verified-email claims:

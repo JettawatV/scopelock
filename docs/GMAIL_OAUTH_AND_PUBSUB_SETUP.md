@@ -17,6 +17,8 @@ The repository now owns the complete non-UI Gmail runtime:
 
 The automated security gate is recorded in `docs/GMAIL_SECURITY_GATE.md`.
 Complete its owner-only checklist before registering a real Gmail watch.
+The private container and hosted setup sequence are recorded in
+`docs/CLOUD_RUN_DEPLOYMENT.md`.
 
 Agents do not receive OAuth credentials and cannot call Gmail draft/send,
 approval, pricing, timeline, Firestore mutation, or state-transition services.

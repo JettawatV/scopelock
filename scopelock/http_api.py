@@ -131,6 +131,14 @@ def _pubsub_verifier() -> PubSubOidcVerifier:
     )
 
 
+def _artifact_root() -> Path:
+    configured = os.getenv("SCOPELOCK_ARTIFACT_ROOT", "").strip()
+    if not configured:
+        return PROJECT_ROOT / "artifacts"
+    path = Path(configured)
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
 def build_default_runtime() -> GmailApiRuntime:
     from google.cloud import firestore
 
@@ -153,7 +161,7 @@ def build_default_runtime() -> GmailApiRuntime:
     inbound = InboundProcessingWorkflow(
         catalog=catalog,
         repository=repository,
-        artifact_root=PROJECT_ROOT / "artifacts",
+        artifact_root=_artifact_root(),
     )
     verifier = _pubsub_verifier()
     return GmailApiRuntime(
