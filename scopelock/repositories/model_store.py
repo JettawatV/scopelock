@@ -10,6 +10,7 @@ from scopelock.repositories.contracts import (
     DocumentNotFoundError,
     StoredDocument,
 )
+from scopelock.observability import emit_structured_event, persistence_event_fields
 from scopelock.services.execution_boundaries import WorkflowExecutionBoundaries
 
 
@@ -69,7 +70,7 @@ class ModelStore:
         immutable: bool = False,
     ) -> StoredDocument:
         resolved_id = document_id or self._model_id(model)
-        return self._persist(
+        stored = self._persist(
             lambda: self.repository.create_or_get(
                 collection=collection.value,
                 document_id=resolved_id,
@@ -78,6 +79,11 @@ class ModelStore:
                 immutable=immutable,
             )
         )
+        emit_structured_event(
+            "persistence.create_or_get",
+            **persistence_event_fields(collection.value, model),
+        )
+        return stored
 
     def get(
         self,
@@ -156,7 +162,7 @@ class ModelStore:
             else None
         )
         revision = expected_revision if expected_revision is not None else current.revision
-        return self._persist(
+        stored = self._persist(
             lambda: self.repository.compare_and_set(
                 collection=collection.value,
                 document_id=document_id,
@@ -165,6 +171,11 @@ class ModelStore:
                 make_immutable=make_immutable,
             )
         )
+        emit_structured_event(
+            "persistence.compare_and_set",
+            **persistence_event_fields(collection.value, model),
+        )
+        return stored
 
     @staticmethod
     def _model_id(model: BaseModel) -> str:

@@ -22,17 +22,19 @@ The frozen P0 loop is the priority: inbound Gmail event → requirement analysis
 
 Last reviewed: **2026-08-30**
 
-Current active day: **Day 15 — final UI/package check before hosted validation**
+Current active day: **Day 11 — hosted Gmail event gate**
 
-Immediate next evidence: package the Vite UI with the Python service, deploy a
-new private Cloud Run revision, and complete the hosted IAM, secrets, Pub/Sub,
-logging, and first-mailbox replay checks. The Days 11–13 code and automated
-security gate are complete; live external activation remains intentionally off.
+Immediate next evidence: complete the owner-only IAM, Secret Manager, Pub/Sub
+push, logging, and first-mailbox replay checks. The combined Vite/Python image
+is deployed to private Cloud Run and an authenticated owner received `200` from
+`/health`, `/`, `/projects`, and `/evals` on 2026-08-30. Live external Gmail
+activation remains intentionally off.
 
-Next unlock: **Day 11–13 live Gmail gates and Day 14 hosted checks remain locked
-until the private Cloud Run revision passes its owner-only security and event
-delivery checks. Day 15 local UI verification is complete; fresh-reviewer and
-hosted evidence remain open.**
+Next unlock: **Days 11–13 remain locked until the hosted Gmail event, duplicate
+delivery, same-thread continuation, approval-gated send, and revision checks
+pass. Day 14 deployment and Day 15 hosted-route packaging are evidenced;
+IAM/security, observability, fresh-reviewer, and real-mailbox evidence remain
+open.**
 
 ### Completed implementation
 
@@ -70,6 +72,8 @@ hosted evidence remain open.**
 - [x] Bandit and final dependency audit pass with zero findings; pytest was upgraded to 9.1.1 to remove `PYSEC-2026-1845`.
 - [x] ADK agent gates passed; the user explicitly unlocked the thin operator UI on 2026-08-30 while automatic Gmail activation remains held.
 - [x] Vite 7.3.6 operator UI builds as a static SPA beside the Python service; local type/build/audit and responsive checks pass.
+- [x] The combined Vite/Python image is deployed as a private Cloud Run service; authenticated owner checks returned `200` for `/health`, `/`, `/projects`, and `/evals` on 2026-08-30.
+- [x] Cloud Run health endpoint uses `/health`, not `/healthz`, because Cloud Run reserves some URL paths ending in `z`.
 
 ### Evidence gates
 
@@ -103,7 +107,7 @@ hosted evidence remain open.**
 | A — ADK semantic foundation | 0–2 | Requirement Analyzer is typed, bounded, repeatable, and evaluated | COMPLETE |
 | B — Local deterministic workflow | 3–9 | Pricing, timeline, approval policy, scope drift, and local golden path pass | COMPLETE |
 | C — Google integrations | 10–14 | Firestore, Gmail, Pub/Sub, approval-gated sends, and Cloud Run pass | ACTIVE |
-| D — UI and submission | 15–17 | Thin review UI, release evals, and four-minute demo are ready | UI BUILD ACTIVE; HOSTED GATE HELD |
+| D — UI and submission | 15–17 | Thin review UI, release evals, and four-minute demo are ready | UI DEPLOYED; REVIEW GATE OPEN |
 
 ## Daily plan
 
@@ -723,18 +727,18 @@ Move-on gate:
 
 ### Day 14 — Cloud Run deployment, IAM, and observability
 
-Status: PREPARATION ACTIVE / LIVE DEPLOYMENT LOCKED BY DAYS 11–13.
+Status: HOSTED DEPLOYMENT ACTIVE / LIVE GMAIL GATE LOCKED BY DAY 11.
 
 Daily outcome: the hosted Google Cloud workflow is reliable, visible, and safe under retries.
 
 Implementation checklist:
 
 - [x] Build a production container definition for the ADK/FastAPI-compatible service.
-- [ ] Deploy the backend to Cloud Run.
+- [x] Deploy the combined backend and Vite operator UI to private Cloud Run.
 - [ ] Configure Vertex AI, Firestore, Pub/Sub push, Gmail credentials, and environment settings.
 - [ ] Scope service-account IAM to required services only.
 - [x] Add Secret Manager-only hosted configuration contracts and build-context exclusions.
-- [ ] Add structured logs for correlation ID, project, agent run, tool action, state transition, artifact, approval, and send action.
+- [x] Add redacted structured logs for correlation ID, project, agent run, tool action, state transition, artifact, approval, and send action.
 - [x] Add a no-runtime-initialization health endpoint and fail-closed hosted startup preflight.
 - [ ] Add timeout, retry, and dead-letter handling where appropriate.
 - [ ] Prepare a short Cloud Logging/Trace view for the demo.
@@ -752,6 +756,8 @@ Evidence to record:
 
 - [x] Container/IAM/deployment runbook: `docs/CLOUD_RUN_DEPLOYMENT.md`.
 - [x] Local container-readiness evidence: `docs/evidence/DAY_14_CONTAINER_READINESS_EVIDENCE.md`.
+- [x] Authorized private route check: `docs/evidence/DAY_14_HOSTED_ROUTE_EVIDENCE.md`.
+- [x] Structured-log implementation and redaction tests: `docs/evidence/DAY_14_OBSERVABILITY_EVIDENCE.md`.
 - [ ] Cloud Run revision and executed deployment command: ____________________.
 - [ ] Sanitized IAM review: ____________________.
 - [ ] Hosted golden-path trace/log link: ____________________.
@@ -763,7 +769,7 @@ Move-on gate:
 
 ### Day 15 — Minimal review UI
 
-Status: IMPLEMENTATION ACTIVE — user explicitly unlocked the thin UI after the full agent gate passed; hosted Gmail activation remains blocked by Day 14.
+Status: HOSTED ROUTES VERIFIED / FRESH-REVIEWER GATE OPEN — user explicitly unlocked the thin UI after the full agent gate passed; hosted Gmail activation remains blocked by Day 11.
 
 Daily outcome: a thin interface lets a reviewer understand evidence and take approval actions without duplicating backend policy.
 
@@ -792,7 +798,7 @@ Verification and success checklist:
 
 Evidence to record:
 
-- [x] Frontend build/test output: `docs/evidence/DAY_15_FRONTEND_EVIDENCE.md`.
+- [x] Frontend build/test and hosted-route output: `docs/evidence/DAY_15_FRONTEND_EVIDENCE.md`.
 - [ ] Desktop and narrow-viewport screenshots: ____________________.
 - [ ] Fresh-reviewer usability notes: ____________________.
 

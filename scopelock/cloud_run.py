@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 
 import uvicorn
 
+from scopelock.observability import configure_structured_logging, emit_structured_event
 from scopelock.security import MIN_OPERATOR_KEY_LENGTH, require_email_address
 
 
@@ -126,6 +127,8 @@ def load_cloud_run_settings(
 
 def main() -> None:
     settings = load_cloud_run_settings()
+    configure_structured_logging()
+    emit_structured_event("cloud_run.starting", status="STARTING")
     # Cloud Run requires the ingress container to listen on every interface.
     uvicorn.run(
         "scopelock.http_api:app",

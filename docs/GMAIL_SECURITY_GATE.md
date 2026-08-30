@@ -6,7 +6,8 @@
 
 ScopeLock may create the OAuth client and authorize the dedicated demo mailbox,
 but `users.watch` and the real Pub/Sub subscription must remain inactive until
-the owner-only checklist below is complete. Frontend work remains locked.
+the owner-only checklist below is complete. The thin operator UI is deployed,
+but it does not authorize Gmail event delivery or email sending.
 
 This gate reduces the risk of credential theft, forged webhooks, prompt
 injection, duplicate sends, data leakage, replay races, and cost/availability

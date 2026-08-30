@@ -67,7 +67,9 @@ large fixture records.
 - No commercial send intent exists without a current approval.
 - Replays do not duplicate projects, events, artifacts, approvals, or sends.
 - Proposal and change-order checksums remain stable.
-- Day 11 remains the active gate; frontend work remains locked.
+- At this midpoint, Day 11 remained the active gate and frontend work was
+  locked. The later ADK safety gate unlocked the thin Day 15 UI; it did not
+  unlock Gmail event delivery or commercial sending.
 
 ## Verification
 

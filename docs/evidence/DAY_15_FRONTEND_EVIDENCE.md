@@ -2,7 +2,7 @@
 
 Recorded: **2026-08-30**
 
-Status: **IMPLEMENTATION VERIFIED LOCALLY; FRESH-REVIEWER AND HOSTED FLOW STILL OPEN**
+Status: **IMPLEMENTATION AND HOSTED ROUTES VERIFIED; FRESH-REVIEWER FLOW STILL OPEN**
 
 ## Implemented surface
 
@@ -30,15 +30,14 @@ Status: **IMPLEMENTATION VERIFIED LOCALLY; FRESH-REVIEWER AND HOSTED FLOW STILL 
 | Frontend type check | Passed |
 | Vite production build | Passed for the SPA entrypoint and client routes `/`, `/projects/`, and `/evals` |
 | Frontend dependency audit | `0 vulnerabilities` |
-| Full Python suite | `209 passed` |
+| Full Python suite | `212 passed` |
 | Docker packaging contract tests | Passed; local image build unavailable because Docker is not installed on this workstation |
 | Fresh Vite desktop visual review | Passed for overview, projects, and agent readiness; no console errors observed |
 | Fresh Vite narrow visual review | Passed at 390 × 1000 with no horizontal overflow |
-| Live Cloud Run deployment of the combined image | Not yet performed |
+| Live Cloud Run deployment of the combined image | Authorized requests returned `200` for `/health`, `/`, `/projects`, and `/evals`; see `docs/evidence/DAY_14_HOSTED_ROUTE_EVIDENCE.md` |
 
 ## Remaining Day 15 gate
 
-- Run the flow against a hosted private Cloud Run revision built from the Vite package.
 - Have a fresh reviewer identify the required action, trace the module/price evidence, and complete an approval flow without explanation.
 - Record hosted screenshots and usability notes.
 

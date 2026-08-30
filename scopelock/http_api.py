@@ -6,6 +6,7 @@ import hmac
 import hashlib
 import json
 import os
+from time import perf_counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +22,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from scopelock.domain.enums import ApprovalStatus, BufferFinalizationReason
 from scopelock.domain.models import CommercialArtifact
+from scopelock.observability import emit_structured_event
 from scopelock.repositories.firestore import FirestoreApplicationRepository
 from scopelock.services.approval_policy import ApprovalPolicyViolation
 from scopelock.services.gmail_commercial_service import GmailCommercialService
@@ -265,49 +267,57 @@ def create_app(
     @app.middleware("http")
     async def security_boundary(request: Request, call_next):
         request_id = uuid4().hex
+        started_at = perf_counter()
+
+        def complete(response):
+            secured = secure_response(
+                response, request_id=request_id, request_path=request.url.path
+            )
+            emit_structured_event(
+                "http.request.completed",
+                request_id=request_id,
+                method=request.method,
+                path=request.url.path,
+                status_code=secured.status_code,
+                duration_ms=int((perf_counter() - started_at) * 1_000),
+            )
+            return secured
+
         content_length = request.headers.get("content-length")
         if content_length:
             try:
                 declared_length = int(content_length)
             except ValueError:
-                return secure_response(
+                return complete(
                     JSONResponse(
                         status_code=400,
                         content={"detail": "Malformed Content-Length"},
-                    ),
-                    request_id=request_id,
-                    request_path=request.url.path,
+                    )
                 )
             if declared_length < 0 or declared_length > MAX_API_REQUEST_BYTES:
-                return secure_response(
+                return complete(
                     JSONResponse(
                         status_code=413,
                         content={
                             "detail": "Request body exceeds the safe size limit"
                         },
-                    ),
-                    request_id=request_id,
-                    request_path=request.url.path,
+                    )
                 )
         body = bytearray()
         async for chunk in request.stream():
             body.extend(chunk)
             if len(body) > MAX_API_REQUEST_BYTES:
-                return secure_response(
+                return complete(
                     JSONResponse(
                         status_code=413,
                         content={
                             "detail": "Request body exceeds the safe size limit"
                         },
-                    ),
-                    request_id=request_id,
-                    request_path=request.url.path,
+                    )
                 )
         request._body = bytes(body)
         response = await call_next(request)
-        return secure_response(
-            response, request_id=request_id, request_path=request.url.path
-        )
+        return complete(response)
 
     def runtime() -> GmailApiRuntime:
         try:
