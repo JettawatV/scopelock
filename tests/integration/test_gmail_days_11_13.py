@@ -586,7 +586,7 @@ def test_operator_http_commands_require_the_configured_key():
     )
     client = TestClient(create_app(lambda: runtime))
 
-    assert client.get("/healthz").status_code == 200
+    assert client.get("/health").status_code == 200
     assert client.post("/gmail/watch").status_code == 401
     accepted = client.post(
         "/gmail/watch",

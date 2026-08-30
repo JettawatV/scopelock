@@ -360,8 +360,10 @@ def create_app(
             )
         return configured
 
-    @app.get("/healthz")
-    def healthz() -> dict[str, str]:
+    # Cloud Run reserves some paths ending in "z", so keep this endpoint
+    # intentionally named /health rather than the common /healthz.
+    @app.get("/health")
+    def health() -> dict[str, str]:
         return {"status": "ok"}
 
     @app.get("/api/dashboard")

@@ -891,7 +891,7 @@ export function OperatorApp({ view }: { view: View }) {
   };
 
   useEffect(() => {
-    fetch("/healthz", { cache: "no-store" })
+    fetch("/health", { cache: "no-store" })
       .then((response) => setHealth(response.ok ? "online" : "offline"))
       .catch(() => setHealth("offline"));
     const params = new URLSearchParams(window.location.search);

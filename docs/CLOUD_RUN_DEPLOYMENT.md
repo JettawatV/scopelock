@@ -122,7 +122,7 @@ Create `scopelock-api` from the image using:
 - **Require authentication**;
 - ingress `All` so authenticated Pub/Sub push can reach the generated URL;
 - container port `8080`;
-- startup HTTP probe `/healthz` on port `8080`;
+- startup HTTP probe `/health` on port `8080`;
 - request timeout `300` seconds initially;
 - concurrency `1` for the first live gate;
 - minimum instances `0`, maximum instances `1` for the first live gate.
@@ -181,7 +181,7 @@ Record sanitized evidence that:
 - an authorized operator request with a missing/wrong operator key is rejected
   by ScopeLock before Gmail/Firestore initialization;
 - a Pub/Sub push token with the wrong audience or identity is rejected;
-- `/healthz` returns only `{"status":"ok"}` for an authorized caller;
+- `/health` returns only `{"status":"ok"}` for an authorized caller;
 - Cloud Logging contains no Authorization header, OAuth/token JSON, operator
   key, full email body, or attachment content.
 

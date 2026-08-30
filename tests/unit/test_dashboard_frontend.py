@@ -141,7 +141,7 @@ def test_static_frontend_gets_ui_csp_while_api_keeps_strict_csp(
 
     home = client.get("/")
     asset = client.get("/assets/index.js")
-    health = client.get("/healthz")
+    health = client.get("/health")
 
     assert home.status_code == 200
     assert asset.status_code == 200

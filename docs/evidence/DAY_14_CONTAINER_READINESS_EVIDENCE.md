@@ -11,7 +11,7 @@ Date: 2026-08-29
 - Fail-closed `scopelock.cloud_run` entry point with bounded `PORT`, exact
   project/topic binding, same-project push identity, HTTPS audience, Vertex
   mode, hosted token presence/size, and operator-key checks.
-- `/healthz` does not initialize Gmail OAuth, Gmail API, or Firestore.
+- `/health` does not initialize Gmail OAuth, Gmail API, or Firestore.
 - Cloud Run diagnostic renders are directed to ephemeral `/tmp`; reviewed send
   bytes remain reconstructed from immutable Firestore-owned commercial data.
 - Explicit `.dockerignore` and `.gcloudignore` runtime whitelists.
