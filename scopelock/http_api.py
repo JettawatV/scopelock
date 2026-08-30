@@ -15,7 +15,9 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from scopelock.domain.enums import ApprovalStatus, BufferFinalizationReason
 from scopelock.domain.models import CommercialArtifact
@@ -36,6 +38,7 @@ from scopelock.services.gmail_event_service import (
 from scopelock.services.gmail_gateway import GoogleGmailGateway
 from scopelock.services.gmail_oauth import GmailCredentialProvider
 from scopelock.services.gmail_watch_service import GmailWatchService
+from scopelock.services.dashboard_query_service import DashboardQueryService
 from scopelock.services.inbound_processing_workflow import InboundProcessingWorkflow
 from scopelock.services.pubsub_auth import (
     PubSubAuthenticationError,
@@ -44,6 +47,29 @@ from scopelock.services.pubsub_auth import (
 from scopelock.services.scope_revision_workflow import ScopeRevisionWorkflow
 from scopelock.services.sop_service import load_sop
 from scopelock.settings import PROJECT_ROOT, project_id
+
+
+class HttpOnlyStaticFiles(StaticFiles):
+    """Serve the SPA without turning the catch-all mount into a WS app."""
+
+    _SPA_ROUTES = {"projects", "evals"}
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope["type"] == "websocket":
+            await send({"type": "websocket.close", "code": 1000})
+            return
+        await super().__call__(scope, receive, send)
+
+    async def get_response(self, path: str, scope: dict[str, Any]):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as error:
+            if (
+                error.status_code == status.HTTP_404_NOT_FOUND
+                and path.strip("/") in self._SPA_ROUTES
+            ):
+                return await super().get_response("index.html", scope)
+            raise
 
 
 class CommandModel(BaseModel):
@@ -84,6 +110,7 @@ class GmailApiRuntime:
     topic_name: str
     operator_api_key: str = field(repr=False)
     pubsub_verifier: PubSubOidcVerifier | None
+    dashboard_service: DashboardQueryService | None = None
 
 
 class RuntimeProvider:
@@ -139,6 +166,14 @@ def _artifact_root() -> Path:
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
+def _frontend_root() -> Path:
+    configured = os.getenv("SCOPELOCK_FRONTEND_ROOT", "").strip()
+    if not configured:
+        return PROJECT_ROOT / "frontend" / "dist"
+    path = Path(configured)
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
 def build_default_runtime() -> GmailApiRuntime:
     from google.cloud import firestore
 
@@ -185,6 +220,10 @@ def build_default_runtime() -> GmailApiRuntime:
         topic_name=topic_name,
         operator_api_key=_operator_secret(),
         pubsub_verifier=verifier,
+        dashboard_service=DashboardQueryService(
+            repository,
+            readiness_path=PROJECT_ROOT / "config" / "agent_readiness.json",
+        ),
     )
 
 
@@ -200,10 +239,22 @@ def create_app(
         openapi_url=None,
     )
 
-    def secure_response(response, *, request_id: str):
-        response.headers["Cache-Control"] = "no-store"
+    def secure_response(response, *, request_id: str, request_path: str):
+        is_ui = request_path == "/" or request_path.startswith(
+            ("/projects", "/evals", "/assets/", "/icon.svg")
+        )
+        response.headers["Cache-Control"] = (
+            "public, max-age=31536000, immutable"
+            if request_path.startswith("/assets/")
+            else "no-store"
+        )
         response.headers["Content-Security-Policy"] = (
-            "default-src 'none'; frame-ancestors 'none'"
+            "default-src 'self'; base-uri 'self'; connect-src 'self'; "
+            "font-src 'self'; frame-ancestors 'none'; img-src 'self' data:; "
+            "object-src 'none'; script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'"
+            if is_ui
+            else "default-src 'none'; frame-ancestors 'none'"
         )
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -225,6 +276,7 @@ def create_app(
                         content={"detail": "Malformed Content-Length"},
                     ),
                     request_id=request_id,
+                    request_path=request.url.path,
                 )
             if declared_length < 0 or declared_length > MAX_API_REQUEST_BYTES:
                 return secure_response(
@@ -235,6 +287,7 @@ def create_app(
                         },
                     ),
                     request_id=request_id,
+                    request_path=request.url.path,
                 )
         body = bytearray()
         async for chunk in request.stream():
@@ -248,10 +301,13 @@ def create_app(
                         },
                     ),
                     request_id=request_id,
+                    request_path=request.url.path,
                 )
         request._body = bytes(body)
         response = await call_next(request)
-        return secure_response(response, request_id=request_id)
+        return secure_response(
+            response, request_id=request_id, request_path=request.url.path
+        )
 
     def runtime() -> GmailApiRuntime:
         try:
@@ -307,6 +363,33 @@ def create_app(
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/api/dashboard")
+    def dashboard(
+        configured: GmailApiRuntime = Depends(operator_runtime),
+    ) -> dict[str, Any]:
+        if configured.dashboard_service is None:
+            raise HTTPException(
+                status_code=503, detail="Dashboard read service is unavailable"
+            )
+        return configured.dashboard_service.overview().model_dump(mode="json")
+
+    @app.get("/api/projects/{project_id}")
+    def project_detail(
+        project_id: str,
+        configured: GmailApiRuntime = Depends(operator_runtime),
+    ) -> dict[str, Any]:
+        if len(project_id) > 256:
+            raise HTTPException(status_code=404, detail="Project not found")
+        if configured.dashboard_service is None:
+            raise HTTPException(
+                status_code=503, detail="Dashboard read service is unavailable"
+            )
+        try:
+            result = configured.dashboard_service.project_detail(project_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Project not found") from error
+        return result.model_dump(mode="json")
 
     @app.post("/webhooks/gmail")
     async def gmail_webhook(
@@ -525,6 +608,14 @@ def create_app(
             "scope": scope.model_dump(mode="json"),
             "project": project.model_dump(mode="json"),
         }
+
+    frontend_root = _frontend_root()
+    if frontend_root.is_dir():
+        app.mount(
+            "/",
+            HttpOnlyStaticFiles(directory=frontend_root, html=True),
+            name="frontend",
+        )
 
     return app
 

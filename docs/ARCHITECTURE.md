@@ -59,7 +59,7 @@ Cloud Run — ScopeLock Backend
     +--> Cloud Storage (optional artifact storage)
     |
     v
-Next.js Review Dashboard
+Vite React Review Dashboard
     |
     +--> approve / reject / edit
     +--> view evidence
@@ -79,7 +79,7 @@ Two deployable services are acceptable:
 1. `scopelock-api`
    - Python / ADK / Gmail webhook / application API.
 2. `scopelock-web`
-   - Next.js dashboard.
+   - Vite-built React dashboard.
 
 A single combined deployment is allowed if it materially reduces risk, but keep backend and UI code logically separated.
 
@@ -148,7 +148,9 @@ The pre-Gmail flexibility gate and the Days 11–13 code gate passed on
 and operator commands; application services own watch/history checkpoints,
 approval-bound drafts/sends, and scope revision acceptance. Keep continuous
 mailbox delivery disabled until the Day 11 real read, history-resolution,
-duplicate-delivery, and same-thread checks pass. The frontend remains locked.
+duplicate-delivery, and same-thread checks pass. The agent gate passed on
+2026-08-30 and the user explicitly unlocked the thin operator frontend; this
+does not unlock automatic Gmail delivery.
 
 OAuth files are ignored for local development. Hosted refresh-token JSON must
 come from Secret Manager through `SCOPELOCK_GMAIL_TOKEN_JSON`; it must never be
@@ -184,6 +186,15 @@ Diagnostic proposal renders use `/tmp/scopelock-artifacts`; approved attachment
 bytes come from the immutable Firestore-owned commercial record rather than an
 ephemeral path. Deployment and IAM steps are in
 `docs/CLOUD_RUN_DEPLOYMENT.md`.
+
+The selected P0 packaging is one Cloud Run container with logically separated
+applications. A pinned Node build stage exports the Vite React UI, the Python
+runtime serves it through FastAPI, and browser requests use same-origin API
+paths. The dashboard receives bounded, redacted projections; it never receives
+raw email bodies, agent outputs, input hashes, credentials, or tool payloads.
+The operator key is held only in page memory. Frontend controls call the same
+approval-gated application endpoints used without the UI and contain no pricing,
+timeline, transition, or send policy.
 
 ---
 
@@ -311,7 +322,7 @@ Project inbox / current projects
 - pending scope delta
 - action required
 
-### `/projects/[id]`
+### `/projects/`
 - current canonical scope
 - proposal version
 - price/timeline
@@ -319,6 +330,9 @@ Project inbox / current projects
 - pending changes
 - evidence
 - approve / reject / finalize
+
+P0 uses an interactive project selector on the static `/projects/` export
+rather than generating an unbounded static route for every Firestore ID.
 
 ### `/evals`
 - classification metrics

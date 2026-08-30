@@ -20,19 +20,19 @@ The frozen P0 loop is the priority: inbound Gmail event → requirement analysis
 
 ## Current progress checklist
 
-Last reviewed: **2026-08-29**
+Last reviewed: **2026-08-30**
 
-Current active day: **Day 11 — real Gmail OAuth and event integration**
+Current active day: **Day 15 — final UI/package check before hosted validation**
 
-Immediate next evidence: complete the owner-only controls in
-`docs/GMAIL_SECURITY_GATE.md` and the Google Cloud/Gmail steps in
-`docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md`, then run the real mailbox replay and
-same-thread continuation checks. The Days 11–13 code and automated security gate
-are complete; live external activation remains intentionally off.
+Immediate next evidence: package the Vite UI with the Python service, deploy a
+new private Cloud Run revision, and complete the hosted IAM, secrets, Pub/Sub,
+logging, and first-mailbox replay checks. The Days 11–13 code and automated
+security gate are complete; live external activation remains intentionally off.
 
-Next unlock: **Day 12 and Day 13 live gates remain locked until the Day 11 real
-Gmail event gate is checked. Their application code and automated tests are
-already implemented.**
+Next unlock: **Day 11–13 live Gmail gates and Day 14 hosted checks remain locked
+until the private Cloud Run revision passes its owner-only security and event
+delivery checks. Day 15 local UI verification is complete; fresh-reviewer and
+hosted evidence remain open.**
 
 ### Completed implementation
 
@@ -49,7 +49,7 @@ already implemented.**
 - [x] Requirement Analyzer v2 readiness policy implemented for the golden path.
 - [x] Requirement mapping instruction updated to require ID plus human-readable description.
 - [x] Day 0 risk register added with blocking risks and exit evidence.
-- [x] Python 3.13.14 environment, 152-package lockfile, clean install, ADK discovery, and current 203-test suite verified.
+- [x] Python 3.13.14 environment, 152-package lockfile, clean install, ADK discovery, and the pre-Gmail 203-test agent gate verified.
 - [x] Day 3 strict SOP validation, deterministic USD PricingEngine, immutable pricing records, and golden pricing fixture verified.
 - [x] Day 4 deterministic timeline, explicit state transitions, immutable ScopeVersion records, and proposal/change-order numbering verified.
 - [x] Day 5 typed Scope Analyzer and 25-case native ADK corpus verified with measured 100% exact classification, 100% evidence coverage, and 0% invalid modules in the recorded run.
@@ -68,7 +68,8 @@ already implemented.**
 - [x] Pre-OAuth security/refactor gate added exact-scope token validation, mandatory OIDC, bounded HTTP/Gmail input, atomic event leases, monotonic checkpoints, recipient/thread binding, evidence-bound acceptance, and redacted errors.
 - [x] Python 3.13 deterministic suite expanded to 191 passing tests, including 25 Gmail/security/approval/revision integration tests.
 - [x] Bandit and final dependency audit pass with zero findings; pytest was upgraded to 9.1.1 to remove `PYSEC-2026-1845`.
-- [x] Frontend/UI work explicitly held until the ADK agent gates pass.
+- [x] ADK agent gates passed; the user explicitly unlocked the thin operator UI on 2026-08-30 while automatic Gmail activation remains held.
+- [x] Vite 7.3.6 operator UI builds as a static SPA beside the Python service; local type/build/audit and responsive checks pass.
 
 ### Evidence gates
 
@@ -93,7 +94,7 @@ already implemented.**
 - Put the command, test output, trace screenshot, artifact path, or log link beside the evidence item.
 - A later day stays LOCKED until the current move-on gate is checked.
 - If a check fails, add the failure under that day, mark the day BLOCKED, and do not hide or delete the evidence.
-- Current execution focus is Day 11. Days 0–10 are complete.
+- Current execution focus is Day 15. Days 0–10 are complete; hosted Days 11–14 evidence remains open.
 
 ## Delivery phase gates
 
@@ -102,7 +103,7 @@ already implemented.**
 | A — ADK semantic foundation | 0–2 | Requirement Analyzer is typed, bounded, repeatable, and evaluated | COMPLETE |
 | B — Local deterministic workflow | 3–9 | Pricing, timeline, approval policy, scope drift, and local golden path pass | COMPLETE |
 | C — Google integrations | 10–14 | Firestore, Gmail, Pub/Sub, approval-gated sends, and Cloud Run pass | ACTIVE |
-| D — UI and submission | 15–17 | Thin review UI, release evals, and four-minute demo are ready | LOCKED |
+| D — UI and submission | 15–17 | Thin review UI, release evals, and four-minute demo are ready | UI BUILD ACTIVE; HOSTED GATE HELD |
 
 ## Daily plan
 
@@ -762,36 +763,36 @@ Move-on gate:
 
 ### Day 15 — Minimal review UI
 
-Status: LOCKED — frontend/UI/UX work is forbidden until Days 0–14 pass.
+Status: IMPLEMENTATION ACTIVE — user explicitly unlocked the thin UI after the full agent gate passed; hosted Gmail activation remains blocked by Day 14.
 
 Daily outcome: a thin interface lets a reviewer understand evidence and take approval actions without duplicating backend policy.
 
 Implementation checklist:
 
-- [ ] Confirm the frontend unlock gate in this document.
-- [ ] Create the patched Next.js 16.3.3+ application with TypeScript and Tailwind.
-- [ ] Build only the home/action-required route.
-- [ ] Build only the project review route.
-- [ ] Build only the eval evidence route.
-- [ ] Show canonical scope, current artifact, USD price, timeline, delta, assumptions, exclusions, and evidence.
-- [ ] Show ScopeEvents, versions, approvals, sends, and audit history.
-- [ ] Add explicit approve, reject, and finalize controls.
-- [ ] Call policy-checked backend endpoints for every mutation.
-- [ ] Keep all pricing, timeline, transition, and send rules out of frontend code.
-- [ ] Add loading, empty, error, stale-artifact, and low-confidence states.
+- [x] Confirm the frontend unlock gate in this document.
+- [x] Create the Vite 7.3.6 application with TypeScript, React, and Tailwind.
+- [x] Build only the home/action-required route.
+- [x] Build only the project review route.
+- [x] Build only the eval evidence route.
+- [x] Show canonical scope, current artifact, USD price, timeline, delta, assumptions, exclusions, and evidence.
+- [x] Show ScopeEvents, immutable versions, approval/send artifact status, and redacted agent-run audit history.
+- [x] Add explicit approve, reject, and finalize controls.
+- [x] Call policy-checked backend endpoints for every mutation.
+- [x] Keep all pricing, timeline, transition, and send rules out of frontend code.
+- [x] Add loading, empty, error, stale-artifact, and fail-closed needs-review states.
 
 Verification and success checklist:
 
 - [ ] A fresh reviewer can identify why action is required.
 - [ ] A reviewer can trace each selected module and price line to evidence/SOP.
-- [ ] Approval cannot bypass backend policy.
-- [ ] Scope history clearly distinguishes clarification from expansion.
-- [ ] Keyboard navigation, labels, focus states, contrast, and responsive layouts pass review.
+- [x] Approval cannot bypass backend policy.
+- [x] Scope history clearly distinguishes clarification from expansion.
+- [x] Keyboard navigation, labels, focus states, contrast, and responsive layouts pass local review.
 - [ ] Golden path works at the target desktop viewport.
 
 Evidence to record:
 
-- [ ] Frontend build/test output: ____________________.
+- [x] Frontend build/test output: `docs/evidence/DAY_15_FRONTEND_EVIDENCE.md`.
 - [ ] Desktop and narrow-viewport screenshots: ____________________.
 - [ ] Fresh-reviewer usability notes: ____________________.
 

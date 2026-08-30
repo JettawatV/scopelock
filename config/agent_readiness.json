@@ -1,0 +1,42 @@
+{
+  "status": "PASS",
+  "verified_at": "2026-08-30T07:17:46Z",
+  "model": "gemini-3.5-flash",
+  "prompt_versions": [
+    "requirement_analyzer_v5",
+    "scope_analyzer_v4"
+  ],
+  "checks": [
+    {
+      "key": "deterministic",
+      "label": "Deterministic contract and workflow tests",
+      "passed": 203,
+      "expected": 203
+    },
+    {
+      "key": "requirement_eval",
+      "label": "Requirement Analyzer reviewed cases",
+      "passed": 12,
+      "expected": 12
+    },
+    {
+      "key": "scope_eval",
+      "label": "Scope Analyzer reviewed cases",
+      "passed": 35,
+      "expected": 35
+    },
+    {
+      "key": "trajectory_eval",
+      "label": "Approval-safe tool trajectories",
+      "passed": 2,
+      "expected": 2
+    },
+    {
+      "key": "repeatability",
+      "label": "Focused live-model repeatability",
+      "passed": 18,
+      "expected": 18
+    }
+  ],
+  "note": "Verified pre-Gmail agent gate. Hosted event delivery remains a separate activation gate."
+}

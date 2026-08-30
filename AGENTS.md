@@ -105,7 +105,7 @@ When tempted to add a feature, ask: **Does this improve the 4-minute judging dem
 - Cloud Storage only if needed for generated proposal PDFs/artifacts
 
 ### Frontend
-- Next.js 16.3.x (use patched 16.3.3+)
+- Vite 7.3.x with React and TypeScript
 - TypeScript
 - Tailwind CSS
 - Minimal review/dashboard UI

@@ -34,6 +34,7 @@ context documents if there is a conflict.
 - `app/sub_agents/scope_analyzer.py` — typed existing-project scope analyzer
 - `app/tools/` — narrow, read-only ADK tools
 - `scopelock/` — deterministic domain and application code, outside agents
+- `frontend/` — Vite-built static React operator console
 - `tests/` — unit, integration, and native ADK evaluation assets
 
 ## One-line product
@@ -59,8 +60,9 @@ python -m pytest -q
 
 The project `uv.lock` pins the resolved dependency set. Verified on
 2026-08-29 with Python 3.13.14, ADK 2.8.0, the Gmail API/OAuth clients,
-successful ADK discovery, pytest 9.1.1, and 203 passing tests. This uv-managed environment
-does not require an embedded `pip` module.
+successful ADK discovery, pytest 9.1.1, and the 203-test pre-Gmail agent gate.
+After the Day 15 frontend integration, the full local suite passes 209 tests.
+This uv-managed environment does not require an embedded `pip` module.
 
 ## Development workflow
 
@@ -78,7 +80,9 @@ native ADK trajectory cases pass, and the focused repeatability gate passes
 activation remains held until the owner completes
 `docs/GMAIL_SECURITY_GATE.md`, `docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md`, and the
 live mailbox gates.
-Frontend UI/UX remains locked.
+The agent gate passed and the user explicitly unlocked the thin operator UI on
+2026-08-30. The UI is packaged with the API, but continuous Gmail delivery is
+still held until the hosted Pub/Sub and mailbox gates pass.
 
 The ADK app selector displays `app` because that name must match the
 discoverable `app/` package. The root agent inside it is named `scopelock`.
@@ -184,6 +188,44 @@ connecting a Pub/Sub push subscription. No commercial email is sent without a
 current approval bound to the exact artifact version and checksum; accepted
 scope also requires a persisted same-client/same-thread Gmail message.
 
+### Operator dashboard
+
+The operator console uses Vite 7.3.6, React, TypeScript, and Tailwind. It builds
+a static SPA for `/`, `/projects/`, and `/evals/`. FastAPI serves that build
+from the same origin as the policy-checked API, so the existing Cloud Run image
+hosts both frontend and backend.
+
+The deployed Cloud Run service remains private. Use an authenticated
+`gcloud run services proxy` connection for the owner-only browser workflow; a
+direct browser visit to the `run.app` URL does not supply Cloud Run IAM
+credentials. Public reviewer access requires a separately reviewed
+identity-aware access layer. The exact owner workflow is in
+`docs/CLOUD_RUN_DEPLOYMENT.md`.
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+For a production-style local build:
+
+```powershell
+npm run lint
+npm run build
+cd ..
+uvicorn scopelock.http_api:app --host 127.0.0.1 --port 8080
+```
+
+Open `http://127.0.0.1:8080/?demo=1` for the clearly labelled, read-only
+reviewed fixture. Live mode requires the operator key. The key remains only in
+page memory and is never embedded in the frontend build, URL, cookie, or browser
+storage. Approve, draft, and send remain separate backend-enforced actions.
+
+The frontend development server is for UI iteration only; its API proxy is not
+the hosted runtime. The combined Cloud Run image runs the same production build
+through the repository `Dockerfile`.
+
 The backend container is defined by `Dockerfile` and starts through the
 fail-closed `scopelock.cloud_run` entry point. Follow
 `docs/CLOUD_RUN_DEPLOYMENT.md`; never upload local `.env`, OAuth files, tokens,
@@ -198,4 +240,5 @@ tests/                      # unit, integration, ADK eval assets
 config/                     # validated business SOP
 docs/                       # product, architecture, plan, demo documents
 evals/                      # human-labelled semantic corpus
+frontend/                   # Vite React operator UI; static output is ignored
 ```

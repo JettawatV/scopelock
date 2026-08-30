@@ -26,6 +26,12 @@ artifacts/
 .coverage
 htmlcov/
 
+# Frontend build output
+frontend/node_modules/
+frontend/.vite/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+
 # Editors and OS files
 .vscode/
 .idea/

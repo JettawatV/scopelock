@@ -3,9 +3,10 @@
 ## Gate status
 
 The production container and hosted-configuration preflight are implemented.
-Local OAuth for the dedicated demo mailbox passed on 2026-08-29. Cloud Run,
-Secret Manager, Pub/Sub, Firestore, IAM, and Gmail `users.watch` are not yet
-activated.
+Local OAuth for the dedicated demo mailbox passed on 2026-08-29. The private
+Cloud Run service is deployed in `asia-southeast1`; authenticated hosted health,
+Pub/Sub delivery, logging checks, and Gmail `users.watch` activation remain
+incomplete.
 
 Do not create the Gmail watch until every pre-activation check in
 `docs/GMAIL_SECURITY_GATE.md` passes. Do not deploy with public/unauthenticated
@@ -14,7 +15,7 @@ invocation.
 ## Deployment contract
 
 - Project: `scopelock-506806`
-- Region: `us-central1`
+- Region: `asia-southeast1`
 - Cloud Run service: `scopelock-api`
 - Artifact Registry repository: `scopelock`
 - Runtime service account:
@@ -26,9 +27,11 @@ invocation.
 - Endpoint: `https://SERVICE_URL/webhooks/gmail`
 - OIDC audience: exact Cloud Run service origin, without the webhook path
 
-The container pins Python and uv versions, installs only locked production
-dependencies, copies only runtime packages/configuration, runs as UID/GID
-`10001`, and starts through `python -m scopelock.cloud_run`. Both
+The container pins Node, Vite, Python, and uv versions. A Node build stage
+exports the operator UI and the non-root Python runtime serves those assets with
+the API. It installs only locked dependencies, copies only runtime
+packages/configuration, runs as UID/GID `10001`, and starts through
+`python -m scopelock.cloud_run`. Both
 `.dockerignore` and `.gcloudignore` exclude local environments, OAuth files,
 tokens, service-account files, artifacts, tests, and logs.
 
@@ -95,13 +98,13 @@ SCOPELOCK_OPERATOR_API_KEY -> scopelock-operator-key:VERSION
 
 ### 4. Create Artifact Registry and build
 
-Create a Docker repository named `scopelock` in `us-central1`. From the clean
+Create a Docker repository named `scopelock` in `asia-southeast1`. From the clean
 repository root, authenticate `gcloud`, then build an immutable commit-tagged
 image:
 
 ```powershell
 $projectId = "scopelock-506806"
-$region = "us-central1"
+$region = "asia-southeast1"
 $tag = git rev-parse --short HEAD
 $image = "${region}-docker.pkg.dev/${projectId}/scopelock/scopelock-api:${tag}"
 gcloud builds submit --project $projectId --tag $image .
@@ -114,7 +117,7 @@ environment, artifact, or service-account file in the Cloud Build source list.
 
 Create `scopelock-api` from the image using:
 
-- region `us-central1`;
+- region `asia-southeast1`;
 - runtime service account `scopelock-runtime@...`;
 - **Require authentication**;
 - ingress `All` so authenticated Pub/Sub push can reach the generated URL;
@@ -128,7 +131,7 @@ Set these non-secret environment variables:
 
 ```dotenv
 GOOGLE_CLOUD_PROJECT=scopelock-506806
-GOOGLE_CLOUD_LOCATION=us-central1
+GOOGLE_CLOUD_LOCATION=asia-southeast1
 GOOGLE_GENAI_USE_VERTEXAI=true
 SCOPELOCK_MODEL=gemini-3.5-flash
 SCOPELOCK_PROMPT_VERSION=requirement_analyzer_v5
@@ -183,6 +186,38 @@ Record sanitized evidence that:
   key, full email body, or attachment content.
 
 Only after these checks should the protected `/gmail/watch` command be called.
+
+### 8. Validate the combined operator UI
+
+The Cloud Run service remains private. A normal browser navigation to the
+`run.app` URL does not attach a Cloud Run identity token, so it must not be used
+as the operator access path. For the hackathon and owner-only validation, run
+an authenticated local proxy and keep that terminal open:
+
+```powershell
+gcloud run services proxy scopelock-api `
+  --project scopelock-506806 `
+  --region asia-southeast1 `
+  --port 8082
+```
+
+Then open `http://127.0.0.1:8082/?demo=1` in a second terminal/browser. If port
+8082 is occupied, choose another unused local port. The active `gcloud`
+principal must be allowed to invoke `scopelock-api`. Direct hosted browser
+access for other reviewers requires a separately reviewed identity-aware access
+layer; do not make the service unauthenticated just to expose the UI.
+
+Through the authenticated proxy:
+
+- `/` serves the operator-key connection screen;
+- `/?demo=1`, `/projects/?demo=1`, and `/evals/?demo=1` show the labelled,
+  non-mutating reviewed fixture;
+- `/api/dashboard` rejects a missing or wrong operator key;
+- a correct key returns only the redacted dashboard projection;
+- no operator key appears in HTML, JavaScript bundles, browser storage, logs,
+  or screenshots;
+- approve, draft, and send remain separate actions and backend policy rejects
+  any invalid sequence.
 
 ## Required references
 

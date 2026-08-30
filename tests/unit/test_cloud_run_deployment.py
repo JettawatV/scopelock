@@ -12,7 +12,7 @@ def _environment() -> dict[str, str]:
     return {
         "PORT": "8080",
         "GOOGLE_CLOUD_PROJECT": "scopelock-506806",
-        "GOOGLE_CLOUD_LOCATION": "us-central1",
+        "GOOGLE_CLOUD_LOCATION": "asia-southeast1",
         "GOOGLE_GENAI_USE_VERTEXAI": "true",
         "SCOPELOCK_GMAIL_ACCOUNT": "scopelocktest1@gmail.com",
         "SCOPELOCK_GMAIL_PUBSUB_TOPIC": (
@@ -119,6 +119,7 @@ def test_container_build_context_excludes_credentials_and_local_state():
         "!app/**",
         "!config/**",
         "!scopelock/**",
+        "!frontend/**",
     ):
         assert included in dockerignore
         assert included in gcloudignore
@@ -128,8 +129,12 @@ def test_dockerfile_is_locked_non_root_and_does_not_copy_the_repository_root():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
 
     assert "python:3.13.15-slim-bookworm" in dockerfile
+    assert "node:22.18.0-alpine3.22" in dockerfile
     assert "ghcr.io/astral-sh/uv:0.11.28" in dockerfile
+    assert "npm ci" in dockerfile
+    assert "npm run build" in dockerfile
     assert "uv sync --locked --no-dev --no-install-project" in dockerfile
     assert "USER 10001:10001" in dockerfile
+    assert "/frontend/dist /app/frontend/dist" in dockerfile
     assert 'CMD ["python", "-m", "scopelock.cloud_run"]' in dockerfile
     assert "COPY . " not in dockerfile

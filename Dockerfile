@@ -1,5 +1,16 @@
 # syntax=docker/dockerfile:1.7
 
+FROM node:22.18.0-alpine3.22 AS frontend-builder
+
+WORKDIR /frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend ./
+RUN npm run build
+
+
 FROM python:3.13.15-slim-bookworm AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.28 /uv /uvx /bin/
@@ -34,6 +45,7 @@ COPY --from=builder --chown=10001:10001 /app/.venv /app/.venv
 COPY --chown=10001:10001 app /app/app
 COPY --chown=10001:10001 config /app/config
 COPY --chown=10001:10001 scopelock /app/scopelock
+COPY --from=frontend-builder --chown=10001:10001 /frontend/dist /app/frontend/dist
 
 USER 10001:10001
 
