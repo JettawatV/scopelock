@@ -61,7 +61,7 @@ python -m pytest -q
 The project `uv.lock` pins the resolved dependency set. Verified on
 2026-08-29 with Python 3.13.14, ADK 2.8.0, the Gmail API/OAuth clients,
 successful ADK discovery, pytest 9.1.1, and the 203-test pre-Gmail agent gate.
-After the Day 15 frontend integration, the full local suite passes 209 tests.
+The latest complete local suite passes 213 tests.
 This uv-managed environment does not require an embedded `pip` module.
 
 ## Development workflow
@@ -182,6 +182,41 @@ and scope-version mutation outside ADK tools.
 uvicorn scopelock.http_api:app --host 127.0.0.1 --port 8080
 ```
 
+The local process reads `.env` when it starts. After changing
+`SCOPELOCK_OPERATOR_API_KEY`, stop and restart Uvicorn before testing it.
+To verify that the running local server accepts a key without printing or
+persisting that key, keep Uvicorn running and use:
+
+```powershell
+$operatorKeySecure = Read-Host "Paste SCOPELOCK_OPERATOR_API_KEY" -AsSecureString
+$operatorKeyBstr = [IntPtr]::Zero
+try {
+  $operatorKeyBstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($operatorKeySecure)
+  $operatorKey = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($operatorKeyBstr)
+  $response = Invoke-WebRequest -UseBasicParsing `
+    -Uri "http://127.0.0.1:8080/api/session" `
+    -Headers @{ "X-ScopeLock-Operator-Key" = $operatorKey } `
+    -ErrorAction Stop
+  if ($response.StatusCode -eq 200) {
+    Write-Host "Accepted: the local server is using this operator key."
+  }
+} catch {
+  $statusCode = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 }
+  if ($statusCode -eq 401) {
+    Write-Host "Rejected (401): the supplied key and local server key differ. Restart Uvicorn after updating .env."
+  } else {
+    Write-Host "The key check could not complete (HTTP $statusCode). Confirm Uvicorn is running on port 8080."
+  }
+} finally {
+  if ($operatorKeyBstr -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($operatorKeyBstr) }
+  Remove-Variable operatorKey -ErrorAction SilentlyContinue
+}
+```
+
+`/api/session` verifies the operator key only; it deliberately does not load
+Firestore, Gmail, or Vertex. `200` means the key matches. `401` means it does
+not. It never returns the key.
+
 Pass `docs/GMAIL_SECURITY_GATE.md`, then follow
 `docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md` before calling `/gmail/watch` or
 connecting a Pub/Sub push subscription. No commercial email is sent without a
@@ -203,10 +238,21 @@ identity-aware access layer. The exact owner workflow is in
 `docs/CLOUD_RUN_DEPLOYMENT.md`.
 
 ```powershell
+# Terminal 1, from the repository root
+uvicorn scopelock.http_api:app --host 127.0.0.1 --port 8080
+
+# Terminal 2
 cd frontend
 npm install
 npm run dev
 ```
+
+Open `http://127.0.0.1:5173`. During development, Vite proxies `/api`,
+`/artifacts`, `/buffers`, `/gmail`, and `/health` to the local FastAPI service.
+This lets the live operator console use the same header-only key flow without a
+Vite build, Docker build, or Cloud Run deployment. The proxy exists only in the
+development server; the production image still serves the built SPA and API
+from one origin.
 
 For a production-style local build:
 
@@ -222,9 +268,10 @@ reviewed fixture. Live mode requires the operator key. The key remains only in
 page memory and is never embedded in the frontend build, URL, cookie, or browser
 storage. Approve, draft, and send remain separate backend-enforced actions.
 
-The frontend development server is for UI iteration only; its API proxy is not
-the hosted runtime. The combined Cloud Run image runs the same production build
-through the repository `Dockerfile`.
+Use the Vite development server until the local UI and agent rehearsal are
+locked. Only then run the Docker/Cloud Build deployment workflow. The combined
+Cloud Run image runs the same production build through the repository
+`Dockerfile`.
 
 The backend container is defined by `Dockerfile` and starts through the
 fail-closed `scopelock.cloud_run` entry point. Follow

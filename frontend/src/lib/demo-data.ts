@@ -253,6 +253,33 @@ export const demoDashboard: DashboardSnapshot = {
       retryable: false,
     },
   ],
+  inbox_messages: [
+    {
+      id: "demo-inbound-aurora",
+      project_id: "demo-project-aurora",
+      sender_name: "Aurora Operations",
+      sender_email: "client@example.com",
+      subject: "Automation project requirements",
+      received_at: "2026-08-30T06:58:00Z",
+      direction: "INBOUND",
+      attachment_count: 0,
+    },
+    {
+      id: "demo-inbound-northstar",
+      project_id: "demo-project-northstar",
+      sender_name: "Northstar Services",
+      sender_email: "ops@example.com",
+      subject: "Question about manager alerts",
+      received_at: "2026-08-30T06:39:00Z",
+      direction: "INBOUND",
+      attachment_count: 0,
+    },
+  ],
+  gmail_watch: {
+    mailbox: "demo-inbox@example.com",
+    expiration: "2026-09-05T07:17:46Z",
+    created_at: "2026-08-30T06:58:00Z",
+  },
   readiness: {
     status: "PASS",
     verified_at: now,
@@ -262,8 +289,8 @@ export const demoDashboard: DashboardSnapshot = {
       {
         key: "deterministic",
         label: "Deterministic contract and workflow tests",
-        passed: 203,
-        expected: 203,
+        passed: 213,
+        expected: 213,
       },
       {
         key: "requirement_eval",

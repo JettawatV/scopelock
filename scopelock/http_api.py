@@ -329,11 +329,16 @@ def create_app(
                 detail=safe_error,
             ) from error
 
-    def operator_runtime(
+    def require_operator_key(
         operator_key: str | None = Header(
             default=None, alias="X-ScopeLock-Operator-Key"
         ),
-    ) -> GmailApiRuntime:
+    ) -> None:
+        """Verify the operator secret without initializing Gmail or Firestore.
+
+        The small session endpoint below uses this dependency so an operator can
+        distinguish an incorrect key from a separately unavailable runtime.
+        """
         if runtime_provider is None:
             try:
                 expected_key = _operator_secret()
@@ -352,22 +357,25 @@ def create_app(
                     detail="Invalid operator API key",
                     headers={"WWW-Authenticate": "ScopeLockOperatorKey"},
                 )
+            return
+
         configured = runtime()
-        if (
-            runtime_provider is not None
-            and (
-                not operator_key
-                or len(operator_key) > 512
-                or not _secret_matches(
-                    operator_key, configured.operator_api_key
-                )
-            )
+        if not operator_key or len(operator_key) > 512 or not _secret_matches(
+            operator_key, configured.operator_api_key
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid operator API key",
                 headers={"WWW-Authenticate": "ScopeLockOperatorKey"},
             )
+
+    def operator_runtime(
+        operator_key: str | None = Header(
+            default=None, alias="X-ScopeLock-Operator-Key"
+        ),
+    ) -> GmailApiRuntime:
+        require_operator_key(operator_key)
+        configured = runtime()
         return configured
 
     # Cloud Run reserves some paths ending in "z", so keep this endpoint
@@ -375,6 +383,12 @@ def create_app(
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/api/session")
+    def operator_session(_: None = Depends(require_operator_key)) -> dict[str, str]:
+        """Authenticate an operator key without opening cloud dependencies."""
+
+        return {"status": "accepted"}
 
     @app.get("/api/dashboard")
     def dashboard(

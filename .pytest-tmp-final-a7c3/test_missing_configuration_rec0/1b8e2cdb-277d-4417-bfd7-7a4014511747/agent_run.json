@@ -1,0 +1,21 @@
+{
+  "id": "1b8e2cdb-277d-4417-bfd7-7a4014511747",
+  "correlation_id": "5180a9bb-898b-4ba2-b40b-bee1ff7152ea",
+  "project_id": null,
+  "trigger_type": "phase_zero_cli",
+  "trigger_ref": "current_email",
+  "agent_name": "requirement_analyzer",
+  "model": "gemini-3.5-flash",
+  "prompt_version": "requirement_analyzer_v5",
+  "started_at": "2026-08-30T10:55:19.893469Z",
+  "completed_at": "2026-08-30T10:55:19.893533Z",
+  "status": "FAILED",
+  "input_hash": "b44f50b1d94aecac573d59900e676151384f9f41b9b12060f2b9d488c75f804e",
+  "output": null,
+  "tool_trajectory": [],
+  "error": {
+    "category": "RuntimeError",
+    "message": "GOOGLE_CLOUD_PROJECT is missing from test configuration",
+    "retryable": false
+  }
+}

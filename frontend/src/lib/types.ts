@@ -141,6 +141,23 @@ export type AgentReadiness = {
   note: string;
 };
 
+export type InboxMessage = {
+  id: string;
+  project_id: string;
+  sender_name: string;
+  sender_email: string;
+  subject: string;
+  received_at: string;
+  direction: string;
+  attachment_count: number;
+};
+
+export type GmailWatch = {
+  mailbox: string;
+  expiration: string;
+  created_at: string;
+};
+
 export type DashboardSnapshot = {
   generated_at: string;
   projects: Project[];
@@ -149,6 +166,8 @@ export type DashboardSnapshot = {
   scope_buffers: ScopeBuffer[];
   agent_runs: AgentRun[];
   readiness: AgentReadiness;
+  inbox_messages: InboxMessage[];
+  gmail_watch?: GmailWatch | null;
   warnings: string[];
 };
 

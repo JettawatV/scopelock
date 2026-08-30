@@ -15,6 +15,8 @@ from scopelock.domain.models import (
     StrictFrozenContractModel,
 )
 from scopelock.domain.workflow_models import (
+    GmailWatchRecord,
+    InboundMessageRecord,
     ProjectRecord,
     ScopeBufferRecord,
     ScopeEventRecord,
@@ -58,6 +60,32 @@ class DashboardAgentRun(StrictFrozenContractModel):
     retryable: bool = False
 
 
+class DashboardInboxMessage(StrictFrozenContractModel):
+    """Safe metadata for a message that belongs to an existing project.
+
+    The dashboard must never be a second mailbox client.  In particular, this
+    projection intentionally excludes the message body, recipients, Gmail
+    history ID, raw-content hash, and attachment identifiers.
+    """
+
+    id: str
+    project_id: str
+    sender_name: str
+    sender_email: str
+    subject: str
+    received_at: datetime
+    direction: str
+    attachment_count: int = Field(ge=0, strict=True)
+
+
+class GmailWatchSnapshot(StrictFrozenContractModel):
+    """Safe watch status for the operator; topic and history stay private."""
+
+    mailbox: str
+    expiration: datetime
+    created_at: datetime
+
+
 class DashboardSnapshot(StrictFrozenContractModel):
     generated_at: datetime
     projects: tuple[ProjectRecord, ...]
@@ -66,6 +94,8 @@ class DashboardSnapshot(StrictFrozenContractModel):
     scope_buffers: tuple[ScopeBufferRecord, ...]
     agent_runs: tuple[DashboardAgentRun, ...]
     readiness: AgentReadinessSnapshot
+    inbox_messages: tuple[DashboardInboxMessage, ...] = ()
+    gmail_watch: GmailWatchSnapshot | None = None
     warnings: tuple[str, ...] = ()
 
 
@@ -101,6 +131,8 @@ class DashboardQueryService:
         events = self._load(CollectionName.SCOPE_EVENTS, ScopeEventRecord, warnings)
         buffers = self._load(CollectionName.BUFFERS, ScopeBufferRecord, warnings)
         agent_runs = self._agent_runs(warnings)
+        inbox_messages = self._inbox_messages(projects, warnings)
+        gmail_watch = self._gmail_watch(warnings)
         return DashboardSnapshot(
             generated_at=self._clock(),
             projects=self._recent(projects, "updated_at"),
@@ -109,6 +141,8 @@ class DashboardQueryService:
             scope_buffers=self._recent(buffers, "updated_at"),
             agent_runs=self._recent(agent_runs, "started_at"),
             readiness=self._readiness(),
+            inbox_messages=self._recent(inbox_messages, "received_at"),
+            gmail_watch=gmail_watch,
             warnings=tuple(warnings),
         )
 
@@ -177,6 +211,57 @@ class DashboardQueryService:
                 retryable=record.error.retryable if record.error else False,
             )
             for record in records
+        )
+
+    def _inbox_messages(
+        self,
+        projects: tuple[ProjectRecord, ...],
+        warnings: list[str],
+    ) -> tuple[DashboardInboxMessage, ...]:
+        """Return only safe metadata for messages tied to known project threads."""
+
+        project_ids_by_thread = {
+            project.gmail_thread_id: project.id
+            for project in projects
+            if project.gmail_thread_id
+        }
+        records = self._load(
+            CollectionName.INBOUND_MESSAGES,
+            InboundMessageRecord,
+            warnings,
+        )
+        messages: list[DashboardInboxMessage] = []
+        for record in records:
+            project_id = project_ids_by_thread.get(record.email.thread_id)
+            if project_id is None:
+                continue
+            messages.append(
+                DashboardInboxMessage(
+                    id=record.id,
+                    project_id=project_id,
+                    sender_name=record.email.sender_name,
+                    sender_email=record.email.sender_email,
+                    subject=record.email.subject,
+                    received_at=record.email.received_at,
+                    direction=record.email.direction.value,
+                    attachment_count=len(record.email.attachments),
+                )
+            )
+        return tuple(messages)
+
+    def _gmail_watch(self, warnings: list[str]) -> GmailWatchSnapshot | None:
+        records = self._load(
+            CollectionName.GMAIL_WATCHES,
+            GmailWatchRecord,
+            warnings,
+        )
+        if not records:
+            return None
+        latest = max(records, key=lambda record: (record.expiration, record.created_at))
+        return GmailWatchSnapshot(
+            mailbox=latest.mailbox,
+            expiration=latest.expiration,
+            created_at=latest.created_at,
         )
 
     def _readiness(self) -> AgentReadinessSnapshot:

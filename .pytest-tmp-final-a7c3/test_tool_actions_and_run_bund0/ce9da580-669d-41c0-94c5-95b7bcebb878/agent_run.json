@@ -1,0 +1,115 @@
+{
+  "id": "ce9da580-669d-41c0-94c5-95b7bcebb878",
+  "correlation_id": "5e0ea653-8f04-40d0-aa53-e8b9b3b3fcbb",
+  "project_id": null,
+  "trigger_type": "phase_zero_cli",
+  "trigger_ref": "current_email",
+  "agent_name": "requirement_analyzer",
+  "model": "gemini-3.5-flash",
+  "prompt_version": "requirement_analyzer_v5",
+  "started_at": "2026-08-30T10:55:19.857920Z",
+  "completed_at": "2026-08-30T10:55:19.863439Z",
+  "status": "COMPLETED",
+  "input_hash": "b44f50b1d94aecac573d59900e676151384f9f41b9b12060f2b9d488c75f804e",
+  "output": {
+    "is_project_request": true,
+    "project_title": "Shared inbox automation",
+    "objective": "Automate inbound Gmail requests.",
+    "requirements": [
+      {
+        "requirement_id": "REQ-01",
+        "category": "Intake",
+        "description": "Read inbound Gmail messages.",
+        "normalized_key": "gmail_intake",
+        "source_quote": "Automate our shared Gmail inbox."
+      }
+    ],
+    "selected_sop_modules": [
+      {
+        "module_key": "email_intake",
+        "quantity": 1,
+        "mapped_requirement": "REQ-01: Read inbound Gmail messages.",
+        "confidence": 0.95,
+        "evidence": [
+          {
+            "source_type": "gmail",
+            "source_id": "current_email",
+            "quote_or_rule": "Automate our shared Gmail inbox.",
+            "source_version": null
+          },
+          {
+            "source_type": "sop",
+            "source_id": "email_intake",
+            "quote_or_rule": "Read and process inbound Gmail messages.",
+            "source_version": null
+          }
+        ]
+      }
+    ],
+    "assumptions": [],
+    "exclusions_to_surface": [],
+    "missing_critical_information": [],
+    "source_language": "und",
+    "client_constraints": [],
+    "unsupported_requirements": [],
+    "proposal_ready": true,
+    "confidence": 0.95,
+    "evidence": [
+      {
+        "source_type": "gmail",
+        "source_id": "current_email",
+        "quote_or_rule": "Automate our shared Gmail inbox.",
+        "source_version": null
+      }
+    ]
+  },
+  "tool_trajectory": [
+    {
+      "id": "ef1ace6e-8550-4089-a515-1356fb50bff6",
+      "agent_run_id": "ce9da580-669d-41c0-94c5-95b7bcebb878",
+      "sequence": 1,
+      "call_id": "call-1",
+      "tool_name": "get_sop_catalog",
+      "phase": "CALL",
+      "status": "REQUESTED",
+      "payload": {
+        "payload_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "project_id": null,
+        "scope_version_id": null,
+        "status": null,
+        "version": null
+      },
+      "event_id": "event-call",
+      "author": "requirement_analyzer",
+      "recorded_at": "2026-08-30T10:55:19.860770Z",
+      "duration_ms": null,
+      "error": null
+    },
+    {
+      "id": "ca17c362-baa0-4dba-9e1f-4f5f5fdd99bb",
+      "agent_run_id": "ce9da580-669d-41c0-94c5-95b7bcebb878",
+      "sequence": 2,
+      "call_id": "call-1",
+      "tool_name": "get_sop_catalog",
+      "phase": "RESULT",
+      "status": "COMPLETED",
+      "payload": {
+        "payload_hash": "6c4c7eb0c7910be1df0386f5f6c504cc7bf20ccf47d46485ff55051f4706a665",
+        "project_id": null,
+        "scope_version_id": null,
+        "status": null,
+        "version": null,
+        "module_keys": [
+          "email_intake"
+        ],
+        "module_count": 1
+      },
+      "event_id": "event-result",
+      "author": "requirement_analyzer",
+      "recorded_at": "2026-08-30T10:55:19.863105Z",
+      "duration_ms": null,
+      "error": null
+    }
+  ],
+  "error": null
+}

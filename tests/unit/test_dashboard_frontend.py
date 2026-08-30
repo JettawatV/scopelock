@@ -6,7 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from scopelock.domain.enums import ProjectLifecycleStatus
+import scopelock.http_api as http_api
+from scopelock.domain.enums import EmailDirection, ProjectLifecycleStatus
 from scopelock.domain.models import (
     AgentRun,
     AgentRunStatus,
@@ -14,7 +15,12 @@ from scopelock.domain.models import (
     ToolActionPhase,
     ToolActionStatus,
 )
-from scopelock.domain.workflow_models import ProjectRecord
+from scopelock.domain.workflow_models import (
+    GmailWatchRecord,
+    InboundEmail,
+    InboundMessageRecord,
+    ProjectRecord,
+)
 from scopelock.http_api import GmailApiRuntime, create_app
 from scopelock.repositories.in_memory import InMemoryApplicationRepository
 from scopelock.repositories.model_store import CollectionName, ModelStore
@@ -71,6 +77,37 @@ def _dashboard_service() -> DashboardQueryService:
             tool_trajectory=[action],
         ),
     )
+    store.create(
+        CollectionName.INBOUND_MESSAGES,
+        InboundMessageRecord(
+            id="inbound-1",
+            email=InboundEmail(
+                message_id="gmail-message-id-must-not-leak",
+                thread_id="thread-1",
+                sender_name="Client",
+                sender_email="client@example.com",
+                subject="Project requirements",
+                body="Sensitive request body must-not-leak",
+                received_at=NOW,
+                recipient_emails=("hidden-recipient@example.com",),
+                direction=EmailDirection.INBOUND,
+                raw_content_hash="b" * 64,
+            ),
+            correlation_id="corr-inbound",
+            created_at=NOW,
+        ),
+    )
+    store.create(
+        CollectionName.GMAIL_WATCHES,
+        GmailWatchRecord(
+            id="watch-1",
+            mailbox="operator@example.com",
+            topic_name="projects/example/topics/gmail",
+            history_id="12345",
+            expiration=NOW,
+            created_at=NOW,
+        ),
+    )
     return DashboardQueryService(
         repository,
         readiness_path=ROOT / "config" / "agent_readiness.json",
@@ -99,7 +136,17 @@ def test_dashboard_projection_is_bounded_and_redacts_agent_payloads():
     assert snapshot.readiness.status == "PASS"
     assert snapshot.projects[0].id == "project-1"
     assert snapshot.agent_runs[0].tool_count == 1
+    assert snapshot.inbox_messages[0].subject == "Project requirements"
+    assert snapshot.inbox_messages[0].project_id == "project-1"
+    assert snapshot.gmail_watch is not None
+    assert snapshot.gmail_watch.mailbox == "operator@example.com"
     assert "must-not-leak" not in serialized
+    assert "Sensitive request body" not in serialized
+    assert "gmail-message-id-must-not-leak" not in serialized
+    assert "hidden-recipient@example.com" not in serialized
+    assert "raw_content_hash" not in serialized
+    assert "recipient_emails" not in serialized
+    assert "history_id" not in serialized
     assert "sensitive-message-id" not in serialized
     assert "input_hash" not in serialized
     assert "tool_trajectory" not in serialized
@@ -114,6 +161,10 @@ def test_dashboard_http_requires_operator_key_and_returns_project_detail():
         "/api/dashboard",
         headers={"X-ScopeLock-Operator-Key": "operator-secret"},
     )
+    session = client.get(
+        "/api/session",
+        headers={"X-ScopeLock-Operator-Key": "operator-secret"},
+    )
     detail = client.get(
         "/api/projects/project-1",
         headers={"X-ScopeLock-Operator-Key": "operator-secret"},
@@ -121,8 +172,29 @@ def test_dashboard_http_requires_operator_key_and_returns_project_detail():
 
     assert dashboard.status_code == 200
     assert dashboard.json()["projects"][0]["id"] == "project-1"
+    assert session.status_code == 200
+    assert session.json() == {"status": "accepted"}
     assert detail.status_code == 200
     assert detail.json()["project"]["id"] == "project-1"
+
+
+def test_operator_session_accepts_the_environment_key_without_starting_runtime(
+    monkeypatch,
+):
+    def runtime_must_not_start():
+        raise AssertionError("The session check must not initialize cloud runtime")
+
+    key = "local-operator-key-for-safe-session-check"
+    monkeypatch.setenv("SCOPELOCK_OPERATOR_API_KEY", key)
+    monkeypatch.setattr(http_api, "build_default_runtime", runtime_must_not_start)
+    client = TestClient(http_api.create_app())
+
+    accepted = client.get("/api/session", headers={"X-ScopeLock-Operator-Key": key})
+    rejected = client.get("/api/session")
+
+    assert accepted.status_code == 200
+    assert accepted.json() == {"status": "accepted"}
+    assert rejected.status_code == 401
 
 
 def test_static_frontend_gets_ui_csp_while_api_keeps_strict_csp(
