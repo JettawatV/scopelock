@@ -69,7 +69,7 @@ returned `500`, leaving the project projection behind the accepted records. The
 acceptance workflow was patched to use an artifact-specific transition key and
 to converge project state on a retry. Cloud Run revision `00010-s2v` was
 deployed from an immutable image; the retry returned `200` and repaired the
-canonical project projection. The regression suite now passes **217 tests**.
+canonical project projection. The regression suite now passes **225 tests**.
 
 ## Remaining release evidence
 

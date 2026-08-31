@@ -167,6 +167,86 @@ class DashboardQueryService:
             warnings=tuple(warnings),
         )
 
+    def overview_for_client_email(self, client_email: str) -> DashboardSnapshot:
+        """Return a bounded projection for one verified reviewer email.
+
+        The public judge surface must not expose the shared demo mailbox or
+        another reviewer's project. Projects are created from the inbound
+        sender address, so the verified Firebase email is the tenant boundary
+        for this intentionally single-mailbox demo.
+        """
+
+        normalized_email = client_email.strip().casefold()
+        snapshot = self.overview()
+        project_ids = {
+            project.id
+            for project in snapshot.projects
+            if project.client_email.casefold() == normalized_email
+        }
+        return snapshot.model_copy(
+            update={
+                "projects": tuple(
+                    project
+                    for project in snapshot.projects
+                    if project.id in project_ids
+                ),
+                "artifacts": tuple(
+                    artifact
+                    for artifact in snapshot.artifacts
+                    if artifact.project_id in project_ids
+                ),
+                "scope_events": tuple(
+                    event
+                    for event in snapshot.scope_events
+                    if event.project_id in project_ids
+                ),
+                "scope_buffers": tuple(
+                    buffer
+                    for buffer in snapshot.scope_buffers
+                    if buffer.project_id in project_ids
+                ),
+                "agent_runs": tuple(
+                    run
+                    for run in snapshot.agent_runs
+                    if run.project_id in project_ids
+                ),
+                "inbox_messages": tuple(
+                    message
+                    for message in snapshot.inbox_messages
+                    if message.project_id in project_ids
+                ),
+                # The reviewer only needs to know that the demo intake is
+                # monitored; never disclose the shared mailbox address.
+                "gmail_watch": (
+                    snapshot.gmail_watch.model_copy(
+                        update={"mailbox": "ScopeLock demo inbox"}
+                    )
+                    if snapshot.gmail_watch
+                    else None
+                ),
+            }
+        )
+
+    def message_detail_for_client_email(
+        self, message_id: str, client_email: str
+    ) -> DashboardMessageDetail:
+        """Return a selected thread message for the verified project owner.
+
+        Outbound proposal messages are authored by the demo mailbox, not by
+        the reviewer. Authorization therefore follows the project/thread
+        boundary rather than the selected message's sender address.
+        """
+
+        detail = self.message_detail(message_id)
+        project_ids = {
+            project.id
+            for project in self.overview().projects
+            if project.client_email.casefold() == client_email.strip().casefold()
+        }
+        if detail.project_id not in project_ids:
+            raise KeyError(message_id)
+        return detail
+
     def project_detail(self, project_id: str) -> ProjectDetailSnapshot:
         warnings: list[str] = []
         project = next(

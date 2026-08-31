@@ -42,7 +42,39 @@ context documents if there is a conflict.
 
 ScopeLock turns an inbound client email into an SOP-aligned proposal for review, sends it after approval, and then autonomously monitors the Gmail thread for commercially meaningful scope changes.
 
-## Reproducible local setup
+## Hosted judging URL
+
+The combined operator console and API are deployed at:
+
+**https://scopelock-api-33aorietwa-as.a.run.app/?demo=1**
+
+The core Cloud Run service is intentionally private (`Require authentication`).
+The `demo=1` route is read-only and uses synthetic fixture data, but Cloud Run
+IAM still applies before the application can serve it. A direct anonymous
+browser visit therefore returns `403`; do not share the operator API key, Gmail
+OAuth refresh token, or Secret Manager values.
+
+For asynchronous judging, deploy the separate public reviewer gateway described
+in `docs/CLOUD_RUN_DEPLOYMENT.md` and submit its `/review/` URL. The gateway
+accepts Firebase email-link sign-in, forwards only `/api/reviewer/*` to the
+private core, and never exposes the operator API key. The reviewer dashboard is
+explicitly a **ScopeLock demo inbox** view—not the judge's personal Gmail
+inbox. A judge uses the same email address for sign-in and for the test email
+sent to the dedicated demo mailbox.
+
+Firestore and Firebase Authentication are separate services. Creating the
+Firestore database does not enable email-link Auth; initialize Identity
+Platform, enable Email link, and add the gateway domain to Firebase's
+authorized domains before publishing the reviewer URL.
+
+The live Gmail workflow is owner-controlled: the dedicated demo mailbox is
+authorized once through Google OAuth, while commercial actions remain approval
+gated in the private core. Judges do **not** connect their personal Gmail
+account; they only send a test email to the dedicated demo mailbox after
+opening a reviewer session. The owner does not need to be online for background
+analysis or later review.
+
+## Reproducible setup and testing
 
 ScopeLock requires Python 3.13. The verified ADK development environment is
 `.venv313`.
@@ -62,8 +94,25 @@ python -m pytest -q
 The project `uv.lock` pins the resolved dependency set. Verified on
 2026-08-29 with Python 3.13.14, ADK 2.8.0, the Gmail API/OAuth clients,
 successful ADK discovery, pytest 9.1.1, and the reviewed pre-Gmail agent gate.
-The latest complete local suite passes 216 tests.
+The latest complete local suite passes **225 tests**.
 This uv-managed environment does not require an embedded `pip` module.
+
+### Reproducible testing
+
+From the repository root, after activating `.venv313`:
+
+```powershell
+python -m pytest -q
+cd frontend
+npm ci
+npm run lint
+npm run build
+```
+
+For the native ADK evaluation gate, run the commands in the ADK workflow below
+or execute `.\scripts\test-agent-plan.ps1`. The reviewed live-model evals use
+`.\scripts\test-agent-plan.ps1 -LiveAdk` and require the configured Vertex AI
+project; deterministic tests do not require cloud credentials.
 
 ## Development workflow
 
@@ -105,13 +154,10 @@ human approval.
 
 Requirement Analyzer v5 passes 12/12, Scope Analyzer v4 passes 35/35, both
 native ADK trajectory cases pass, and the focused repeatability gate passes
-18/18. The Days 11–13 application code is implemented; real Gmail/Google Cloud
-activation remains held until the owner completes
-`docs/GMAIL_SECURITY_GATE.md`, `docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md`, and the
-live mailbox gates.
-The agent gate passed and the user explicitly unlocked the thin operator UI on
-2026-08-30. The UI is packaged with the API, but continuous Gmail delivery is
-still held until the hosted Pub/Sub and mailbox gates pass.
+18/18. The agent gate passed and the user explicitly unlocked the thin operator
+UI on 2026-08-30. Hosted Gmail activation and the end-to-end approval/change
+order path are recorded in `docs/evidence/HOSTED_PRECHECK_2026-08-31.md` and
+`docs/evidence/FINAL_DEMO_READINESS_AUDIT.md`.
 
 The ADK app selector displays `app` because that name must match the
 discoverable `app/` package. The root agent inside it is named `scopelock`.
@@ -255,16 +301,39 @@ scope also requires a persisted same-client/same-thread Gmail message.
 ### Operator dashboard
 
 The operator console uses Vite 7.3.6, React, TypeScript, and Tailwind. It builds
-a static SPA for `/`, `/projects/`, and `/evals/`. FastAPI serves that build
+a static SPA for `/` and `/settings/`. FastAPI serves that build
 from the same origin as the policy-checked API, so the existing Cloud Run image
 hosts both frontend and backend.
 
-The deployed Cloud Run service remains private. Use an authenticated
-`gcloud run services proxy` connection for the owner-only browser workflow; a
-direct browser visit to the `run.app` URL does not supply Cloud Run IAM
-credentials. Public reviewer access requires a separately reviewed
-identity-aware access layer. The exact owner workflow is in
+The deployed core service remains private. Use an authenticated `gcloud run
+services proxy` connection for the owner-only operator workflow; a direct
+browser visit to the core `run.app` URL does not supply Cloud Run IAM
+credentials. Public reviewer access uses the separate gateway documented in
 `docs/CLOUD_RUN_DEPLOYMENT.md`.
+
+For a local or owner review, the `?demo=1` route is a safe read-only fixture. It
+does not call Gmail or mutate Firestore. The live reviewer path is a scoped
+Firebase email-link session: it does not require an operator key, and its
+projection is restricted to the signed-in sender's project.
+
+To exercise the live golden path as the owner/operator:
+
+1. Open the operator console through the authenticated Cloud Run proxy (or the
+   temporary reviewer access method listed in the submission note).
+2. Send a normal email from any client address to the dedicated demo mailbox.
+   The mailbox address is provided separately with the submission/testing note;
+   it is intentionally not embedded in this public repository.
+3. Gmail `users.watch` resolves the notification through Pub/Sub. Cloud Run
+   reads the thread, analyzes the request, calculates the SOP-backed price and
+   timeline, and persists the draft in Firestore. Refresh Overview to see it.
+4. The owner/operator reviews the proposal and enters the operator key to
+   approve and send. Judges should never receive or share that key.
+
+For an asynchronous judge, use the gateway `/review/` URL instead. Sign in
+with the email link, send the test requirement from that same address to the
+dedicated demo mailbox, then return later to review the agent's draft. The
+reviewer routes enforce the same approval policy and never expose the core
+operator API key.
 
 ```powershell
 # Terminal 1, from the repository root
@@ -296,6 +365,16 @@ Open `http://127.0.0.1:8080/?demo=1` for the clearly labelled, read-only
 reviewed fixture. Live mode requires the operator key. The key remains only in
 page memory and is never embedded in the frontend build, URL, cookie, or browser
 storage. Approve, draft, and send remain separate backend-enforced actions.
+
+### Cloud Run cost guardrail
+
+The live `scopelock-api` service was checked on 2026-08-31: `maxScale=1`,
+`containerConcurrency=1`, and no `minScale` annotation (Cloud Run's effective
+minimum is therefore `0`). This lets an idle service scale to zero and limits
+burst capacity, but it does **not** guarantee a zero bill. Requests can still
+use billable CPU/memory and networking, and Firestore, Pub/Sub, Vertex AI,
+Secret Manager, and Gmail have separate usage/free-tier rules. Review the
+project billing account before and after the judging window.
 
 Use the Vite development server until the local UI and agent rehearsal are
 locked. Only then run the Docker/Cloud Build deployment workflow. The combined

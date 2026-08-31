@@ -238,10 +238,17 @@ def test_static_frontend_gets_ui_csp_while_api_keeps_strict_csp(
     client = TestClient(create_app(lambda: _runtime(_dashboard_service())))
 
     home = client.get("/")
+    settings = client.get("/settings")
+    settings_slash = client.get("/settings/")
     asset = client.get("/assets/index.js")
     health = client.get("/health")
 
     assert home.status_code == 200
+    assert settings.status_code == 200
+    assert settings_slash.status_code == 200
+    assert "script-src 'self' 'unsafe-inline'" in settings.headers[
+        "content-security-policy"
+    ]
     assert asset.status_code == 200
     assert "ScopeLock" in home.text
     assert "script-src 'self' 'unsafe-inline'" in home.headers[
@@ -312,6 +319,7 @@ def test_frontend_uses_vite_static_spa_contract():
     assert (
         ROOT / "frontend" / "src" / "components" / "dashboard-primitives.tsx"
     ).exists()
+    assert (ROOT / "frontend" / "src" / "lib" / "browser-storage.ts").exists()
     assert (ROOT / "frontend" / "src" / "lib" / "types.ts").exists()
     assert (ROOT / "frontend" / "vite.config.ts").exists()
     assert not (ROOT / "frontend" / "app").exists()

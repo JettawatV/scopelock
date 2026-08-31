@@ -2,13 +2,13 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { OperatorApp } from "@/components/operator-app";
+import { ReviewerApp } from "@/components/reviewer-app";
 import "./globals.css";
 
-type View = "overview" | "projects" | "evals";
+type View = "overview" | "settings";
 
 function viewFromPath(pathname: string): View {
-  if (pathname.startsWith("/projects")) return "projects";
-  if (pathname.startsWith("/evals")) return "evals";
+  if (pathname.startsWith("/settings")) return "settings";
   return "overview";
 }
 
@@ -24,8 +24,12 @@ function App() {
   return <OperatorApp view={view} />;
 }
 
+function Root() {
+  return window.location.pathname.startsWith("/review") ? <ReviewerApp /> : <App />;
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <Root />
   </StrictMode>,
 );

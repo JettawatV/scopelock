@@ -11,9 +11,14 @@ workflow, and local replay are ready for the demo scenario. The real Google
 Cloud event path has now been exercised end to end on the dedicated Gmail
 thread, including final client acceptance and canonical scope promotion.
 
+The asynchronous reviewer access path is implemented in code but is not yet a
+hosted submission URL: Firebase Authentication/Identity Platform must be
+initialized and the separate `scopelock-reviewer` gateway deployed before the
+judge link can be published. The private core remains IAM protected.
+
 ## Verified in this audit
 
-- Complete deterministic suite: **218/218 passed**.
+- Complete deterministic suite: **225/225 passed**.
 - Requirement Analyzer live reviewed cases: **12/12 passed**.
 - Scope Analyzer live reviewed cases: **35/35 passed**.
 - Approval-safe live trajectory cases: **2/2 passed**.

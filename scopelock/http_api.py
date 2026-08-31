@@ -49,12 +49,17 @@ from scopelock.services.pubsub_auth import (
 from scopelock.services.scope_revision_workflow import ScopeRevisionWorkflow
 from scopelock.services.sop_service import load_sop
 from scopelock.settings import PROJECT_ROOT, project_id
+from scopelock.reviewer_auth import (
+    ReviewerIdentity,
+    firebase_web_config,
+    reviewer_identity,
+)
 
 
 class HttpOnlyStaticFiles(StaticFiles):
     """Serve the SPA without turning the catch-all mount into a WS app."""
 
-    _SPA_ROUTES = {"projects", "evals"}
+    _SPA_ROUTES = {"projects", "evals", "settings", "review"}
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
         if scope["type"] == "websocket":
@@ -85,6 +90,11 @@ class DecisionCommand(CommandModel):
 
 class RevisionCommand(CommandModel):
     operator_id: str = Field(min_length=1, max_length=320)
+    correlation_id: str = Field(min_length=1, max_length=128)
+    reason: str = Field(min_length=1, max_length=2_000)
+
+
+class ReviewerRevisionCommand(CommandModel):
     correlation_id: str = Field(min_length=1, max_length=128)
     reason: str = Field(min_length=1, max_length=2_000)
 
@@ -247,7 +257,7 @@ def create_app(
 
     def secure_response(response, *, request_id: str, request_path: str):
         is_ui = request_path == "/" or request_path.startswith(
-            ("/projects", "/evals", "/assets/", "/icon.svg")
+            ("/projects", "/evals", "/settings", "/review", "/assets/", "/icon.svg")
         )
         response.headers["Cache-Control"] = (
             "public, max-age=31536000, immutable"
@@ -255,7 +265,8 @@ def create_app(
             else "no-store"
         )
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; base-uri 'self'; connect-src 'self'; "
+            "default-src 'self'; base-uri 'self'; connect-src 'self' "
+            "https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; "
             "font-src 'self'; frame-ancestors 'none'; frame-src 'self' blob:; "
             "img-src 'self' data:; "
             "object-src 'none'; script-src 'self' 'unsafe-inline'; "
@@ -383,6 +394,45 @@ def create_app(
         configured = runtime()
         return configured
 
+    def reviewer_runtime(
+        identity: ReviewerIdentity = Depends(reviewer_identity),
+    ) -> tuple[GmailApiRuntime, ReviewerIdentity]:
+        """Resolve the private runtime only after Firebase reviewer auth."""
+
+        return runtime(), identity
+
+    def reviewer_project(
+        configured: GmailApiRuntime,
+        identity: ReviewerIdentity,
+        project_id_value: str,
+    ):
+        """Enforce the verified sender -> project boundary for public review."""
+
+        if configured.dashboard_service is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Reviewer dashboard is unavailable",
+            )
+        try:
+            project = configured.dashboard_service.project_detail(project_id_value).project
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Project not found") from error
+        if project.client_email.casefold() != identity.email.casefold():
+            raise HTTPException(status_code=404, detail="Project not found")
+        return project
+
+    def reviewer_artifact(
+        configured: GmailApiRuntime,
+        identity: ReviewerIdentity,
+        artifact_id: str,
+    ) -> CommercialArtifact:
+        try:
+            artifact = configured.commercial_service.get_artifact(artifact_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Artifact not found") from error
+        reviewer_project(configured, identity, artifact.project_id)
+        return artifact
+
     # Cloud Run reserves some paths ending in "z", so keep this endpoint
     # intentionally named /health rather than the common /healthz.
     @app.get("/health")
@@ -438,6 +488,284 @@ def create_app(
         except KeyError as error:
             raise HTTPException(status_code=404, detail="Message not found") from error
         return result.model_dump(mode="json")
+
+    # Reviewer routes are intentionally namespaced and never fall back to the
+    # operator API key. A public gateway can forward only these routes to this
+    # private service after Cloud Run IAM authentication; Firebase verifies the
+    # judge identity again at the application boundary.
+    @app.get("/api/reviewer/config")
+    def reviewer_config() -> dict[str, str]:
+        try:
+            return firebase_web_config()
+        except RuntimeError as error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Reviewer sign-in is not configured",
+            ) from error
+
+    @app.get("/api/reviewer/session")
+    def reviewer_session(
+        dependency: tuple[GmailApiRuntime, ReviewerIdentity] = Depends(
+            reviewer_runtime
+        ),
+    ) -> dict[str, str]:
+        _, identity = dependency
+        return {"email": identity.email, "status": "accepted"}
+
+    @app.get("/api/reviewer/dashboard")
+    def reviewer_dashboard(
+        dependency: tuple[GmailApiRuntime, ReviewerIdentity] = Depends(
+            reviewer_runtime
+        ),
+    ) -> dict[str, Any]:
+        configured, identity = dependency
+        if configured.dashboard_service is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Reviewer dashboard is unavailable",
+            )
+        return configured.dashboard_service.overview_for_client_email(
+            identity.email
+        ).model_dump(mode="json")
+
+    @app.get("/api/reviewer/messages/{message_id}")
+    def reviewer_message_detail(
+        message_id: str,
+        dependency: tuple[GmailApiRuntime, ReviewerIdentity] = Depends(
+            reviewer_runtime
+        ),
+    ) -> dict[str, Any]:
+        if len(message_id) > 256:
+            raise HTTPException(status_code=404, detail="Message not found")
+        configured, identity = dependency
+        if configured.dashboard_service is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Reviewer dashboard is unavailable",
+            )
+        try:
+            result = configured.dashboard_service.message_detail_for_client_email(
+                message_id, identity.email
+            )
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Message not found") from error
+        return result.model_dump(mode="json")
+
+    @app.get("/api/reviewer/artifacts/{artifact_id}/proposal.pdf")
+    def reviewer_proposal_pdf(
+        artifact_id: str,
+        dependency: tuple[GmailApiRuntime, ReviewerIdentity] = Depends(
+            reviewer_runtime
+        ),
+    ) -> Response:
+        if len(artifact_id) > 256:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        configured, identity = dependency
+        artifact = reviewer_artifact(configured, identity, artifact_id)
+        try:
+            content = configured.commercial_service.proposal_pdf(artifact.id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Artifact not found") from error
+        except ApprovalPolicyViolation as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return Response(
+            content=content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": 'inline; filename="scopelock-proposal.pdf"'},
+        )
+
+    @app.post("/api/reviewer/artifacts/{artifact_id}/approve")
+    def reviewer_approve_artifact(
+        artifact_id: str,
+        command: ActionCommand,
+        dependency: tuple[GmailApiRuntime, ReviewerIdentity] = Depends(
+            reviewer_runtime
+        ),
+    ) -> dict[str, Any]:
+        configured, identity = dependency
+        reviewer_artifact(configured, identity, artifact_id)
+        try:
+            artifact, approval = configured.commercial_service.decide(
+                artifact_id,
+                decision=ApprovalStatus.APPROVED,
+                approver_id=identity.email,
+                correlation_id=command.correlation_id,
+            )
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Artifact not found") from error
+        except ApprovalPolicyViolation as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return {
+            "artifact": artifact.model_dump(mode="json"),
+            "approval": approval.model_dump(mode="json"),
+        }
+
+    @app.post("/api/reviewer/artifacts/{artifact_id}/reject")
+    def reviewer_reject_artifact(
+        artifact_id: str,
+        command: ActionCommand,
+        dependency: tuple[GmailApiRuntime, ReviewerIdentity] = Depends(
+            reviewer_runtime
+        ),
+    ) -> dict[str, Any]:
+        configured, identity = dependency
+        reviewer_artifact(configured, identity, artifact_id)
+        try:
+            artifact, approval = configured.commercial_service.decide(
+                artifact_id,
+                decision=ApprovalStatus.REJECTED,
+                approver_id=identity.email,
+                correlation_id=command.correlation_id,
+            )
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Artifact not found") from error
+        except ApprovalPolicyViolation as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return {
+            "artifact": artifact.model_dump(mode="json"),
+            "approval": approval.model_dump(mode="json"),
+        }
+
+    @app.post("/api/reviewer/artifacts/{artifact_id}/revise")
+    def reviewer_revise_artifact(
+        artifact_id: str,
+        command: ReviewerRevisionCommand,
+        dependency: tuple[GmailApiRuntime, ReviewerIdentity] = Depends(
+            reviewer_runtime
+        ),
+    ) -> dict[str, Any]:
+        configured, identity = dependency
+        reviewer_artifact(configured, identity, artifact_id)
+        try:
+            artifact = configured.commercial_service.mark_for_revision(
+                artifact_id,
+                operator_id=identity.email,
+                correlation_id=command.correlation_id,
+                reason=command.reason,
+            )
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Artifact not found") from error
+        except ApprovalPolicyViolation as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return artifact.model_dump(mode="json")
+
+    @app.post("/api/reviewer/artifacts/{artifact_id}/draft")
+    def reviewer_create_draft(
+        artifact_id: str,
+        command: ActionCommand,
+        dependency: tuple[GmailApiRuntime, ReviewerIdentity] = Depends(
+            reviewer_runtime
+        ),
+    ) -> dict[str, Any]:
+        configured, identity = dependency
+        reviewer_artifact(configured, identity, artifact_id)
+        try:
+            draft = configured.commercial_service.create_draft(
+                artifact_id,
+                correlation_id=command.correlation_id,
+                email_body=command.email_body,
+            )
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Artifact not found") from error
+        except ApprovalPolicyViolation as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return draft.model_dump(mode="json")
+
+    @app.post("/api/reviewer/artifacts/{artifact_id}/send")
+    def reviewer_send_artifact(
+        artifact_id: str,
+        command: ActionCommand,
+        dependency: tuple[GmailApiRuntime, ReviewerIdentity] = Depends(
+            reviewer_runtime
+        ),
+    ) -> dict[str, Any]:
+        configured, identity = dependency
+        reviewer_artifact(configured, identity, artifact_id)
+        try:
+            result = configured.commercial_service.send(
+                artifact_id,
+                correlation_id=command.correlation_id,
+                email_body=command.email_body,
+            )
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Artifact not found") from error
+        except ApprovalPolicyViolation as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        if result.status != "SENT":
+            raise HTTPException(status_code=503, detail=result.model_dump(mode="json"))
+        return result.model_dump(mode="json")
+
+    @app.post("/api/reviewer/artifacts/{artifact_id}/accept")
+    def reviewer_accept_artifact(
+        artifact_id: str,
+        command: AcceptanceCommand,
+        dependency: tuple[GmailApiRuntime, ReviewerIdentity] = Depends(
+            reviewer_runtime
+        ),
+    ) -> dict[str, Any]:
+        configured, identity = dependency
+        reviewer_artifact(configured, identity, artifact_id)
+        if configured.dashboard_service is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Reviewer dashboard is unavailable",
+            )
+        try:
+            configured.dashboard_service.message_detail_for_client_email(
+                command.source_inbound_message_id, identity.email
+            )
+            artifact, scope, project = (
+                configured.revision_workflow.accept_sent_artifact_from_record(
+                    artifact_id,
+                    inbound_message_record_id=command.source_inbound_message_id,
+                    correlation_id=command.correlation_id,
+                )
+            )
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Artifact not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return {
+            "artifact": artifact.model_dump(mode="json"),
+            "scope": scope.model_dump(mode="json"),
+            "project": project.model_dump(mode="json"),
+        }
+
+    @app.post("/api/reviewer/buffers/{buffer_id}/finalize")
+    def reviewer_finalize_buffer(
+        buffer_id: str,
+        command: FinalizeCommand,
+        dependency: tuple[GmailApiRuntime, ReviewerIdentity] = Depends(
+            reviewer_runtime
+        ),
+    ) -> dict[str, Any]:
+        configured, identity = dependency
+        if configured.dashboard_service is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Reviewer dashboard is unavailable",
+            )
+        snapshot = configured.dashboard_service.overview_for_client_email(
+            identity.email
+        )
+        if not any(buffer.id == buffer_id for buffer in snapshot.scope_buffers):
+            raise HTTPException(status_code=404, detail="Scope buffer not found")
+        try:
+            result = configured.revision_workflow.finalize_buffer(
+                buffer_id,
+                reason=BufferFinalizationReason.MANUAL,
+                finalized_at=datetime.now(timezone.utc),
+            )
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Scope buffer not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return {
+            "buffer": result.buffer.model_dump(mode="json"),
+            "scope": result.proposed_scope.model_dump(mode="json"),
+            "artifact": result.artifact.model_dump(mode="json"),
+            "correlation_id": command.correlation_id,
+        }
 
     @app.post("/webhooks/gmail")
     async def gmail_webhook(

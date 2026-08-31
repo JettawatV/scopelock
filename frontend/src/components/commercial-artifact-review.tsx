@@ -1,4 +1,4 @@
-import { Check, Download, Eye, FileText, Mail, Send, ShieldCheck, X } from "lucide-react";
+import { Check, Download, Eye, FileText, Mail, Save, Send, ShieldCheck, X, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -7,7 +7,8 @@ import {
   StatusPill,
   time,
 } from "@/components/dashboard-primitives";
-import { apiBlobRequest, correlationId } from "@/lib/api";
+import { apiBlobRequest, correlationId, type ApiCredential } from "@/lib/api";
+import { readStoredValue, writeStoredValue } from "@/lib/browser-storage";
 import { demoProposalPdf } from "@/lib/demo-proposal";
 import type { Artifact, InboxMessage, Project } from "@/lib/types";
 
@@ -16,7 +17,8 @@ type ArtifactReviewProps = {
   project?: Project;
   inboxMessages: InboxMessage[];
   demo: boolean;
-  operatorKey: string;
+  operatorKey: ApiCredential;
+  apiPrefix?: string;
   compact?: boolean;
   operatorId: string;
   setOperatorId: (value: string) => void;
@@ -25,6 +27,12 @@ type ArtifactReviewProps = {
 };
 
 type PreviewTab = "overview" | "document" | "email";
+
+const PREVIEW_TABS: Array<{ key: PreviewTab; label: string; icon: LucideIcon }> = [
+  { key: "overview", label: "Overview", icon: Eye },
+  { key: "document", label: "Proposal review", icon: FileText },
+  { key: "email", label: "Email draft", icon: Mail },
+];
 
 type ReviewPacketActions = {
   operatorId: string;
@@ -70,10 +78,101 @@ function emailPreview(artifact: Artifact, project?: Project) {
   ].join("\n");
 }
 
+function PreviewTabs({
+  activeTab,
+  onChange,
+}: {
+  activeTab: PreviewTab;
+  onChange: (tab: PreviewTab) => void;
+}) {
+  return (
+    <div className="flex gap-1 border-b border-[var(--line)] px-5 pt-3 sm:px-6" role="tablist" aria-label="Review packet sections">
+      {PREVIEW_TABS.map(({ key, label, icon: Icon }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => onChange(key)}
+          aria-selected={activeTab === key}
+          role="tab"
+          className={`preview-modal-tab ${activeTab === key ? "is-active" : ""}`}
+        >
+          <Icon size={15} aria-hidden="true" /> {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ProposalDocumentSheet({ artifact, project }: { artifact: Artifact; project?: Project }) {
+  return (
+    <article className="proposal-document-sheet" aria-label="Proposal document preview">
+      <div className="proposal-document-heading">
+        <p className="eyebrow">Proposal · Version {artifact.version_number}</p>
+        <h3 className="mt-2 text-2xl font-black tracking-[-0.035em]">{project?.title ?? "Commercial proposal"}</h3>
+        <p className="mt-1 text-sm text-[var(--muted)]">Prepared for {project?.client_name ?? "the client"}</p>
+      </div>
+      <dl className="proposal-document-summary">
+        <div><dt>Total investment</dt><dd>{money(artifact.pricing_result.total_usd)}</dd></div>
+        <div><dt>Delivery timeline</dt><dd>{artifact.timeline_result.total_days} business days</dd></div>
+        <div><dt>Validity</dt><dd>14 days</dd></div>
+      </dl>
+      <div className="mt-6">
+        <p className="calculated-scope-label">Included work</p>
+        <div className="mt-3 grid gap-2">
+          {artifact.pricing_result.line_items.map((item) => (
+            <div key={item.module_key} className="flex items-center justify-between gap-4 border-b border-[var(--line)] py-2.5">
+              <span className="text-sm font-bold">{humanize(item.module_key)}</span>
+              <span className="tabular text-sm font-black">{money(item.subtotal_usd)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <p className="mt-6 border-t border-[var(--line)] pt-4 text-xs leading-5 text-[var(--muted)]">Scope and pricing calculated from the sealed {artifact.sop_version} catalog. Reply to confirm the scope or request a change.</p>
+    </article>
+  );
+}
+
+function EmailDraftEditor({
+  artifact,
+  project,
+  value,
+  saved,
+  onChange,
+  onSave,
+}: {
+  artifact: Artifact;
+  project?: Project;
+  value: string;
+  saved: boolean;
+  onChange: (value: string) => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="grid gap-4">
+      <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[var(--muted)]">Reply in the existing Gmail thread</p>
+            <p className="mt-1 text-sm font-black">{project?.client_name ?? "Client"} · {project?.client_email ?? "Client email"}</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-2.5 py-1 text-[10px] font-extrabold text-[var(--muted-strong)]"><Mail size={13} /> Attachment included</span>
+        </div>
+      </div>
+      <label htmlFor={`email-draft-${artifact.id}`} className="sr-only">Editable client email draft</label>
+      <textarea id={`email-draft-${artifact.id}`} value={value} onChange={(event) => onChange(event.target.value)} rows={14} className="preview-email-editor" />
+      <div className="flex flex-col gap-3 border-t border-[var(--line)] pt-3 sm:flex-row sm:items-center sm:justify-between">
+        <p role="status" className="flex items-start gap-2 text-xs leading-5 text-[var(--muted)]"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-[var(--ink)]" /> {saved ? "Saved in this browser session." : "Save your edit before creating or sending the Gmail draft."}</p>
+        <button type="button" disabled={!value.trim()} onClick={onSave} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--line-dark)] bg-white px-4 text-xs font-extrabold hover:bg-[var(--surface-muted)] disabled:opacity-45"><Save size={14} /> Save draft</button>
+      </div>
+    </div>
+  );
+}
+
 function ArtifactPreviewModal({
   artifact,
   project,
   operatorKey,
+  apiPrefix = "/api",
   demo,
   open,
   initialTab,
@@ -82,7 +181,8 @@ function ArtifactPreviewModal({
 }: {
   artifact: Artifact;
   project?: Project;
-  operatorKey: string;
+  operatorKey: ApiCredential;
+  apiPrefix?: string;
   demo: boolean;
   open: boolean;
   initialTab: PreviewTab;
@@ -93,7 +193,13 @@ function ArtifactPreviewModal({
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [sendConfirm, setSendConfirm] = useState(false);
-  const [emailDraft, setEmailDraft] = useState(() => emailPreview(artifact, project));
+  const emailDraftStorageKey = `scopelock.emailDraft.${artifact.id}`;
+  const [emailDraft, setEmailDraft] = useState(() => {
+    return readStoredValue("session", emailDraftStorageKey) ?? emailPreview(artifact, project);
+  });
+  const [emailDraftSaved, setEmailDraftSaved] = useState(() => {
+    return readStoredValue("session", emailDraftStorageKey) !== null;
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -108,7 +214,7 @@ function ArtifactPreviewModal({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [initialTab, onClose, open]);
+  }, [initialTab, open]);
 
   useEffect(() => {
     if (!open || tab !== "document") return;
@@ -121,7 +227,7 @@ function ArtifactPreviewModal({
         const blob = demo
           ? demoProposalPdf()
           : await apiBlobRequest(
-              `/api/artifacts/${encodeURIComponent(artifact.id)}/proposal.pdf`,
+              `${apiPrefix}/artifacts/${encodeURIComponent(artifact.id)}/proposal.pdf`,
               operatorKey,
             );
         if (!active) return;
@@ -140,7 +246,7 @@ function ArtifactPreviewModal({
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [artifact.id, demo, open, operatorKey, tab]);
+  }, [apiPrefix, artifact.id, demo, open, operatorKey, tab]);
 
   if (!open) return null;
 
@@ -178,24 +284,7 @@ function ArtifactPreviewModal({
           </button>
         </div>
 
-        <div className="flex gap-1 border-b border-[var(--line)] px-5 pt-3 sm:px-6">
-          {([
-            ["overview", "Overview", Eye],
-            ["document", "Proposal review", FileText],
-            ["email", "Email draft", Mail],
-          ] as const).map(([key, label, Icon]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTab(key)}
-              aria-selected={tab === key}
-              role="tab"
-              className={`preview-modal-tab ${tab === key ? "is-active" : ""}`}
-            >
-              <Icon size={15} aria-hidden="true" /> {label}
-            </button>
-          ))}
-        </div>
+        <PreviewTabs activeTab={tab} onChange={setTab} />
 
         <div className="preview-modal-body">
           {tab === "overview" ? (
@@ -250,25 +339,20 @@ function ArtifactPreviewModal({
               </div>
               {pdfError ? <p role="alert" className="m-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm font-bold">{pdfError}</p> : null}
               {!pdfUrl && !pdfError ? <p className="p-6 text-center text-sm font-bold text-[var(--muted)]">Loading proposal PDF…</p> : null}
-              {pdfUrl ? <iframe title="Proposal PDF review" src={pdfUrl} className="proposal-pdf-frame" /> : null}
+              {pdfUrl ? <ProposalDocumentSheet artifact={artifact} project={project} /> : null}
+              {pdfUrl ? <p className="border-t border-[var(--line)] px-4 py-3 text-xs text-[var(--muted)]">The exact sealed PDF is available from Download above. This review sheet mirrors its deterministic scope and commercial totals.</p> : null}
             </div>
           ) : null}
 
           {tab === "email" ? (
-            <div className="grid gap-4">
-              <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[var(--muted)]">Reply in the existing Gmail thread</p>
-                    <p className="mt-1 text-sm font-black">{project?.client_name ?? "Client"} · {project?.client_email ?? "Client email"}</p>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-2.5 py-1 text-[10px] font-extrabold text-[var(--muted-strong)]"><Mail size={13} /> Attachment included</span>
-                </div>
-              </div>
-              <label htmlFor={`email-draft-${artifact.id}`} className="sr-only">Editable client email draft</label>
-              <textarea id={`email-draft-${artifact.id}`} value={emailDraft} onChange={(event) => setEmailDraft(event.target.value)} rows={14} className="preview-email-editor" />
-              <p className="flex items-start gap-2 text-xs leading-5 text-[var(--muted)]"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-[var(--ink)]" /> Edits stay in this review packet and are used for Gmail draft creation and send. Commercial sending still requires explicit approval.</p>
-            </div>
+            <EmailDraftEditor
+              artifact={artifact}
+              project={project}
+              value={emailDraft}
+              saved={emailDraftSaved}
+              onChange={(value) => { setEmailDraftSaved(false); setEmailDraft(value); }}
+              onSave={() => { writeStoredValue("session", emailDraftStorageKey, emailDraft); setEmailDraftSaved(true); }}
+            />
           ) : null}
         </div>
 
@@ -305,12 +389,49 @@ function ArtifactPreviewModal({
   );
 }
 
+function getAcceptanceCandidates(
+  inboxMessages: InboxMessage[],
+  artifact: Artifact,
+  project?: Project,
+) {
+  const clientEmail = project?.client_email.toLowerCase();
+  if (!clientEmail) return [];
+
+  return inboxMessages
+    .filter(
+      (message) =>
+        message.project_id === artifact.project_id &&
+        message.direction === "INBOUND" &&
+        message.sender_email.toLowerCase() === clientEmail &&
+        new Date(message.received_at) > new Date(artifact.created_at),
+    )
+    .sort(
+      (left, right) =>
+        new Date(right.received_at).getTime() -
+        new Date(left.received_at).getTime(),
+    );
+}
+
+function getArtifactCapabilities(artifact: Artifact, project?: Project) {
+  const stale = Boolean(
+    project?.active_proposal_id && project.active_proposal_id !== artifact.id,
+  );
+
+  return {
+    stale,
+    canDecide: artifact.status === "AWAITING_USER_REVIEW" && !stale,
+    canSend: artifact.status === "APPROVED" && !stale,
+    canAccept: artifact.status === "SENT" && !stale,
+  };
+}
+
 export function ArtifactReview({
   artifact,
   project,
   inboxMessages,
   demo,
   operatorKey,
+  apiPrefix = "/api",
   compact = false,
   operatorId,
   setOperatorId,
@@ -322,28 +443,9 @@ export function ArtifactReview({
   const [acceptanceRecordId, setAcceptanceRecordId] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("overview");
-  const stale = Boolean(
-    project?.active_proposal_id && project.active_proposal_id !== artifact.id,
-  );
-  const canDecide = artifact.status === "AWAITING_USER_REVIEW" && !stale;
-  const canSend = artifact.status === "APPROVED" && !stale;
-  const canAccept = artifact.status === "SENT" && !stale;
+  const { stale, canDecide, canSend, canAccept } = getArtifactCapabilities(artifact, project);
   const acceptanceCandidates = useMemo(
-    () =>
-      inboxMessages
-        .filter(
-          (message) =>
-            message.project_id === artifact.project_id &&
-            message.direction === "INBOUND" &&
-            message.sender_email.toLowerCase() ===
-              project?.client_email.toLowerCase() &&
-            new Date(message.received_at) > new Date(artifact.created_at),
-        )
-        .sort(
-          (left, right) =>
-            new Date(right.received_at).getTime() -
-            new Date(left.received_at).getTime(),
-        ),
+    () => getAcceptanceCandidates(inboxMessages, artifact, project),
     [artifact.created_at, artifact.project_id, inboxMessages, project?.client_email],
   );
   const selectedAcceptanceId =
@@ -356,6 +458,7 @@ export function ArtifactReview({
         project={project}
         demo={demo}
         operatorKey={operatorKey}
+        apiPrefix={apiPrefix}
         operatorId={operatorId}
         setOperatorId={setOperatorId}
         busy={busy}
@@ -663,7 +766,7 @@ export function ArtifactReview({
           ) : null}
         </div>
       </div>
-      <ArtifactPreviewModal artifact={artifact} project={project} operatorKey={operatorKey} demo={demo} open={previewOpen} initialTab={previewTab} onClose={() => setPreviewOpen(false)} />
+      <ArtifactPreviewModal artifact={artifact} project={project} operatorKey={operatorKey} apiPrefix={apiPrefix} demo={demo} open={previewOpen} initialTab={previewTab} onClose={() => setPreviewOpen(false)} />
     </article>
   );
 }
@@ -673,6 +776,7 @@ function CompactArtifactReview({
   project,
   demo,
   operatorKey,
+  apiPrefix,
   operatorId,
   setOperatorId,
   busy,
@@ -692,7 +796,8 @@ function CompactArtifactReview({
   artifact: Artifact;
   project?: Project;
   demo: boolean;
-  operatorKey: string;
+  operatorKey: ApiCredential;
+  apiPrefix: string;
   operatorId: string;
   setOperatorId: (value: string) => void;
   busy: boolean;
@@ -722,13 +827,13 @@ function CompactArtifactReview({
         <div className="latest-review-layout">
           <div className="min-w-0">
             <p className="eyebrow">Latest review</p>
-            <h2 className="mt-1 truncate text-lg font-bold tracking-[-0.025em]">{project?.title ?? "Commercial artifact"}</h2>
+            <h2 className="mt-1 text-balance text-lg font-bold tracking-[-0.025em]">{project?.title ?? "Commercial artifact"}</h2>
             <p className="mt-1 truncate text-xs text-[var(--muted)]">{project?.client_name ?? artifact.project_id}</p>
           </div>
           <dl className="latest-review-metrics">
             <div><dt>Price</dt><dd>{money(artifact.pricing_result.total_usd)}</dd></div>
             <div><dt>Timeline</dt><dd>{artifact.timeline_result.total_days}d</dd></div>
-            <div><dt>Current status</dt><dd><StatusPill status={artifact.status} /></dd></div>
+            <div><dt>Current status</dt><dd><StatusPill status={artifact.status} label="Awaiting review" /></dd></div>
           </dl>
           <button type="button" onClick={() => { setPreviewTab("overview"); setPreviewOpen(true); }} className="latest-review-button"><Eye size={15} /> Review packet</button>
         </div>
@@ -742,7 +847,7 @@ function CompactArtifactReview({
         </div>
         <div className="min-w-0">
           <p className="calculated-scope-label">Last change item</p>
-          <p className="mt-1 truncate text-xs font-black">{latestLineItem ? humanize(latestLineItem.module_key) : "No line-item change"}</p>
+          <p className="mt-1 break-words text-xs font-black">{latestLineItem ? humanize(latestLineItem.module_key) : "No line-item change"}</p>
           {latestLineItem ? <p className="mt-0.5 text-[10px] text-[var(--muted)]">{money(latestLineItem.subtotal_usd)} · Qty {latestLineItem.quantity}</p> : null}
         </div>
         <div>
@@ -756,6 +861,7 @@ function CompactArtifactReview({
         artifact={artifact}
         project={project}
         operatorKey={operatorKey}
+        apiPrefix={apiPrefix}
         demo={demo}
         open={previewOpen}
         initialTab={previewTab}

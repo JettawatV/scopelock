@@ -34,12 +34,12 @@ function statusTone(status: string) {
   return "status-neutral";
 }
 
-export function StatusPill({ status }: { status: string }) {
+export function StatusPill({ status, label }: { status: string; label?: string }) {
   return (
     <span
       className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] ${statusTone(status)}`}
     >
-      {humanize(status)}
+      {label ?? humanize(status)}
     </span>
   );
 }

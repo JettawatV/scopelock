@@ -1,9 +1,7 @@
 import {
   Activity,
   ArrowRight,
-  Check,
   CheckCircle2,
-  ChevronRight,
   CircleAlert,
   Clock3,
   FileCheck2,
@@ -17,15 +15,24 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   RefreshCw,
+  Save,
+  Settings2,
   ShieldCheck,
   Sparkles,
   TriangleAlert,
   X,
+  type LucideIcon,
 } from "lucide-react";
-import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, type MouseEvent, useEffect, useState } from "react";
 
-import { apiRequest, correlationId } from "@/lib/api";
-import { demoDashboard, demoInboxMessageDetails, demoProjectDetails } from "@/lib/demo-data";
+import { apiRequest, correlationId, type ApiCredential } from "@/lib/api";
+import {
+  readStoredJson,
+  readStoredValue,
+  writeStoredJson,
+  writeStoredValue,
+} from "@/lib/browser-storage";
+import { demoDashboard, demoInboxMessageDetails } from "@/lib/demo-data";
 import { ArtifactReview } from "@/components/commercial-artifact-review";
 import {
   EmptyState,
@@ -41,14 +48,14 @@ import type {
   InboxMessage,
   InboxMessageDetail,
   Project,
-  ProjectDetailSnapshot,
   ScopeBuffer,
   ScopeEvent,
 } from "@/lib/types";
 
-type View = "overview" | "projects" | "evals";
+type View = "overview" | "settings";
 const OPERATOR_ID_KEY = "scopelock.operatorId";
 const SIDEBAR_COLLAPSED_KEY = "scopelock.sidebarCollapsed";
+const SOP_DRAFT_KEY_PREFIX = "scopelock.sopDraft.";
 const REVIEW_STATUSES = new Set([
   "AWAITING_USER_REVIEW",
   "NEEDS_REVIEW",
@@ -56,6 +63,27 @@ const REVIEW_STATUSES = new Set([
   "SENT",
   "SEND_FAILED",
 ]);
+
+type NavigationItem = {
+  view: View;
+  label: string;
+  mobileLabel?: string;
+  href: string;
+  icon: LucideIcon;
+};
+
+const PRIMARY_NAVIGATION: NavigationItem[] = [
+  { view: "overview", label: "Overview", href: "/", icon: Inbox },
+];
+
+const SYSTEM_NAVIGATION: NavigationItem[] = [
+  { view: "settings", label: "Settings", href: "/settings/", icon: Settings2 },
+];
+
+const VIEW_TITLES: Record<View, readonly [string, string]> = {
+  overview: ["Workspace overview", "Keep every commercial decision in view."],
+  settings: ["Settings", "Manage the connected workspace and business rules"],
+};
 
 function dashboardHref(path: string, demo: boolean) {
   return demo ? `${path}${path.includes("?") ? "&" : "?"}demo=1` : path;
@@ -77,8 +105,37 @@ function navigateWithinDashboard(event: MouseEvent<HTMLAnchorElement>) {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+function SidebarLink({
+  item,
+  activeView,
+  demo,
+  collapsed,
+}: {
+  item: NavigationItem;
+  activeView: View;
+  demo: boolean;
+  collapsed: boolean;
+}) {
+  const Icon = item.icon;
+  return (
+    <a
+      href={dashboardHref(item.href, demo)}
+      onClick={navigateWithinDashboard}
+      aria-label={item.label}
+      title={collapsed ? item.label : undefined}
+      aria-current={activeView === item.view ? "page" : undefined}
+      className={`sidebar-link ${activeView === item.view ? "is-active" : ""}`}
+    >
+      <Icon size={17} aria-hidden="true" />
+      <span className="sidebar-link-label sidebar-link-label-full">{item.label}</span>
+      <span className="sidebar-link-label sidebar-link-label-mobile">{item.mobileLabel ?? item.label}</span>
+    </a>
+  );
+}
+
 function AppHeader({
   view,
+  reviewer = false,
   sidebarCollapsed,
   connected,
   demo,
@@ -89,6 +146,7 @@ function AppHeader({
   onDisconnect,
 }: {
   view: View;
+  reviewer?: boolean;
   sidebarCollapsed: boolean;
   connected: boolean;
   demo: boolean;
@@ -98,42 +156,37 @@ function AppHeader({
   onScopeIntelligence: () => void;
   onDisconnect: () => void;
 }) {
-  const navigation: Array<[View, string, string, React.ReactNode]> = [
-    ["overview", "Overview", "/", <Inbox key="overview-icon" size={17} aria-hidden="true" />],
-    ["projects", "Projects", "/projects/", <FileCheck2 key="projects-icon" size={17} aria-hidden="true" />],
-    ["evals", "Agent readiness", "/evals/", <ShieldCheck key="evals-icon" size={17} aria-hidden="true" />],
-  ];
   return (
     <>
       <aside id="workspace-navigation" className="operator-sidebar" aria-label="Workspace navigation">
-        <a href={dashboardHref("/", demo)} onClick={navigateWithinDashboard} className="sidebar-brand rounded-lg" aria-label="ScopeLock home">
-          <span className="sidebar-brand-mark grid size-10 shrink-0 place-items-center rounded-lg text-[var(--ink)]">
-            <LockKeyhole aria-hidden="true" size={20} strokeWidth={2.4} />
-          </span>
-          <span className="sidebar-brand-copy min-w-0">
-            <span className="block text-lg font-black tracking-[-0.035em]">ScopeLock</span>
-            <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Operator console</span>
-          </span>
-        </a>
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          className="sidebar-toggle"
-          aria-controls="workspace-navigation"
-          aria-expanded={!sidebarCollapsed}
-          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
-          <span className="sidebar-toggle-label">Collapse sidebar</span>
-        </button>
+        <div className="sidebar-top-row">
+          <a href={reviewer ? "/review/" : dashboardHref("/", demo)} onClick={reviewer ? undefined : navigateWithinDashboard} className="sidebar-brand rounded-lg" aria-label="ScopeLock home">
+            <span className="sidebar-brand-mark grid size-10 shrink-0 place-items-center rounded-lg text-[var(--ink)]">
+              <LockKeyhole aria-hidden="true" size={20} strokeWidth={2.4} />
+            </span>
+            <span className="sidebar-brand-copy min-w-0">
+              <span className="block text-lg font-black tracking-[-0.035em]">ScopeLock</span>
+              <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Operator console</span>
+            </span>
+          </a>
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="sidebar-toggle"
+            aria-controls="workspace-navigation"
+            aria-expanded={!sidebarCollapsed}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
+          </button>
+        </div>
         <p className="sidebar-section-label">Workspace</p>
         <nav aria-label="Primary" className="sidebar-nav">
-          {navigation.map(([key, label, href, icon]) => (
-            <a key={key} href={dashboardHref(href, demo)} onClick={navigateWithinDashboard} aria-label={label} title={sidebarCollapsed ? label : undefined} aria-current={view === key ? "page" : undefined} className={`sidebar-link ${view === key ? "is-active" : ""}`}>
-              {icon}<span className="sidebar-link-label sidebar-link-label-full">{label}</span><span className="sidebar-link-label sidebar-link-label-mobile">{key === "evals" ? "Readiness" : label}</span>
-            </a>
-          ))}
+          {PRIMARY_NAVIGATION.map((item) => <SidebarLink key={item.view} item={item} activeView={view} demo={demo} collapsed={sidebarCollapsed} />)}
+        </nav>
+        <nav aria-label="System" className="sidebar-nav sidebar-nav-settings">
+          {!reviewer ? SYSTEM_NAVIGATION.map((item) => <SidebarLink key={item.view} item={item} activeView={view} demo={demo} collapsed={sidebarCollapsed} />) : null}
         </nav>
         <div className="sidebar-note">
           <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[var(--muted)]">Guardrail</p>
@@ -145,7 +198,7 @@ function AppHeader({
         <div className="operator-header-inner">
           <div className="operator-header-identity">
             <span className="operator-header-title">
-              {view === "overview" ? "Workspace overview" : view === "projects" ? "Project inbox" : "Agent readiness"}
+              {VIEW_TITLES[view][0]}
             </span>
           </div>
           <div className="operator-header-actions">
@@ -526,13 +579,17 @@ function GmailReviewPanel({
   data,
   demo,
   operatorKey,
+  apiPrefix = "/api",
+  reviewer = false,
   busy,
   onCommand,
   compact = false,
 }: {
   data: DashboardSnapshot;
   demo: boolean;
-  operatorKey: string;
+  operatorKey: ApiCredential;
+  apiPrefix?: string;
+  reviewer?: boolean;
   busy: boolean;
   onCommand: (path: string, payload: Record<string, string>) => Promise<void>;
   compact?: boolean;
@@ -561,7 +618,7 @@ function GmailReviewPanel({
     setMessageLoading(true);
     try {
       const detail = await apiRequest<InboxMessageDetail>(
-        `/api/messages/${encodeURIComponent(message.id)}`,
+        `${apiPrefix}/messages/${encodeURIComponent(message.id)}`,
         operatorKey,
       );
       setMessageDetail(detail);
@@ -585,7 +642,10 @@ function GmailReviewPanel({
     <>
     <section className={`panel gmail-review-panel flex min-w-0 flex-col p-5 sm:p-6 ${compact ? "overview-inbox-panel" : "min-h-[31rem]"}`}>
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--line)] pb-5">
-        <p className="eyebrow">Gmail review</p>
+        <div className="min-w-0">
+          <p className="eyebrow">{reviewer ? "ScopeLock demo inbox" : "Gmail review"}</p>
+          {reviewer ? <p className="mt-1 text-xs font-semibold text-[var(--muted)]">Shared test inbox · not your personal Gmail</p> : null}
+        </div>
         {watch ? (
           <div className="gmail-monitoring-control">
             <button type="button" className="gmail-monitoring-button" aria-describedby="gmail-monitoring-tooltip">
@@ -636,8 +696,8 @@ function GmailReviewPanel({
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
           <span className="grid size-12 place-items-center rounded-full bg-[var(--surface-muted)] text-[var(--ink)]"><Mail size={21} /></span>
-          <h3 className="mt-4 text-base font-black">{watch ? "Waiting for a project email" : "Gmail monitoring is not active"}</h3>
-          <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--muted)]">{watch ? "Project-linked messages will appear here after the Gmail event workflow records them." : "Register Gmail notifications only after the OAuth and Pub/Sub checks are complete."}</p>
+          <h3 className="mt-4 text-base font-black">{watch ? "Waiting for a project email" : reviewer ? "Demo inbox is ready" : "Gmail monitoring is not active"}</h3>
+          <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--muted)]">{watch ? reviewer ? "Send a project email to the shared ScopeLock demo inbox from this signed-in address. The agent will analyze it in the background." : "Project-linked messages will appear here after the Gmail event workflow records them." : reviewer ? "The owner manages Gmail monitoring. Your reviewer session only exposes messages linked to this signed-in email." : "Register Gmail notifications only after the OAuth and Pub/Sub checks are complete."}</p>
           {!watch ? (
             <div className="mt-5 w-full max-w-sm">
               {confirmWatch ? (
@@ -646,11 +706,11 @@ function GmailReviewPanel({
                   <p className="mt-2 text-xs leading-5 text-[var(--muted)]">This registers Gmail <code>users.watch</code> for the configured dedicated mailbox. It does not send email, but it begins Pub/Sub delivery.</p>
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     <button type="button" onClick={() => setConfirmWatch(false)} className="min-h-10 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm font-extrabold">Cancel</button>
-                    <button type="button" disabled={busy || demo} onClick={registerWatch} className="min-h-10 rounded-lg bg-[var(--ink)] px-3 text-sm font-extrabold text-white disabled:opacity-45">Confirm watch</button>
+                    <button type="button" disabled={busy || demo || reviewer} onClick={registerWatch} className="min-h-10 rounded-lg bg-[var(--ink)] px-3 text-sm font-extrabold text-white disabled:opacity-45">Confirm watch</button>
                   </div>
                 </div>
               ) : (
-                <button type="button" disabled={busy || demo} onClick={() => setConfirmWatch(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--ink)] px-4 text-sm font-extrabold text-white disabled:opacity-45"><Mail size={17} /> {demo ? "Demo fixture" : "Connect Gmail"}</button>
+                <button type="button" disabled={busy || demo || reviewer} onClick={() => setConfirmWatch(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--ink)] px-4 text-sm font-extrabold text-white disabled:opacity-45"><Mail size={17} /> {demo ? "Demo fixture" : reviewer ? "Demo inbox is managed" : "Connect Gmail"}</button>
               )}
             </div>
           ) : null}
@@ -704,6 +764,8 @@ function Overview({
   data,
   demo,
   operatorKey,
+  apiPrefix = "/api",
+  reviewer = false,
   operatorId,
   setOperatorId,
   busy,
@@ -711,7 +773,9 @@ function Overview({
 }: {
   data: DashboardSnapshot;
   demo: boolean;
-  operatorKey: string;
+  operatorKey: ApiCredential;
+  apiPrefix?: string;
+  reviewer?: boolean;
   operatorId: string;
   setOperatorId: (value: string) => void;
   busy: boolean;
@@ -751,232 +815,168 @@ function Overview({
 
       <section className="overview-board mt-2 min-w-0">
         <div className="overview-inbox min-w-0">
-          <GmailReviewPanel data={data} demo={demo} operatorKey={operatorKey} busy={busy} onCommand={onCommand} compact />
+          <GmailReviewPanel data={data} demo={demo} operatorKey={operatorKey} apiPrefix={apiPrefix} reviewer={reviewer} busy={busy} onCommand={onCommand} compact />
         </div>
 
         <section className="panel overview-review priority-review-panel min-w-0 overflow-hidden">
           <div className="priority-review-header flex items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-4 sm:px-6">
             <p className="eyebrow">Priority queue</p>
-            <a href={dashboardHref("/projects/", demo)} onClick={navigateWithinDashboard} className="overview-all-projects inline-flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-extrabold text-[var(--muted)] hover:text-[var(--ink)]">All projects <ChevronRight size={14} /></a>
+            <span className="text-xs font-extrabold text-[var(--muted)]">Current project</span>
           </div>
-          {artifact ? <ArtifactReview artifact={artifact} project={project} inboxMessages={data.inbox_messages} demo={demo} operatorKey={operatorKey} compact operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : <div className="flex flex-1 items-center justify-center p-6"><EmptyState>No commercial artifact needs review.</EmptyState></div>}
+          {artifact ? <ArtifactReview artifact={artifact} project={project} inboxMessages={data.inbox_messages} demo={demo} operatorKey={operatorKey} apiPrefix={apiPrefix} compact operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : <div className="flex flex-1 items-center justify-center p-6"><EmptyState>No commercial artifact needs review.</EmptyState></div>}
         </section>
       </section>
     </div>
   );
 }
 
-function Projects({ data, demo, operatorKey, operatorId, setOperatorId, busy, onCommand }: {
+function Settings({
+  data,
+  demo,
+  busy,
+  onCommand,
+}: {
   data: DashboardSnapshot;
   demo: boolean;
-  operatorKey: string;
-  operatorId: string;
-  setOperatorId: (value: string) => void;
   busy: boolean;
   onCommand: (path: string, payload: Record<string, string>) => Promise<void>;
 }) {
-  const [selectedId, setSelectedId] = useState(data.projects[0]?.id ?? "");
-  const [detail, setDetail] = useState<ProjectDetailSnapshot | null>(null);
-  const [detailError, setDetailError] = useState<string | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const project = data.projects.find((item) => item.id === selectedId) ?? data.projects[0];
-  const artifacts = data.artifacts.filter((item) => item.project_id === project?.id);
-  const events = data.scope_events.filter((item) => item.project_id === project?.id);
-  const buffers = data.scope_buffers.filter((item) => item.project_id === project?.id);
-  const effectiveDetail = demo ? demoProjectDetails[selectedId] ?? null : detail;
-  const scope = effectiveDetail?.scope_versions.find(
-    (item) => item.id === project?.active_scope_version_id,
-  ) ?? effectiveDetail?.scope_versions[0];
-
-  useEffect(() => {
-    if (demo || !selectedId || !operatorKey) {
-      setDetail(null);
-      setDetailError(null);
-      setDetailLoading(false);
-      return;
+  const artifact = data.artifacts.find((item) => REVIEW_STATUSES.has(item.status)) ?? data.artifacts[0];
+  const defaultSopDraft = {
+    version: artifact?.sop_version ?? "jvl-demo-v1",
+    businessName: "JVL",
+    proposalValidDays: "14",
+    quietWindowMinutes: "60",
+  };
+  const sopDraftStorageKey = `${SOP_DRAFT_KEY_PREFIX}${defaultSopDraft.version}`;
+  const [sopDraft, setSopDraft] = useState(() => {
+    const parsed = readStoredJson<Partial<typeof defaultSopDraft>>(
+      "session",
+      sopDraftStorageKey,
+    );
+    const fields: Array<keyof typeof defaultSopDraft> = [
+      "version",
+      "businessName",
+      "proposalValidDays",
+      "quietWindowMinutes",
+    ];
+    if (parsed && fields.every((field) => typeof parsed[field] === "string")) {
+      return { ...defaultSopDraft, ...parsed };
     }
-    let active = true;
-    setDetail(null);
-    setDetailError(null);
-    setDetailLoading(true);
-    apiRequest<ProjectDetailSnapshot>(`/api/projects/${encodeURIComponent(selectedId)}`, operatorKey)
-      .then((result) => {
-        if (active) {
-          setDetail(result);
-          setDetailLoading(false);
-        }
-      })
-      .catch((caught) => {
-        if (active) {
-          setDetailLoading(false);
-          setDetailError(
-            caught instanceof Error ? caught.message : "Project scope could not be loaded.",
-          );
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [demo, operatorKey, selectedId]);
+    return defaultSopDraft;
+  });
+  const [sopSaved, setSopSaved] = useState(false);
+  const [confirmWatch, setConfirmWatch] = useState(false);
+  const watch = data.gmail_watch;
+  const lineItems = artifact?.pricing_result.line_items ?? [];
 
-  if (!project) return <EmptyState>No projects have been created yet.</EmptyState>;
+  const updateSop = (field: keyof typeof sopDraft, value: string) => {
+    setSopSaved(false);
+    setSopDraft((current) => ({ ...current, [field]: value }));
+  };
+
+  const saveSopDraft = (event: FormEvent) => {
+    event.preventDefault();
+    writeStoredJson("session", sopDraftStorageKey, sopDraft);
+    setSopSaved(true);
+  };
+
+  const registerWatch = () => {
+    setConfirmWatch(false);
+    void onCommand("/gmail/watch", {});
+  };
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      <aside className="panel h-fit p-3">
-        <p className="px-3 pb-2 pt-3 text-xs font-extrabold uppercase tracking-[0.12em] text-[var(--muted)]">Project inbox</p>
-        <div className="grid gap-2">
-          {data.projects.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setSelectedId(item.id)}
-              aria-pressed={item.id === project.id}
-              className={`min-h-20 rounded-lg border p-4 text-left ${item.id === project.id ? "border-[var(--line-dark)] bg-[var(--surface-muted)]" : "border-transparent hover:border-[var(--line)] hover:bg-[var(--surface-soft)]"}`}
-            >
-              <span className="block truncate text-sm font-black">{item.title}</span>
-              <span className="mt-1 block truncate text-xs text-[var(--muted)]">{item.client_name}</span>
-              <span className="mt-2 block"><StatusPill status={item.lifecycle_status} /></span>
-            </button>
-          ))}
-        </div>
-      </aside>
-      <div className="min-w-0">
-        <section className="panel p-6 sm:p-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="eyebrow">Project workspace</p>
-              <h1 className="mt-2 text-balance text-3xl font-black tracking-[-0.045em]">{project.title}</h1>
-              <p className="mt-2 text-sm text-[var(--muted)]">{project.client_name} · {project.client_email}</p>
-            </div>
-            <StatusPill status={project.lifecycle_status} />
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <section className="panel p-6 sm:p-8">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="eyebrow">Business rules</p>
+            <h2 className="mt-2 text-3xl font-black tracking-[-0.045em]">SOP settings</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">Manage a versioned draft of the rules ScopeLock uses to price work and calculate delivery impact.</p>
           </div>
-          <dl className="mt-7 grid grid-cols-2 gap-4 border-t border-[var(--line)] pt-6 sm:grid-cols-4">
-            <div><dt className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Current value</dt><dd className="tabular mt-1 text-xl font-black">{money(project.current_price_usd)}</dd></div>
-            <div><dt className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Timeline</dt><dd className="tabular mt-1 text-xl font-black">{project.current_timeline_days}d</dd></div>
-            <div><dt className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Artifacts</dt><dd className="tabular mt-1 text-xl font-black">{artifacts.length}</dd></div>
-            <div><dt className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Scope events</dt><dd className="tabular mt-1 text-xl font-black">{events.length}</dd></div>
-          </dl>
-        </section>
-        <div className="mt-6 grid gap-6">
-          <section className="panel p-6 sm:p-8">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div><p className="eyebrow">Authoritative context</p><h2 className="mt-1 text-xl font-black">Current scope snapshot</h2></div>
-              {scope ? <StatusPill status={scope.status} /> : null}
-            </div>
-            {detailError ? <p role="alert" className="mt-4 rounded-lg bg-[var(--surface-muted)] px-4 py-3 text-sm font-bold text-[var(--ink)]">{detailError}</p> : null}
-            {detailLoading ? <p role="status" className="mt-4 rounded-lg bg-[var(--surface-muted)] px-4 py-3 text-sm font-bold text-[var(--muted)]">Loading the authoritative scope and version history…</p> : null}
-            <div className="mt-5 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Included modules</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {(scope?.module_selections ?? artifacts[0]?.calculation_inputs ?? []).map((module) => (
-                    <span key={module.module_key} className="rounded-full border border-[var(--line)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-extrabold text-[var(--ink)]">
-                      {humanize(module.module_key)} · {module.quantity}
-                    </span>
-                  ))}
-                  {!scope && !artifacts[0] ? <span className="text-sm text-[var(--muted)]">No active scope yet.</span> : null}
-                </div>
-                {scope?.requirements.length ? (
-                  <div className="mt-5 grid gap-2">
-                    {scope.requirements.map((requirement) => (
-                      <div key={requirement.requirement_id} className="rounded-lg border border-[var(--line)] bg-white px-4 py-3">
-                        <p className="text-xs font-extrabold text-[var(--ink)]">{requirement.requirement_id} · {requirement.category}</p>
-                        <p className="mt-1 text-sm font-semibold leading-6">{requirement.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                <div className="rounded-lg bg-[var(--surface-soft)] p-4">
-                  <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Assumptions</p>
-                  {scope?.assumptions.length ? <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-5">{scope.assumptions.map((item) => <li key={item}>{item}</li>)}</ul> : <p className="mt-3 text-sm text-[var(--muted)]">No assumptions recorded in this view.</p>}
-                </div>
-                <div className="rounded-lg bg-[var(--surface-soft)] p-4">
-                  <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Explicit exclusions</p>
-                  {scope?.exclusions.length ? <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-5">{scope.exclusions.map((item) => <li key={item}>{item}</li>)}</ul> : <p className="mt-3 text-sm text-[var(--muted)]">No exclusions recorded in this view.</p>}
-                </div>
-              </div>
-            </div>
-            {effectiveDetail?.scope_versions.length ? (
-              <div className="mt-6 border-t border-[var(--line)] pt-5">
-                <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Immutable scope versions</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                  {effectiveDetail.scope_versions.map((version) => (
-                    <article key={version.id} className="rounded-lg border border-[var(--line)] bg-white p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-black">Version {version.version_number}</p>
-                        <StatusPill status={version.status} />
-                      </div>
-                      <p className="tabular mt-3 text-sm font-extrabold text-[var(--ink)]">{money(version.total_price_usd)} · {version.timeline_days}d</p>
-                      <p className="mt-1 text-xs text-[var(--muted)]">{version.sop_version} · {time(version.created_at)}</p>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </section>
-          {artifacts.map((artifact) => <ArtifactReview key={artifact.id} artifact={artifact} project={project} inboxMessages={data.inbox_messages} demo={demo} operatorKey={operatorKey} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} />)}
-          {!artifacts.length ? <EmptyState>No commercial artifacts for this project.</EmptyState> : null}
-          <section className="grid gap-6 xl:grid-cols-2">
-            <div className="panel p-5 sm:p-6"><p className="eyebrow">Evidence trail</p><h2 className="mt-1 text-xl font-black">Scope events</h2><div className="mt-4"><ScopeEventList events={events} /></div></div>
-            <div className="panel p-5 sm:p-6"><p className="eyebrow">Pending changes</p><h2 className="mt-1 text-xl font-black">Buffers</h2><div className="mt-4 grid gap-3">{buffers.length ? buffers.map((buffer) => <BufferCard key={buffer.id} buffer={buffer} demo={demo} busy={busy} onCommand={onCommand} />) : <EmptyState>No open buffer for this project.</EmptyState>}</div></div>
-          </section>
-          <section className="panel p-5 sm:p-6">
-            <p className="eyebrow">Application audit</p>
-            <h2 className="mt-1 text-xl font-black">Project agent runs</h2>
-            <div className="mt-4"><AgentActivity runs={effectiveDetail?.agent_runs ?? []} /></div>
-          </section>
+          <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-[var(--surface-muted)] text-[var(--ink)]"><FileText size={19} aria-hidden="true" /></span>
         </div>
+
+        <form onSubmit={saveSopDraft} className="mt-8 grid gap-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-sm font-extrabold" htmlFor="sop-business-name">Business name<input id="sop-business-name" value={sopDraft.businessName} onChange={(event) => updateSop("businessName", event.target.value)} className="min-h-11 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm font-normal" required /></label>
+            <label className="grid gap-1.5 text-sm font-extrabold" htmlFor="sop-version">Catalog version<input id="sop-version" value={sopDraft.version} onChange={(event) => updateSop("version", event.target.value)} className="min-h-11 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm font-normal" required /></label>
+            <label className="grid gap-1.5 text-sm font-extrabold" htmlFor="sop-valid-days">Proposal validity (days)<input id="sop-valid-days" type="number" min="1" value={sopDraft.proposalValidDays} onChange={(event) => updateSop("proposalValidDays", event.target.value)} className="min-h-11 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm font-normal" required /></label>
+            <label className="grid gap-1.5 text-sm font-extrabold" htmlFor="sop-quiet-window">Quiet window (minutes)<input id="sop-quiet-window" type="number" min="1" value={sopDraft.quietWindowMinutes} onChange={(event) => updateSop("quietWindowMinutes", event.target.value)} className="min-h-11 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm font-normal" required /></label>
+          </div>
+
+          <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+            <div className="flex items-center justify-between gap-3"><p className="text-xs font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Active source</p><StatusPill status={artifact?.sop_version ? "CONFIGURED" : "NOT_CONFIGURED"} /></div>
+            <p className="mt-2 text-sm font-black">config/jvl_sop.example.yaml</p>
+            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">The active catalog is versioned and validated at service startup. Saving here creates a reviewable draft; deployment is required before it becomes canonical.</p>
+          </div>
+
+          {lineItems.length ? (
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Current priced modules</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {lineItems.map((item) => <div key={item.module_key} className="flex items-center justify-between gap-3 rounded-lg border border-[var(--line)] bg-white px-3 py-3"><span className="min-w-0 truncate text-xs font-extrabold">{humanize(item.module_key)}</span><span className="tabular shrink-0 text-xs font-black">{money(item.subtotal_usd)}</span></div>)}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="flex flex-col gap-3 border-t border-[var(--line)] pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p role="status" className="text-xs leading-5 text-[var(--muted)]">{sopSaved ? "SOP draft saved for this session. Validate and deploy it to make it active." : "Draft changes do not alter accepted project baselines."}</p>
+            <button type="submit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--ink)] px-4 text-sm font-extrabold text-white hover:bg-[var(--ink-strong)]"><Save size={16} aria-hidden="true" /> Save SOP draft</button>
+          </div>
+        </form>
+      </section>
+
+      <div className="grid content-start gap-6">
+        <section className="panel p-6 sm:p-8">
+          <div className="flex items-start justify-between gap-4"><div><p className="eyebrow">Inbound channel</p><h2 className="mt-2 text-2xl font-black tracking-[-0.035em]">Gmail connection</h2></div><span className="grid size-11 shrink-0 place-items-center rounded-lg bg-[var(--surface-muted)] text-[var(--ink)]"><Mail size={19} aria-hidden="true" /></span></div>
+          <div className="mt-6 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+            <div className="flex items-center justify-between gap-3"><p className="text-xs font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Connection status</p><StatusPill status={watch ? "MONITORING" : "NOT_CONNECTED"} /></div>
+            <p className="mt-3 text-sm font-black">{watch ? watch.mailbox : "No mailbox watch registered"}</p>
+            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">{watch ? `Watch expires ${time(watch.expiration)}.` : "Register the dedicated Gmail mailbox after OAuth and Pub/Sub configuration are verified."}</p>
+          </div>
+          {confirmWatch ? (
+            <div className="mt-4 rounded-lg border border-[var(--line-strong)] bg-white p-4">
+              <p className="text-sm font-extrabold">Register Gmail notifications?</p>
+              <p className="mt-2 text-xs leading-5 text-[var(--muted)]">This starts Gmail <code>users.watch</code> for the configured mailbox. It does not send client email.</p>
+              <div className="mt-4 grid grid-cols-2 gap-3"><button type="button" onClick={() => setConfirmWatch(false)} className="min-h-11 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm font-extrabold">Cancel</button><button type="button" disabled={busy || demo} onClick={registerWatch} className="min-h-11 rounded-lg bg-[var(--ink)] px-3 text-sm font-extrabold text-white disabled:opacity-45">Confirm connection</button></div>
+            </div>
+          ) : <button type="button" disabled={busy || demo} onClick={() => setConfirmWatch(true)} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--ink)] px-4 text-sm font-extrabold text-white disabled:opacity-45"><Mail size={16} aria-hidden="true" /> {watch ? "Renew Gmail watch" : demo ? "Demo fixture" : "Connect Gmail"}</button>}
+          <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-[var(--muted)]"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-[var(--ink)]" /> Read-only and compose/send scopes are kept separate; commercial sends still require explicit approval.</p>
+        </section>
+
+        <section className="panel p-6 sm:p-8">
+          <p className="eyebrow">Operator controls</p>
+          <h2 className="mt-2 text-2xl font-black tracking-[-0.035em]">Guardrails stay on</h2>
+          <div className="mt-5 grid gap-3">
+            {["Accepted scope baselines remain immutable", "Pricing and timeline are deterministic", "Every external action is correlation-ID logged"].map((item) => <div key={item} className="flex items-start gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3"><CheckCircle2 size={17} className="mt-0.5 shrink-0 text-[var(--ink)]" /><span className="text-sm font-bold">{item}</span></div>)}
+          </div>
+        </section>
       </div>
     </div>
   );
 }
 
-function Evals({ data }: { data: DashboardSnapshot }) {
-  const passed = data.readiness.checks.reduce((sum, check) => sum + check.passed, 0);
-  const expected = data.readiness.checks.reduce((sum, check) => sum + check.expected, 0);
-  return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-      <section className="panel p-6 sm:p-8">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="eyebrow">Release evidence</p>
-            <h1 className="mt-2 text-balance text-3xl font-black tracking-[-0.045em]">Agent readiness is measurable.</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">These are the packaged results of the latest reviewed pre-Gmail gate—not marketing estimates or live production uptime.</p>
-          </div>
-          <StatusPill status={data.readiness.status} />
-        </div>
-        <div className="mt-8 grid gap-3">
-          {data.readiness.checks.map((check) => (
-            <article key={check.key} className="grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-lg border border-[var(--line)] bg-white p-4">
-              <span className="grid size-10 place-items-center rounded-full bg-[var(--surface-muted)] text-[var(--ink)]"><Check size={19} /></span>
-              <div><h2 className="text-sm font-extrabold">{check.label}</h2><p className="mt-1 text-xs text-[var(--muted)]">{check.key === "repeatability" ? "Six difficult scenarios repeated three times" : "Reviewed contract gate"}</p></div>
-              <p className="tabular text-lg font-black text-[var(--ink)]">{check.passed}/{check.expected}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-      <aside className="grid content-start gap-6">
-        <section className="readiness-total rounded-lg border border-[var(--ink)] bg-[var(--ink)] p-6 text-white shadow-[var(--shadow-panel)]">
-          <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[var(--on-dark)]">Verified total</p>
-          <p className="tabular mt-3 text-5xl font-black tracking-[-0.05em]">{passed}<span className="text-2xl text-[var(--on-dark)]">/{expected}</span></p>
-          <p className="mt-4 text-sm leading-6 text-[var(--on-dark)]">{data.readiness.note}</p>
-          <div className="mt-6 border-t border-white/15 pt-5 text-xs font-bold text-[var(--on-dark)]">
-            <p>{data.readiness.model ?? "Model not recorded"}</p>
-            <p className="mt-2">Verified {time(data.readiness.verified_at)}</p>
-          </div>
-        </section>
-        <section className="panel p-6">
-          <p className="eyebrow">Safety invariant</p>
-          <div className="mt-4 flex gap-3"><ShieldCheck className="shrink-0 text-[var(--ink)]" size={22} /><div><p className="font-black">Approval-gate violations: 0</p><p className="mt-2 text-xs leading-5 text-[var(--muted)]">Agents have no Gmail send, pricing, approval, or state-mutation tools.</p></div></div>
-        </section>
-      </aside>
-    </div>
-  );
-}
+export type ReviewerSession = {
+  token: string;
+  email: string;
+};
 
-export function OperatorApp({ view }: { view: View }) {
+export function OperatorApp({
+  view,
+  reviewerSession,
+  onReviewerSignOut,
+}: {
+  view: View;
+  reviewerSession?: ReviewerSession;
+  onReviewerSignOut?: () => void;
+}) {
+  const reviewer = Boolean(reviewerSession);
+  const apiPrefix = reviewer ? "/api/reviewer" : "/api";
+  const credential: ApiCredential = reviewerSession
+    ? { kind: "reviewer", token: reviewerSession.token }
+    : "";
   const [operatorKey, setOperatorKey] = useState("");
   const [operatorId, setOperatorIdState] = useState("");
   const [data, setData] = useState<DashboardSnapshot | null>(null);
@@ -986,15 +986,14 @@ export function OperatorApp({ view }: { view: View }) {
   const [demo, setDemo] = useState(false);
   const [scopeIntelligenceOpen, setScopeIntelligenceOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    try {
-      return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
-    } catch {
-      return false;
-    }
+    return readStoredValue("local", SIDEBAR_COLLAPSED_KEY) === "true";
   });
 
-  const load = async (key: string) => {
-    const snapshot = await apiRequest<DashboardSnapshot>("/api/dashboard", key);
+  const load = async (key: ApiCredential) => {
+    const snapshot = await apiRequest<DashboardSnapshot>(
+      `${apiPrefix}/dashboard`,
+      key,
+    );
     setData(snapshot);
   };
 
@@ -1005,19 +1004,31 @@ export function OperatorApp({ view }: { view: View }) {
       setData(demoDashboard);
       return;
     }
-    const storedId = sessionStorage.getItem(OPERATOR_ID_KEY) ?? "";
+    if (reviewerSession) {
+      setOperatorIdState(reviewerSession.email);
+      void load({ kind: "reviewer", token: reviewerSession.token }).catch((caught) => {
+        setError(caught instanceof Error ? caught.message : "The reviewer workspace could not be loaded.");
+      });
+      return;
+    }
+    const storedId = readStoredValue("session", OPERATOR_ID_KEY) ?? "";
     setOperatorIdState(storedId);
-  }, []);
+  }, [reviewerSession]);
 
   useEffect(() => {
-    if (demo || !operatorKey) return;
+    if (demo || (!reviewerSession && !operatorKey)) return;
     let active = true;
     let inFlight = false;
     const refresh = async () => {
       if (!active || inFlight || document.visibilityState === "hidden") return;
       inFlight = true;
       try {
-        const snapshot = await apiRequest<DashboardSnapshot>("/api/dashboard", operatorKey);
+        const snapshot = await apiRequest<DashboardSnapshot>(
+          `${apiPrefix}/dashboard`,
+          reviewerSession
+            ? { kind: "reviewer", token: reviewerSession.token }
+            : operatorKey,
+        );
         if (active) setData(snapshot);
       } catch {
         // Keep the last trusted snapshot. Manual refresh still surfaces an error.
@@ -1030,21 +1041,17 @@ export function OperatorApp({ view }: { view: View }) {
       active = false;
       window.clearInterval(interval);
     };
-  }, [demo, operatorKey]);
+  }, [apiPrefix, demo, operatorKey, reviewerSession]);
 
   const setOperatorId = (value: string) => {
     setOperatorIdState(value);
-    sessionStorage.setItem(OPERATOR_ID_KEY, value);
+    writeStoredValue("session", OPERATOR_ID_KEY, value);
   };
 
   const toggleSidebar = () => {
     setSidebarCollapsed((current) => {
       const next = !current;
-      try {
-        window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
-      } catch {
-        // The sidebar still works when browser preference storage is unavailable.
-      }
+      writeStoredValue("local", SIDEBAR_COLLAPSED_KEY, String(next));
       return next;
     });
   };
@@ -1067,6 +1074,10 @@ export function OperatorApp({ view }: { view: View }) {
   };
 
   const disconnect = () => {
+    if (reviewer) {
+      onReviewerSignOut?.();
+      return;
+    }
     setOperatorKey("");
     setData(null);
     setNotice(null);
@@ -1074,11 +1085,15 @@ export function OperatorApp({ view }: { view: View }) {
   };
 
   const refreshDashboard = async () => {
-    if (demo || !operatorKey) return;
+    if (demo || (!reviewerSession && !operatorKey)) return;
     setBusy(true);
     setError(null);
     try {
-      await load(operatorKey);
+      await load(
+        reviewerSession
+          ? { kind: "reviewer", token: reviewerSession.token }
+          : operatorKey,
+      );
       setNotice("Dashboard refreshed.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The dashboard could not be refreshed.");
@@ -1088,16 +1103,19 @@ export function OperatorApp({ view }: { view: View }) {
   };
 
   const onCommand = async (path: string, payload: Record<string, string>) => {
-    if (demo || !operatorKey) return;
+    if (demo || (!reviewerSession && !operatorKey)) return;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      await apiRequest(path, operatorKey, {
+      const requestPath = reviewer
+        ? `${apiPrefix}${path}`
+        : path;
+      await apiRequest(requestPath, reviewer ? credential : operatorKey, {
         method: "POST",
         body: JSON.stringify(payload),
       });
-      await load(operatorKey);
+      await load(reviewer ? credential : operatorKey);
       setNotice("Action completed and the dashboard has been refreshed.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The action could not be completed.");
@@ -1106,16 +1124,13 @@ export function OperatorApp({ view }: { view: View }) {
     }
   };
 
-  const title = useMemo(() => {
-    if (view === "projects") return ["Project inbox", "Scope and commercial history"];
-    if (view === "evals") return ["Agent readiness", "Measured confidence before automation"];
-    return ["Workspace overview", "Keep every commercial decision in view."];
-  }, [view]);
+  const title = VIEW_TITLES[view];
 
   return (
     <div className={`operator-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <AppHeader
         view={view}
+        reviewer={reviewer}
         sidebarCollapsed={sidebarCollapsed}
         connected={Boolean(data)}
         demo={demo}
@@ -1125,12 +1140,27 @@ export function OperatorApp({ view }: { view: View }) {
         onScopeIntelligence={() => setScopeIntelligenceOpen(true)}
         onDisconnect={disconnect}
       />
-      {!data ? <ConnectPanel busy={busy} error={error} onConnect={connect} /> : (
+      {!data ? reviewer ? (
+        <main id="main-content" className="mx-auto flex min-h-[60vh] max-w-[760px] items-center justify-center px-6 py-16">
+          <section className="panel w-full p-8 text-center">
+            <span className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--surface-muted)]"><Inbox size={22} /></span>
+            <h1 className="mt-5 text-2xl font-black tracking-[-0.035em]">Loading your reviewer workspace</h1>
+            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">ScopeLock is checking the shared demo inbox for messages sent from {reviewerSession?.email}.</p>
+            {error ? <p role="alert" className="mt-5 rounded-lg border border-[var(--line-dark)] bg-[var(--surface-muted)] px-4 py-3 text-left text-sm font-bold text-[var(--ink)]">{error}</p> : null}
+          </section>
+        </main>
+      ) : <ConnectPanel busy={busy} error={error} onConnect={connect} /> : (
         <main id="main-content" className={`mx-auto max-w-[1600px] px-4 sm:px-7 lg:px-10 ${view === "overview" ? "overview-main pt-2 pb-0 lg:pt-2" : "py-8 lg:py-10"}`}>
           {demo ? (
             <div className="overview-demo-banner mb-6 flex flex-col gap-3 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-soft)] px-4 py-3 text-sm font-bold text-[var(--ink)] sm:flex-row sm:items-center sm:justify-between">
               <span className="flex min-w-0 items-center gap-2 break-words"><TriangleAlert size={17} className="shrink-0" /> Reviewed demo fixture—no live Gmail data or external actions.</span>
               <a href={view === "overview" ? "/" : `/${view}/`} className="underline underline-offset-4">Leave demo</a>
+            </div>
+          ) : null}
+          {reviewer && !demo ? (
+            <div className="mb-6 flex items-start gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--ink)]">
+              <Inbox size={17} className="mt-0.5 shrink-0" />
+              <span><strong>ScopeLock demo inbox.</strong> This shared test workspace is not your personal Gmail inbox.</span>
             </div>
           ) : null}
           {view !== "overview" ? (
@@ -1152,9 +1182,8 @@ export function OperatorApp({ view }: { view: View }) {
               <ul className="mt-2 list-disc pl-5">{data.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
             </div>
           ) : null}
-          {view === "overview" ? <Overview data={data} demo={demo} operatorKey={operatorKey} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : null}
-          {view === "projects" ? <Projects data={data} demo={demo} operatorKey={operatorKey} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : null}
-          {view === "evals" ? <Evals data={data} /> : null}
+          {view === "overview" ? <Overview data={data} demo={demo} operatorKey={reviewer ? credential : operatorKey} apiPrefix={apiPrefix} reviewer={reviewer} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : null}
+          {view === "settings" ? <Settings data={data} demo={demo} busy={busy} onCommand={onCommand} /> : null}
           <footer className="mt-10 flex flex-col gap-2 border-t border-[var(--line)] py-6 text-xs font-semibold text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
             <span>ScopeLock · approval-gated commercial automation</span>
             <span className="inline-flex items-center gap-2"><Clock3 size={14} /> Every action is correlation-ID logged</span>

@@ -7,9 +7,23 @@ export class ApiError extends Error {
   }
 }
 
+export type ApiCredential =
+  | string
+  | {
+      kind: "reviewer";
+      token: string;
+    };
+
+function credentialHeaders(credential: ApiCredential): Record<string, string> {
+  if (typeof credential === "string") {
+    return { "X-ScopeLock-Operator-Key": credential };
+  }
+  return { Authorization: `Bearer ${credential.token}` };
+}
+
 export async function apiRequest<T>(
   path: string,
-  operatorKey: string,
+  credential: ApiCredential,
   init?: RequestInit,
 ): Promise<T> {
   const response = await fetch(path, {
@@ -17,7 +31,7 @@ export async function apiRequest<T>(
     cache: "no-store",
     headers: {
       "Content-Type": "application/json",
-      "X-ScopeLock-Operator-Key": operatorKey,
+      ...credentialHeaders(credential),
       ...(init?.headers ?? {}),
     },
   });
@@ -36,11 +50,11 @@ export async function apiRequest<T>(
 
 export async function apiBlobRequest(
   path: string,
-  operatorKey: string,
+  credential: ApiCredential,
 ): Promise<Blob> {
   const response = await fetch(path, {
     cache: "no-store",
-    headers: { "X-ScopeLock-Operator-Key": operatorKey },
+    headers: credentialHeaders(credential),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);

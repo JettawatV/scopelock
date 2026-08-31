@@ -74,14 +74,20 @@ Vite React Review Dashboard
 ### Required / P0
 
 #### Cloud Run
-Two deployable services are acceptable:
+Two deployable services are used for the hosted demo:
 
 1. `scopelock-api`
-   - Python / ADK / Gmail webhook / application API.
-2. `scopelock-web`
-   - Vite-built React dashboard.
+   - Private Python / ADK / Gmail webhook / application API.
+2. `scopelock-reviewer`
+   - Public, thin reviewer gateway serving the Vite build and forwarding only
+     `/api/reviewer/*` to the private API with a service-account identity token.
+   - Firebase email-link ID tokens are forwarded in a separate header and
+     verified again by the private API; operator routes are never proxied.
 
-A single combined deployment is allowed if it materially reduces risk, but keep backend and UI code logically separated.
+A single combined image is used for both services to reduce build drift. The
+reviewer gateway is not a second mailbox client: its dashboard projection is
+filtered by the verified sender address and labels the shared intake as the
+ScopeLock demo inbox.
 
 #### Firestore
 Canonical application state.
@@ -314,7 +320,7 @@ catalog amounts, and timeline rules.
 P0 pages only:
 
 ### `/`
-Project inbox / current projects
+Workspace overview / current commercial review
 - project
 - client
 - lifecycle status
@@ -322,24 +328,14 @@ Project inbox / current projects
 - pending scope delta
 - action required
 
-### `/projects/`
-- current canonical scope
-- proposal version
-- price/timeline
-- client thread events
-- pending changes
-- evidence
-- approve / reject / finalize
+### `/settings/`
+- active SOP source/version and draft editor
+- Gmail watch connection status
+- operator guardrails
 
-P0 uses an interactive project selector on the static `/projects/` export
-rather than generating an unbounded static route for every Firestore ID.
-
-### `/evals`
-- classification metrics
-- false-negative count
-- tool/trajectory success
-- approval-gate violations (must be zero)
-- recent eval runs
+Evaluation evidence remains first-class release evidence in `docs/EVAL_PLAN.md`
+and the packaged audit artifacts, but is not a navigation tab in the final
+operator console.
 
 No marketing site is required before the core workflow is stable.
 

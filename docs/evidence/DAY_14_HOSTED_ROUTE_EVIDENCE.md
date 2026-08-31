@@ -2,6 +2,11 @@
 
 Recorded: **2026-08-30**
 
+> Historical route-smoke snapshot. Hosted Gmail activation and the complete
+> golden path were subsequently verified; see
+> `HOSTED_PRECHECK_2026-08-31.md` and `FINAL_DEMO_READINESS_AUDIT.md` for the
+> current release status.
+
 ## Verified
 
 The combined FastAPI and Vite image is deployed to an IAM-authenticated Cloud

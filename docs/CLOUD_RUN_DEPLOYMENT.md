@@ -5,23 +5,39 @@
 The production container and hosted-configuration preflight are implemented.
 Local OAuth for the dedicated demo mailbox passed on 2026-08-29. The private
 Cloud Run service is deployed in `asia-southeast1`; authenticated hosted health,
-Pub/Sub delivery, logging checks, and Gmail `users.watch` activation remain
-incomplete.
+Pub/Sub delivery, logging checks, Gmail `users.watch` activation, and the
+end-to-end golden path are recorded as passed in
+`docs/evidence/HOSTED_PRECHECK_2026-08-31.md` and
+`docs/evidence/FINAL_DEMO_READINESS_AUDIT.md`.
+
+The core service remains private by design. A direct browser visit to its
+`run.app` URL is not a judge-ready anonymous link. The asynchronous judging
+surface is a separate, deliberately thin public gateway that serves `/review/`
+and forwards only Firebase-authenticated `/api/reviewer/*` requests to the
+private core using Cloud Run IAM. The gateway never receives the operator key,
+Gmail OAuth token, or unrestricted API paths.
+
+The remaining operational follow-ups (duplicate replay evidence and
+watch-renewal alerting) do not block the hackathon recording.
 
 Do not create the Gmail watch until every pre-activation check in
 `docs/GMAIL_SECURITY_GATE.md` passes. Do not deploy with public/unauthenticated
-invocation.
+invocation for `scopelock-api`; the reviewer gateway is the sole intentional
+public service and exposes only the namespaced reviewer surface.
 
 ## Deployment contract
 
 - Project: `scopelock-506806`
 - Region: `asia-southeast1`
-- Cloud Run service: `scopelock-api`
+- Cloud Run service: `scopelock-api` (private core)
+- Public reviewer gateway: `scopelock-reviewer`
 - Artifact Registry repository: `scopelock`
 - Runtime service account:
   `scopelock-runtime@scopelock-506806.iam.gserviceaccount.com`
 - Pub/Sub push service account:
   `scopelock-pubsub-push@scopelock-506806.iam.gserviceaccount.com`
+- Reviewer gateway service account:
+  `scopelock-reviewer-gateway@scopelock-506806.iam.gserviceaccount.com`
 - Topic: `projects/scopelock-506806/topics/scopelock-gmail`
 - Push subscription: `scopelock-gmail-push`
 - Endpoint: `https://SERVICE_URL/webhooks/gmail`
@@ -127,6 +143,13 @@ Create `scopelock-api` from the image using:
 - concurrency `1` for the first live gate;
 - minimum instances `0`, maximum instances `1` for the first live gate.
 
+This is a cost and blast-radius control, not a zero-cost guarantee. Minimum
+`0` lets an idle service scale to zero; requests still incur request-based
+CPU/memory and networking charges, and Firestore, Pub/Sub, Vertex AI, Secret
+Manager, and Gmail have their own usage/billing rules. Maximum `1` caps
+concurrent instance count but can queue or time out bursts. Check the billing
+account and free-tier usage before submission.
+
 Set these non-secret environment variables:
 
 ```dotenv
@@ -142,12 +165,63 @@ SCOPELOCK_GMAIL_PUBSUB_TOPIC=projects/scopelock-506806/topics/scopelock-gmail
 SCOPELOCK_PUBSUB_AUDIENCE=https://TEMPORARY.invalid
 SCOPELOCK_PUBSUB_PUSH_SERVICE_ACCOUNT=scopelock-pubsub-push@scopelock-506806.iam.gserviceaccount.com
 SCOPELOCK_ARTIFACT_ROOT=/tmp/scopelock-artifacts
+SCOPELOCK_FIREBASE_PROJECT_ID=scopelock-506806
+SCOPELOCK_FIREBASE_API_KEY=FIREBASE_WEB_API_KEY
+SCOPELOCK_FIREBASE_AUTH_DOMAIN=scopelock-506806.firebaseapp.com
 ```
 
 Attach the two Secret Manager values as environment-secret references. After
 the first revision returns its generated `https://...run.app` service URL,
 replace `SCOPELOCK_PUBSUB_AUDIENCE` with that exact origin and deploy a new
 revision before creating the subscription.
+
+### 5a. Deploy the public reviewer gateway
+
+The gateway is intentionally separate from the private core. Create its
+service account and grant it only `Cloud Run Invoker` on `scopelock-api`:
+
+```powershell
+$gatewayAccount = "scopelock-reviewer-gateway@scopelock-506806.iam.gserviceaccount.com"
+gcloud iam service-accounts create scopelock-reviewer-gateway --project scopelock-506806
+gcloud run services add-iam-policy-binding scopelock-api `
+  --project scopelock-506806 `
+  --region asia-southeast1 `
+  --member "serviceAccount:$gatewayAccount" `
+  --role roles/run.invoker
+```
+
+Deploy the same immutable image with the gateway entry point. The gateway may
+be unauthenticated at the Cloud Run IAM layer because all workflow data and
+actions remain behind Firebase ID-token verification in the private core.
+
+```powershell
+$privateUrl = "https://PRIVATE_CORE_SERVICE.run.app"
+gcloud run deploy scopelock-reviewer `
+  --project scopelock-506806 `
+  --region asia-southeast1 `
+  --image $image `
+  --service-account $gatewayAccount `
+  --command python `
+  --args "-m,scopelock.reviewer_gateway" `
+  --allow-unauthenticated `
+  --port 8080 `
+  --concurrency 1 `
+  --min 0 `
+  --max 1 `
+  --set-env-vars "SCOPELOCK_PRIVATE_API_URL=$privateUrl,SCOPELOCK_FRONTEND_ROOT=/app/frontend/dist"
+```
+
+Before deploying, initialize Firebase Authentication/Identity Platform for the
+project (Firestore by itself does not create an Auth configuration), then
+enable Authentication > Sign-in method > Email link. Add the gateway hostname
+to Authentication's authorized domains. The public
+web configuration (`SCOPELOCK_FIREBASE_*`) is safe to expose; never place the
+Gmail token or operator key in the gateway. Give judges the resulting
+`https://...run.app/review/` URL. They sign in with an email link, send their
+test requirement from that same address to the dedicated demo mailbox, and can
+return later without owner assistance. The reviewer projection filters by the
+verified sender address and labels the mailbox as **ScopeLock demo inbox**;
+it is not the judge's personal Gmail inbox.
 
 ### 6. Create the topic and authenticated push subscription
 
@@ -205,13 +279,14 @@ gcloud run services proxy scopelock-api `
 Then open `http://127.0.0.1:8082/?demo=1` in a second terminal/browser. If port
 8082 is occupied, choose another unused local port. The active `gcloud`
 principal must be allowed to invoke `scopelock-api`. Direct hosted browser
-access for other reviewers requires a separately reviewed identity-aware access
-layer; do not make the service unauthenticated just to expose the UI.
+access for other reviewers uses the separate `scopelock-reviewer` gateway
+described in step 5a; do not make the private core unauthenticated just to
+expose the UI.
 
 Through the authenticated proxy:
 
 - `/` serves the operator-key connection screen;
-- `/?demo=1`, `/projects/?demo=1`, and `/evals/?demo=1` show the labelled,
+- `/?demo=1` and `/settings/?demo=1` show the labelled,
   non-mutating reviewed fixture;
 - `/api/dashboard` rejects a missing or wrong operator key;
 - a correct key returns only the redacted dashboard projection;
@@ -219,6 +294,13 @@ Through the authenticated proxy:
   or screenshots;
 - approve, draft, and send remain separate actions and backend policy rejects
   any invalid sequence.
+
+For the asynchronous judge path, open the gateway's `/review/` URL instead.
+The reviewer page never asks for the operator API key, and its inbox panel is
+explicitly labelled **ScopeLock demo inbox**. A judge must use the same email
+address for the email-link sign-in and the test email sent to the dedicated
+demo mailbox; this is how the private reviewer projection finds only that
+judge's project.
 
 ## Required references
 
