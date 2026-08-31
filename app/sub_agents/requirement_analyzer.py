@@ -7,7 +7,7 @@ from scopelock.domain.models import RequirementAnalysis
 from scopelock.settings import agent_generate_config, build_model
 
 
-PROMPT_VERSION = "requirement_analyzer_v5"
+PROMPT_VERSION = "requirement_analyzer_v6"
 
 
 INSTRUCTION = """You analyze an inbound client email for a possible new project.
@@ -66,6 +66,10 @@ Evidence and safety:
 - Read CURRENT_MESSAGE_ID from the application-owned input and use it for all
   Gmail evidence. In free-form ADK development, use current_email when no ID is
   supplied.
+- For every Gmail evidence item, quote_or_rule must be copied verbatim as one
+  contiguous substring from BODY. Never summarize, paraphrase, correct, or join
+  separate parts of the email in a Gmail quote. Keep the quote short while
+  retaining enough words to support the associated decision.
 - Every selected module cites Gmail evidence plus SOP evidence whose source_id is
   the exact module key and whose source_version is the returned catalog version.
   mapped_requirement must use the exact format `REQUIREMENT_ID: human-readable

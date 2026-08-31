@@ -85,7 +85,7 @@ def test_frozen_agent_roster_schemas_and_least_privilege_tools():
 
 
 def test_agent_prompts_keep_routing_tool_order_and_commerce_boundaries_explicit():
-    assert REQUIREMENT_PROMPT_VERSION == "requirement_analyzer_v5"
+    assert REQUIREMENT_PROMPT_VERSION == "requirement_analyzer_v6"
     assert SCOPE_PROMPT_VERSION == "scope_analyzer_v4"
     assert "immediately transfer to requirement_analyzer" in root_agent.instruction
     assert "immediately\ntransfer to the scope_analyzer" in root_agent.instruction
@@ -93,6 +93,8 @@ def test_agent_prompts_keep_routing_tool_order_and_commerce_boundaries_explicit(
     assert "or\nsend email" in root_agent.instruction
 
     requirement_prompt = requirement_analyzer.instruction
+    assert "copied verbatim as one" in requirement_prompt
+    assert "contiguous substring from BODY" in requirement_prompt
     assert "Always call get_sop_catalog before selecting" in requirement_prompt
     assert "semantic catalog only" in requirement_prompt
     assert "retain all supported mappings" in requirement_prompt

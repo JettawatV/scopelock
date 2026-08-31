@@ -20,6 +20,8 @@ _FORBIDDEN_COMMERCE_TEXT = re.compile(
     r"(?:day|days|week|weeks|month|months)\b)"
     r"|(?:\b(?:price|cost|amount|timeline|duration)\s*"
     r"(?:is|=|:)\s*[$€£]?\s*\d)"
+    r"|(?:\b(?:estimate|calculate|set|promise)\s+(?:the\s+)?"
+    r"(?:price|cost|amount|timeline|duration)\b)"
 )
 
 
