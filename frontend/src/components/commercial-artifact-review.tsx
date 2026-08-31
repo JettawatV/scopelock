@@ -7,7 +7,7 @@ import {
   StatusPill,
   time,
 } from "@/components/dashboard-primitives";
-import { apiBlobRequest, correlationId, type ApiCredential } from "@/lib/api";
+import { ApiError, apiBlobRequest, correlationId, type ApiCredential } from "@/lib/api";
 import { readStoredValue, writeStoredValue } from "@/lib/browser-storage";
 import { demoProposalPdf } from "@/lib/demo-proposal";
 import type { Artifact, InboxMessage, Project } from "@/lib/types";
@@ -260,9 +260,9 @@ function ArtifactPreviewModal({
         setPdfUrl(objectUrl);
       } catch (caught) {
         if (active) {
-          setPdfError(
-            caught instanceof Error ? caught.message : "The proposal PDF could not be loaded.",
-          );
+          // Keep the deterministic proposal sheet visible when a hosted API is
+          // running an older revision without the PDF route.
+          setPdfError(caught instanceof ApiError && caught.status === 404 ? "PDF preview is unavailable in this hosted revision. The proposal overview below remains available." : caught instanceof Error ? caught.message : "The proposal PDF could not be loaded.");
         }
       }
     };

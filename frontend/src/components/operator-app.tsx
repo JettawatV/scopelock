@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { type FormEvent, type MouseEvent, useEffect, useState } from "react";
 
-import { apiRequest, correlationId, type ApiCredential } from "@/lib/api";
+import { ApiError, apiRequest, correlationId, type ApiCredential } from "@/lib/api";
 import {
   readStoredJson,
   readStoredValue,
@@ -638,9 +638,14 @@ function GmailReviewPanel({
       );
       setMessageDetail(detail);
     } catch (caught) {
-      setMessageError(
-        caught instanceof Error ? caught.message : "The selected message could not be loaded.",
-      );
+      // Older hosted API revisions may expose the dashboard metadata route but
+      // not the bounded detail route. Keep the review usable with the trusted
+      // metadata already on screen instead of surfacing a raw 404 modal.
+      if (caught instanceof ApiError && caught.status === 404) {
+        setMessageDetail({ ...message, body: "Message content is unavailable from this API revision.", body_format: "PLAIN", attachments: [] });
+      } else {
+        setMessageError(caught instanceof Error ? caught.message : "The selected message could not be loaded.");
+      }
     } finally {
       setMessageLoading(false);
     }
