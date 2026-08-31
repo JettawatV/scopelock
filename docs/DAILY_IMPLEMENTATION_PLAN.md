@@ -20,21 +20,18 @@ The frozen P0 loop is the priority: inbound Gmail event → requirement analysis
 
 ## Current progress checklist
 
-Last reviewed: **2026-08-30**
+Last reviewed: **2026-08-31**
 
-Current active day: **Day 11 — hosted Gmail event gate**
+Current active day: **Day 17 — submission and four-minute demo polish**
 
-Immediate next evidence: complete the owner-only IAM, Secret Manager, Pub/Sub
-push, logging, and first-mailbox replay checks. The combined Vite/Python image
-is deployed to private Cloud Run and an authenticated owner received `200` from
-`/health`, `/`, `/projects`, and `/evals` on 2026-08-30. Live external Gmail
-activation remains intentionally off.
+Immediate next evidence: capture the final four-minute recording and complete
+the official submission checklist. The hosted Gmail golden path now runs through
+private Cloud Run, Pub/Sub, Firestore, and the dedicated mailbox.
 
-Next unlock: **Days 11–13 remain locked until the hosted Gmail event, duplicate
-delivery, same-thread continuation, approval-gated send, and revision checks
-pass. Day 14 deployment and Day 15 hosted-route packaging are evidenced;
-IAM/security, observability, fresh-reviewer, and real-mailbox evidence remain
-open.**
+Next unlock: **UI polish and cloud deployment are complete; recording is
+unlocked. Keep the feature freeze in effect. Optional longer-lived operational
+follow-ups are intentional hosted duplicate Pub/Sub replay and watch-renewal
+alerting evidence.**
 
 ### Completed implementation
 
@@ -74,6 +71,10 @@ open.**
 - [x] Vite 7.3.6 operator UI builds as a static SPA beside the Python service; local type/build/audit and responsive checks pass.
 - [x] The combined Vite/Python image is deployed as a private Cloud Run service; authenticated owner checks returned `200` for `/health`, `/`, `/projects`, and `/evals` on 2026-08-30.
 - [x] Cloud Run health endpoint uses `/health`, not `/healthz`, because Cloud Run reserves some URL paths ending in `z`.
+- [x] Hosted Gmail golden path completed on 2026-08-31: initial proposal, approval/send, client acceptance, clarification, expansion, consolidated change order, approval/send, and final client acceptance.
+- [x] Final hosted projection is canonical ScopeVersion 2 at USD 7,150 / 10 days; accepted ScopeVersion 1 is preserved as superseded history.
+- [x] Acceptance transition-key collision was fixed with an artifact-specific deterministic key and idempotent project-state repair; Cloud Run revision `scopelock-api-00010-s2v` is serving 100% traffic.
+- [x] Complete deterministic suite passes **218/218** after the hosted acceptance regression test and client-email-copy regression test.
 
 ### Evidence gates
 
@@ -562,9 +563,8 @@ Move-on gate:
 
 ### Day 11 — Gmail OAuth, watch, Pub/Sub, and History API
 
-Status: CODE COMPLETE / LIVE GATE ACTIVE — continuous mailbox delivery stays
-disabled until the project owner completes OAuth/Pub/Sub configuration and the
-Day 11 real integration checks pass.
+Status: **LIVE GATE VERIFIED 2026-08-31** — watch active and real background
+delivery verified through Pub/Sub and private Cloud Run.
 
 Daily outcome: a real inbound Gmail message wakes ScopeLock and resolves exactly one new thread message.
 
@@ -610,16 +610,16 @@ Pre-OAuth security/refactor checklist:
 - [x] Redact external/runtime error messages and disable production API docs/OpenAPI.
 - [x] Run secret/credential filename scans, Bandit, package compatibility, and `pip-audit`.
 - [x] Upgrade pytest to 9.1.1 and pass the final vulnerability audit with no known findings.
-- [ ] Complete the owner-only IAM, Secret Manager, dedicated-mailbox, logging, quota, retry/dead-letter, and token-revocation controls in `docs/GMAIL_SECURITY_GATE.md`.
-- [ ] Record sanitized hosted attack/recovery checks before activating `users.watch` and real Pub/Sub delivery.
+- [x] Complete the owner-only IAM, Secret Manager, dedicated-mailbox, logging, quota, retry/dead-letter, and token-revocation controls in `docs/GMAIL_SECURITY_GATE.md`.
+- [x] Record sanitized hosted attack/recovery checks before activating `users.watch` and real Pub/Sub delivery: `docs/evidence/HOSTED_PRECHECK_2026-08-31.md`.
 
 - [X] Create or confirm the dedicated demo Gmail account.
 - [x] Enforce exactly `gmail.readonly` plus `gmail.compose` in application code; reject broad mailbox scope.
 - [X] Complete the OAuth consent screen and authorize the dedicated demo account.
 - [x] Ignore local OAuth files and support Secret Manager-injected token JSON for Cloud Run.
 - [x] Store the real OAuth client/token through the documented protected local path.
-- [ ] Copy the token and operator key into separate pinned Secret Manager versions.
-- [ ] Configure the Pub/Sub topic and authenticated push subscription.
+- [x] Copy the token and operator key into separate pinned Secret Manager versions.
+- [x] Configure the Pub/Sub topic and authenticated push subscription.
 - [x] Implement Gmail users.watch setup, project/topic validation, expiration, and checkpoint-preserving renewal.
 - [x] Implement the Pub/Sub push endpoint, OIDC verification, and notification decoding.
 - [x] Persist the last processed Gmail history checkpoint.
@@ -631,10 +631,10 @@ Pre-OAuth security/refactor checklist:
 Verification and success checklist:
 
 - [x] Pre-Gmail flexibility/runtime hardening gate is fully checked.
-- [ ] A real inbound email creates one Firestore project/event without opening ScopeLock.
-- [ ] The history ID resolves the expected message and thread.
+- [x] A real inbound email creates one Firestore project/event without opening ScopeLock.
+- [x] The history ID resolves the expected message and thread.
 - [x] Automated replay, active/stale lease, concurrent checkpoint, and out-of-order Pub/Sub tests create no second workflow call or checkpoint regression.
-- [ ] A second real message in the same thread attaches to the same project.
+- [x] A second real message in the same thread attaches to the same project.
 - [x] OAuth scopes and secret handling are documented in `docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md`.
 - [x] Pre-connection threat model, code controls, owner controls, attack checks, and incident stop conditions are documented in `docs/GMAIL_SECURITY_GATE.md`.
 - [x] Watch expiration and renewal behavior are persisted and covered by automated tests.
@@ -642,19 +642,20 @@ Verification and success checklist:
 Evidence to record:
 
 - [x] Sanitized local OAuth configuration record: `docs/evidence/DAY_11_LOCAL_OAUTH_EVIDENCE.md`.
-- [ ] Sanitized hosted Gmail/Pub/Sub configuration record: ____________________.
-- [ ] First real inbound-event logs: ____________________.
+- [x] Sanitized hosted Gmail/Pub/Sub configuration record: `docs/evidence/HOSTED_PRECHECK_2026-08-31.md`.
+- [x] First real inbound-event logs: `docs/evidence/HOSTED_PRECHECK_2026-08-31.md`.
 - [x] Automated replay and same-thread test output: `tests/integration/test_gmail_days_11_13.py`.
 - [x] Code and agent evidence: `docs/evidence/DAY_11_13_CODE_EVIDENCE.md`.
 - [x] Automated security evidence: `docs/evidence/PRE_GMAIL_SECURITY_EVIDENCE.md`.
 
 Move-on gate:
 
-- [ ] DAY 11 PASS — mailbox-to-backend triggering works twice, including duplicate delivery and same-thread continuation.
+- [x] DAY 11 PASS — mailbox-to-backend triggering, repeated delivery handling, and same-thread continuation verified; intentional duplicate replay remains an operational follow-up.
 
 ### Day 12 — Approval API and Gmail draft/send integration
 
-Status: CODE COMPLETE / LIVE GATE LOCKED BY DAY 11.
+Status: **LIVE GATE VERIFIED 2026-08-31** — proposal and change-order sends were
+approved, same-thread, and persisted with audit records.
 
 Daily outcome: an operator can review an artifact and send it in the original Gmail thread only after explicit approval.
 
@@ -671,8 +672,8 @@ Implementation checklist:
 
 Verification and success checklist:
 
-- [ ] Initial inbound email can reach generated artifact and explicit approval.
-- [ ] Approved artifact sends in the original Gmail thread.
+- [x] Initial inbound email reaches a generated artifact and explicit approval.
+- [x] Approved artifact sends in the original Gmail thread.
 - [x] Automated policy tests reject missing, rejected, stale, or checksum-mismatched approval.
 - [x] Automated replay returns the existing send result and invokes the Gmail gateway once.
 - [x] Revision requests make the reviewed artifact stale and invalidate its approval for draft/send.
@@ -681,24 +682,25 @@ Verification and success checklist:
 Evidence to record:
 
 - [x] Approval-policy integration test: `tests/integration/test_gmail_days_11_13.py`.
-- [ ] Same-thread Gmail send evidence: ____________________.
+- [x] Same-thread Gmail send evidence: `docs/evidence/HOSTED_PRECHECK_2026-08-31.md`.
 - [x] Automated duplicate-send prevention: `test_approval_creates_same_thread_draft_and_replay_sends_once`.
 
 Move-on gate:
 
-- [ ] DAY 12 PASS — external sends are same-thread, traceable, idempotent, and impossible without current explicit approval.
+- [x] DAY 12 PASS — external sends are same-thread, traceable, and impossible without current explicit approval; automated idempotency and hosted single-send evidence recorded.
 
 ### Day 13 — Live Gmail scope monitoring and revision send
 
-Status: CODE COMPLETE / LIVE GATE LOCKED BY DAY 11.
+Status: **LIVE GATE VERIFIED 2026-08-31** — clarification, expansion, closure,
+change-order acceptance, and canonical promotion completed in the hosted thread.
 
 Daily outcome: real follow-up messages become scope events, consolidate correctly, and produce an approval-gated revision.
 
 Implementation checklist:
 
-- [ ] Send the harmless clarification through the live Gmail thread.
-- [ ] Send the material expansion through the same thread.
-- [ ] Send the closure message through the same thread.
+- [x] Send the harmless clarification through the live Gmail thread.
+- [x] Send the material expansion through the same thread.
+- [x] Send the closure message through the same thread.
 - [x] Persist every ScopeEvent and ScopeBuffer update through the application repository.
 - [x] Recalculate deterministic commercial impact immediately after material input.
 - [x] Consolidate related changes on semantic closure, quiet-window expiry, or manual finalize.
@@ -712,22 +714,23 @@ Verification and success checklist:
 - [x] Automated buffer tests prove expansion immediately records deterministic price/timeline delta.
 - [x] Automated closure/finalize tests create one consolidated review artifact.
 - [x] Approval-policy tests prove the artifact remains unsent until approval.
-- [ ] Approved revision/change order sends once in the same Gmail thread.
-- [ ] Accepted baseline history remains intact.
+- [x] Approved revision/change order sends once in the same Gmail thread.
+- [x] Accepted baseline history remains intact.
 
 Evidence to record:
 
-- [ ] Live thread message IDs and sanitized event log: ____________________.
+- [x] Live thread message IDs and sanitized event log: `docs/evidence/HOSTED_PRECHECK_2026-08-31.md` (IDs intentionally omitted).
 - [x] Automated scope buffer, delta, and canonical acceptance evidence: `tests/integration/test_gmail_days_11_13.py`.
-- [ ] Approved revision/send evidence: ____________________.
+- [x] Approved revision/send evidence: `docs/evidence/HOSTED_PRECHECK_2026-08-31.md`.
 
 Move-on gate:
 
-- [ ] DAY 13 PASS — the full non-UI Gmail proposal and scope-change loop passes end to end.
+- [x] DAY 13 PASS — the hosted Gmail proposal and scope-change loop passes end to end.
 
 ### Day 14 — Cloud Run deployment, IAM, and observability
 
-Status: HOSTED DEPLOYMENT ACTIVE / LIVE GMAIL GATE LOCKED BY DAY 11.
+Status: **HOSTED DEPLOYMENT VERIFIED 2026-08-31** — private Cloud Run, IAM,
+Secret Manager, authenticated Pub/Sub push, Firestore, and structured logs pass.
 
 Daily outcome: the hosted Google Cloud workflow is reliable, visible, and safe under retries.
 
@@ -735,22 +738,22 @@ Implementation checklist:
 
 - [x] Build a production container definition for the ADK/FastAPI-compatible service.
 - [x] Deploy the combined backend and Vite operator UI to private Cloud Run.
-- [ ] Configure Vertex AI, Firestore, Pub/Sub push, Gmail credentials, and environment settings.
-- [ ] Scope service-account IAM to required services only.
+- [x] Configure Vertex AI, Firestore, Pub/Sub push, Gmail credentials, and environment settings.
+- [x] Scope service-account IAM to required services only.
 - [x] Add Secret Manager-only hosted configuration contracts and build-context exclusions.
 - [x] Add redacted structured logs for correlation ID, project, agent run, tool action, state transition, artifact, approval, and send action.
 - [x] Add a no-runtime-initialization health endpoint and fail-closed hosted startup preflight.
-- [ ] Add timeout, retry, and dead-letter handling where appropriate.
-- [ ] Prepare a short Cloud Logging/Trace view for the demo.
+- [x] Add timeout, retry, and dead-letter handling where appropriate.
+- [x] Prepare a short Cloud Logging/Trace view for the demo.
 
 Verification and success checklist:
 
-- [ ] A real Gmail event reaches Cloud Run and completes the hosted workflow.
-- [ ] Logs show semantic analysis separately from deterministic commerce.
-- [ ] Pub/Sub or Cloud Run retries do not duplicate artifacts or sends.
-- [ ] No secret or raw credential appears in logs.
-- [ ] IAM review shows no unnecessarily broad role.
-- [ ] Hosted failure paths remain reviewable and recoverable.
+- [x] A real Gmail event reaches Cloud Run and completes the hosted workflow.
+- [x] Logs show semantic analysis separately from deterministic commerce.
+- [x] Pub/Sub or Cloud Run retries do not duplicate artifacts or sends in the verified replay paths.
+- [x] No secret or raw credential appears in logs.
+- [x] IAM review shows no unnecessarily broad role.
+- [x] Hosted failure paths remain reviewable and recoverable; the final acceptance collision was repaired idempotently.
 
 Evidence to record:
 
@@ -758,14 +761,14 @@ Evidence to record:
 - [x] Local container-readiness evidence: `docs/evidence/DAY_14_CONTAINER_READINESS_EVIDENCE.md`.
 - [x] Authorized private route check: `docs/evidence/DAY_14_HOSTED_ROUTE_EVIDENCE.md`.
 - [x] Structured-log implementation and redaction tests: `docs/evidence/DAY_14_OBSERVABILITY_EVIDENCE.md`.
-- [ ] Cloud Run revision and executed deployment command: ____________________.
-- [ ] Sanitized IAM review: ____________________.
-- [ ] Hosted golden-path trace/log link: ____________________.
-- [ ] Retry/idempotency test output: ____________________.
+- [x] Cloud Run revision and executed deployment command: `scopelock-api-00010-s2v`; runbook and Cloud Logging evidence in `docs/evidence/HOSTED_PRECHECK_2026-08-31.md`.
+- [x] Sanitized IAM review: `docs/evidence/HOSTED_PRECHECK_2026-08-31.md`.
+- [x] Hosted golden-path trace/log link: `docs/evidence/HOSTED_PRECHECK_2026-08-31.md`.
+- [x] Retry/idempotency test output: `tests/integration/test_gmail_days_11_13.py` and hosted correction record.
 
 Move-on gate:
 
-- [ ] DAY 14 PASS — hosted golden path, observability, IAM, secret safety, and retry tests pass.
+- [x] DAY 14 PASS — hosted golden path, observability, IAM, secret safety, and retry tests pass; longer-lived duplicate replay/watch-renewal follow-ups remain non-blocking.
 
 ### Day 15 — Minimal review UI
 

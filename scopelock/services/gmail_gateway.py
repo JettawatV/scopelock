@@ -20,6 +20,10 @@ class GmailFullSyncRequired(RuntimeError):
     """The stored history checkpoint is no longer valid for incremental sync."""
 
 
+class GmailMessageNotFound(RuntimeError):
+    """A history entry points at a message that is no longer readable."""
+
+
 class GmailGateway(Protocol):
     def watch(self, mailbox: str, *, topic_name: str) -> Mapping[str, Any]: ...
 
@@ -100,20 +104,40 @@ class GoogleGmailGateway:
         return WorkflowExecutionBoundaries.external_read(operation)
 
     def get_message(self, mailbox: str, message_id: str) -> Mapping[str, Any]:
-        return WorkflowExecutionBoundaries.external_read(
-            lambda: self._service.users()
-            .messages()
-            .get(userId=mailbox, id=message_id, format="full")
-            .execute()
-        )
+        def operation() -> Mapping[str, Any]:
+            try:
+                return (
+                    self._service.users()
+                    .messages()
+                    .get(userId=mailbox, id=message_id, format="full")
+                    .execute()
+                )
+            except Exception as error:
+                if getattr(getattr(error, "resp", None), "status", None) == 404:
+                    raise GmailMessageNotFound(
+                        "Gmail history referenced a message that is no longer available"
+                    ) from error
+                raise
+
+        return WorkflowExecutionBoundaries.external_read(operation)
 
     def get_thread(self, mailbox: str, thread_id: str) -> Mapping[str, Any]:
-        return WorkflowExecutionBoundaries.external_read(
-            lambda: self._service.users()
-            .threads()
-            .get(userId=mailbox, id=thread_id, format="full")
-            .execute()
-        )
+        def operation() -> Mapping[str, Any]:
+            try:
+                return (
+                    self._service.users()
+                    .threads()
+                    .get(userId=mailbox, id=thread_id, format="full")
+                    .execute()
+                )
+            except Exception as error:
+                if getattr(getattr(error, "resp", None), "status", None) == 404:
+                    raise GmailMessageNotFound(
+                        "Gmail history referenced a thread that is no longer available"
+                    ) from error
+                raise
+
+        return WorkflowExecutionBoundaries.external_read(operation)
 
     def create_draft(
         self, mailbox: str, *, message: Mapping[str, Any]

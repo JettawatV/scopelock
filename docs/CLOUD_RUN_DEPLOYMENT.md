@@ -137,6 +137,7 @@ SCOPELOCK_MODEL=gemini-3.5-flash
 SCOPELOCK_PROMPT_VERSION=requirement_analyzer_v5
 SCOPELOCK_SOP_PATH=config/jvl_sop.example.yaml
 SCOPELOCK_GMAIL_ACCOUNT=THE_DEDICATED_DEMO_MAILBOX
+SCOPELOCK_FIRESTORE_DATABASE=default
 SCOPELOCK_GMAIL_PUBSUB_TOPIC=projects/scopelock-506806/topics/scopelock-gmail
 SCOPELOCK_PUBSUB_AUDIENCE=https://TEMPORARY.invalid
 SCOPELOCK_PUBSUB_PUSH_SERVICE_ACCOUNT=scopelock-pubsub-push@scopelock-506806.iam.gserviceaccount.com

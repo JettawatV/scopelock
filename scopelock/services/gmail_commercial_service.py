@@ -212,6 +212,7 @@ class GmailCommercialService:
             unique_keys={"draft_action": key},
         )
         try:
+            project = self._project(artifact)
             client_email = self._client_email(artifact)
             source = self._latest_client_thread_message(
                 thread_id, client_email=client_email
@@ -221,7 +222,11 @@ class GmailCommercialService:
                 source_message=source,
                 sender_email=self._mailbox,
                 recipient_email=client_email,
-                text_body=self._email_body(artifact),
+                text_body=self._email_body(
+                    artifact,
+                    project_title=project.title,
+                    client_name=project.client_name,
+                ),
                 attachment_name=self._attachment_name(artifact),
                 attachment_bytes=self._attachment_bytes(artifact),
             )
@@ -506,15 +511,59 @@ class GmailCommercialService:
         return ""
 
     @staticmethod
-    def _email_body(artifact: CommercialArtifact) -> str:
-        label = artifact.artifact_type.value.replace("_", " ").title()
-        return (
-            f"Please find the approved {label} version {artifact.version_number} "
-            "attached.\n\n"
-            f"Total: USD {artifact.pricing_result.total_usd:,}\n"
-            f"Delivery timeline: {artifact.timeline_result.total_days} days\n\n"
-            "This message was sent only after explicit operator approval."
+    def _email_body(
+        artifact: CommercialArtifact,
+        *,
+        project_title: str | None = None,
+        client_name: str | None = None,
+    ) -> str:
+        """Compose a concise client-facing note without exposing internal controls."""
+
+        is_change_order = artifact.artifact_type.value == "CHANGE_ORDER"
+        label = "change order" if is_change_order else "proposal"
+        title = project_title.strip() if project_title else "your project"
+        greeting = f"Hello {client_name.strip()}," if client_name and client_name.strip() else "Hello,"
+        opening = (
+            f"Following up on our conversation about {title}, I have attached "
+            f"the {label} for your review."
         )
+        if is_change_order:
+            opening = (
+                f"Following up on the additional requirements for {title}, I have "
+                f"attached Change Order #{artifact.change_order_number or artifact.version_number} "
+                "for your review."
+            )
+        lines = [
+            greeting,
+            "",
+            opening,
+            "",
+            "Summary:",
+            f"• Investment: USD {artifact.pricing_result.total_usd:,}",
+            f"• Delivery: {artifact.timeline_result.total_days} business days",
+        ]
+        if artifact.pricing_result.line_items:
+            lines.extend(
+                [
+                    "• Included work: "
+                    + ", ".join(
+                        item.module_key.replace("_", " ")
+                        for item in artifact.pricing_result.line_items[:5]
+                    ),
+                ]
+            )
+        lines.extend(
+            [
+                "",
+                "Please reply to confirm that this scope works for you, or let me "
+                "know if you would like to discuss any detail. Once confirmed, "
+                "we will schedule the next steps.",
+                "",
+                "Best regards,",
+                "JVL Team",
+            ]
+        )
+        return "\n".join(lines)
 
     @staticmethod
     def _attachment_name(artifact: CommercialArtifact) -> str:

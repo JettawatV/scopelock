@@ -37,7 +37,7 @@ function statusTone(status: string) {
 export function StatusPill({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] ${statusTone(status)}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] ${statusTone(status)}`}
     >
       {humanize(status)}
     </span>

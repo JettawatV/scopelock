@@ -184,8 +184,11 @@ def build_default_runtime() -> GmailApiRuntime:
         _required_env("SCOPELOCK_GMAIL_ACCOUNT"), label="Gmail account"
     )
     topic_name = _required_env("SCOPELOCK_GMAIL_PUBSUB_TOPIC")
+    firestore_database = (
+        os.getenv("SCOPELOCK_FIRESTORE_DATABASE", "default").strip() or "default"
+    )
     repository = FirestoreApplicationRepository(
-        firestore.Client(project=cloud_project)
+        firestore.Client(project=cloud_project, database=firestore_database)
     )
     catalog_path = Path(
         os.getenv("SCOPELOCK_SOP_PATH", "config/jvl_sop.example.yaml")

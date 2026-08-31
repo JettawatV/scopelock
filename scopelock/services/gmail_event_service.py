@@ -26,7 +26,11 @@ from scopelock.security import (
     require_bounded_identifier,
     require_email_address,
 )
-from scopelock.services.gmail_gateway import GmailFullSyncRequired, GmailGateway
+from scopelock.services.gmail_gateway import (
+    GmailFullSyncRequired,
+    GmailGateway,
+    GmailMessageNotFound,
+)
 from scopelock.services.gmail_message_normalizer import (
     bounded_thread_context,
     normalize_gmail_message,
@@ -186,13 +190,23 @@ class GmailEventService:
             )
             result_ids: list[str] = []
             for message_id in message_ids:
-                raw = await asyncio.to_thread(
-                    self._gateway.get_message, mailbox, message_id
-                )
+                try:
+                    raw = await asyncio.to_thread(
+                        self._gateway.get_message, mailbox, message_id
+                    )
+                except GmailMessageNotFound:
+                    # Gmail can retain a history entry after the referenced
+                    # message is deleted or becomes unreadable. It is safe to
+                    # acknowledge this item and continue; retrying forever
+                    # would block later client messages behind a dead ID.
+                    continue
                 current = normalize_gmail_message(raw, account_email=mailbox)
-                thread = await asyncio.to_thread(
-                    self._gateway.get_thread, mailbox, current.thread_id
-                )
+                try:
+                    thread = await asyncio.to_thread(
+                        self._gateway.get_thread, mailbox, current.thread_id
+                    )
+                except GmailMessageNotFound:
+                    continue
                 prior_raw_messages = self._bounded_prior_resources(
                     thread.get("messages", []), current_resource=raw
                 )

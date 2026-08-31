@@ -70,32 +70,34 @@ authorization decision.
   mail. Keep the OAuth app in Testing and add only that mailbox as a test user.
 - [x] Confirm the OAuth consent screen requests only `gmail.readonly` and
   `gmail.compose`; never approve `https://mail.google.com/`.
-- [ ] Store the refresh-token JSON and operator key as separate Secret Manager
+- [x] Store the refresh-token JSON and operator key as separate Secret Manager
   secrets. Grant `Secret Manager Secret Accessor` only to the Cloud Run runtime
   service account and pin environment-secret references to a specific version.
-- [ ] Deploy Cloud Run as **Require authentication**. Do not grant
+- [x] Deploy Cloud Run as **Require authentication**. Do not grant
   `allUsers`/`allAuthenticatedUsers` and do not use `--allow-unauthenticated`.
-- [ ] Use separate least-privilege service accounts for Cloud Run runtime and
+- [x] Use separate least-privilege service accounts for Cloud Run runtime and
   Pub/Sub push. Grant the push account `Cloud Run Invoker` on this service only.
-- [ ] Configure authenticated Pub/Sub push with the exact Cloud Run URL as the
+- [x] Configure authenticated Pub/Sub push with the exact Cloud Run URL as the
   OIDC audience. Confirm the Pub/Sub service agent can mint the push identity's
   OIDC token as required by Google Cloud.
-- [ ] Grant topic publish access only to
+- [x] Grant topic publish access only to
   `gmail-api-push@system.gserviceaccount.com`; remove broad topic publishers.
-- [ ] Give the runtime service account only the Firestore and Secret Manager
+- [x] Give the runtime service account only the Firestore and Secret Manager
   permissions required by ScopeLock. Do not deploy service-account key files.
 - [ ] Set Pub/Sub retry/dead-letter monitoring, Cloud Run request/error alerts,
   Vertex quota/budget alerts, and a daily Gmail watch-renewal job.
-- [ ] Verify Cloud Logging does not contain Authorization headers, OAuth JSON,
+- [x] Verify Cloud Logging does not contain Authorization headers, OAuth JSON,
   full email bodies, attachment contents, operator keys, or unredacted errors.
-- [ ] Generate a unique 32-byte-or-longer operator secret, store it in Secret
+- [x] Generate a unique 32-byte-or-longer operator secret, store it in Secret
   Manager, and share Cloud Run Invoker only with the operator identity.
-- [ ] Record sanitized IAM, subscription, secret-version, and log-review
+- [x] Record sanitized IAM, subscription, secret-version, and log-review
   evidence without screenshots containing tokens or client mail.
 
 Local OAuth and local operator-key evidence is recorded in
-`docs/evidence/DAY_11_LOCAL_OAUTH_EVIDENCE.md`. All hosted checklist items remain
-open. The exact private deployment sequence is
+`docs/evidence/DAY_11_LOCAL_OAUTH_EVIDENCE.md`. Hosted deployment and preflight
+evidence is recorded in `docs/evidence/HOSTED_PRECHECK_2026-08-31.md`. Alerting,
+watch-renewal automation, and longer-lived recovery checks remain open for a
+non-demo deployment. The exact private deployment sequence is
 `docs/CLOUD_RUN_DEPLOYMENT.md`.
 
 Google documents that authenticated Pub/Sub push uses a signed OIDC token and
@@ -109,20 +111,20 @@ Gmail requires publisher access for its push service account:
 
 ## Live attack/recovery checks before activation
 
-- [ ] Invalid/missing Pub/Sub bearer token returns 401 and creates no record.
-- [ ] Valid token with the wrong audience or service-account email is rejected.
+- [x] Invalid/missing Pub/Sub bearer token returns 401 and creates no record.
+- [x] Valid token with the wrong audience or service-account email is rejected.
 - [ ] Oversized/malformed webhook body returns 400/413 without exposing content.
 - [ ] Duplicate active delivery creates no second agent call or artifact.
 - [ ] An expired processing lease is reclaimed exactly once.
 - [ ] Out-of-order delivery cannot move the Gmail checkpoint backward.
-- [ ] Email from the ScopeLock mailbox, automated mail, empty mail, and irrelevant
+- [x] Email from the ScopeLock mailbox, automated mail, empty mail, and irrelevant
   mail invoke no model or commercial action.
-- [ ] Prompt-injection email cannot expose SOP commerce, mutate state, approve,
+- [x] Prompt-injection email cannot expose SOP commerce, mutate state, approve,
   draft, or send.
-- [ ] Missing/stale/rejected approval creates zero Gmail drafts/sends.
+- [x] Missing/stale/rejected approval creates zero Gmail drafts/sends.
 - [ ] Same send command twice produces one Gmail send result and one message.
-- [ ] A draft cannot target an address different from the bound project client.
-- [ ] A fake acceptance message from another sender/thread cannot update scope.
+- [x] A draft cannot target an address different from the bound project client.
+- [x] A fake acceptance message from another sender/thread cannot update scope.
 - [ ] Revoking the Gmail token makes the runtime fail closed; reauthorization
   restores service without changing accepted scope or replay records.
 

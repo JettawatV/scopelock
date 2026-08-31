@@ -32,6 +32,7 @@ from scopelock.domain.workflow_models import (
     InboundProcessingResult,
     ProjectRecord,
     ScopeEventRecord,
+    StateTransitionRecord,
 )
 from scopelock.repositories.in_memory import InMemoryApplicationRepository
 from scopelock.repositories.model_store import CollectionName, ModelStore
@@ -53,6 +54,7 @@ from scopelock.services.gmail_event_service import (
 )
 from scopelock.services.gmail_gateway import (
     GmailFullSyncRequired,
+    GmailMessageNotFound,
     build_same_thread_reply,
 )
 from scopelock.services.gmail_oauth import (
@@ -252,6 +254,43 @@ def test_pubsub_history_replay_and_out_of_order_are_idempotent():
     assert old.status == "IGNORED_OUT_OF_ORDER"
     assert len(workflow.calls) == 1
     assert workflow.calls[0][0].message_id == "message-1"
+    checkpoint = ModelStore(repository).find_by_unique_key(
+        CollectionName.GMAIL_CHECKPOINTS,
+        key_name="mailbox",
+        key_value=MAILBOX,
+        model_type=GmailHistoryCheckpoint,
+    )
+    assert checkpoint is not None and checkpoint.history_id == "105"
+
+
+def test_vanished_history_message_is_acknowledged_without_retrying_forever():
+    repository = InMemoryApplicationRepository(clock=lambda: NOW)
+    gateway = FakeGmailGateway()
+
+    class VanishedMessageGateway(FakeGmailGateway):
+        def get_message(self, mailbox, message_id):
+            raise GmailMessageNotFound("message was deleted after history notification")
+
+    gateway = VanishedMessageGateway()
+    GmailWatchService(
+        gateway=gateway,
+        repository=repository,
+        google_cloud_project="scopelock-506806",
+    ).register(mailbox=MAILBOX, topic_name=TOPIC, now=NOW)
+    workflow = FakeInboundWorkflow()
+    service = GmailEventService(
+        gateway=gateway,
+        workflow=workflow,
+        repository=repository,
+        mailbox=MAILBOX,
+    )
+
+    result = asyncio.run(
+        service.process_pubsub(_pubsub("event-vanished-message", "105"), received_at=NOW)
+    )
+
+    assert result.status == "COMPLETED"
+    assert workflow.calls == []
     checkpoint = ModelStore(repository).find_by_unique_key(
         CollectionName.GMAIL_CHECKPOINTS,
         key_name="mailbox",
@@ -511,6 +550,29 @@ def test_scope_buffer_finalizes_sends_and_updates_canonical_scope_only_on_accept
     assert before_acceptance.baseline_scope_version_id == baseline.id
     assert before_acceptance.current_price_usd == baseline.total_price_usd
 
+    # A prior proposal acceptance can already have used this generic reason.
+    # The change-order acceptance must derive a distinct deterministic key so
+    # it cannot collide with that historical transition.
+    store.create(
+        CollectionName.STATE_TRANSITIONS,
+        StateTransitionRecord(
+            id=stable_id(
+                "transition",
+                project.id,
+                ProjectLifecycleStatus.AWAITING_USER_REVIEW.value,
+                ProjectLifecycleStatus.ACTIVE_PROJECT.value,
+                "client acceptance confirmed",
+            ),
+            entity_type="project",
+            entity_id=project.id,
+            from_status=ProjectLifecycleStatus.AWAITING_USER_REVIEW.value,
+            to_status=ProjectLifecycleStatus.ACTIVE_PROJECT.value,
+            reason="client acceptance confirmed",
+            correlation_id=project.correlation_id,
+            created_at=NOW,
+        ),
+    )
+
     gateway = FakeGmailGateway()
     commercial = GmailCommercialService(
         gateway=gateway, repository=repository, mailbox=MAILBOX
@@ -571,6 +633,19 @@ def test_scope_buffer_finalizes_sends_and_updates_canonical_scope_only_on_accept
     assert final_project.baseline_scope_version_id == accepted_scope.id
     assert final_project.current_price_usd == accepted_scope.total_price_usd
     assert applied_event.status == ScopeEventStatus.APPLIED
+
+    replayed_artifact, replayed_scope, replayed_project = (
+        revisions.accept_sent_artifact_from_record(
+            approved.id,
+            inbound_message_record_id=acceptance_record.id,
+            correlation_id="corr-client-acceptance-replay",
+            accepted_at=NOW,
+        )
+    )
+    assert replayed_artifact.status == ArtifactStatus.ACCEPTED
+    assert replayed_scope.id == accepted_scope.id
+    assert replayed_project.baseline_scope_version_id == accepted_scope.id
+    assert replayed_project.lifecycle_status == ProjectLifecycleStatus.ACTIVE_PROJECT
 
 
 def test_operator_http_commands_require_the_configured_key():

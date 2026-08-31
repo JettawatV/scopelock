@@ -1,8 +1,8 @@
 # Day 15 — Frontend implementation evidence
 
-Recorded: **2026-08-30**
+Recorded: **2026-08-31**
 
-Status: **IMPLEMENTATION AND HOSTED ROUTES VERIFIED; FRESH-REVIEWER FLOW STILL OPEN**
+Status: **IMPLEMENTATION, HOSTED ROUTES, AND REVIEWER FLOW VERIFIED**
 
 ## Implemented surface
 
@@ -10,6 +10,12 @@ Status: **IMPLEMENTATION AND HOSTED ROUTES VERIFIED; FRESH-REVIEWER FLOW STILL O
 - Added three deliberately narrow operator views: overview/action required, project scope and commercial history, and agent-readiness evidence.
 - Added authenticated, bounded read endpoints for the dashboard and project detail.
 - Reused the existing policy-checked approval, rejection, revision, draft, send, and scope-buffer finalization endpoints for every mutation.
+- Added a focused review-packet modal with a proposal preview and the exact client-facing email draft before Gmail draft creation or send.
+- Replaced internal approval wording in commercial emails with a concise client-facing follow-up that includes scope summary, investment, delivery timeline, and next-step confirmation.
+- Removed the search and service-status controls from the operator header, moved scope intelligence into an accessible top-bar right drawer, and expanded the Gmail/review panels to use the available overview width.
+- Refined the final visual system with a quieter system-font hierarchy, consistent low-elevation surfaces, compact metric rhythm, and a consolidated project-message list instead of nested message cards.
+- Standardized the overview on a 12px card gap, added deliberate clearance below the workspace bar, aligned the ScopeLock brand to the header grid, replaced the sidebar edge marker with a contained active state, and gave Gmail and Priority Queue matching outer card shells.
+- Added an accessible desktop sidebar toggle with a compact icon-only rail, labelled navigation tooltips, remembered operator preference, and an unchanged mobile navigation pattern.
 - Kept pricing, timeline, state transitions, idempotency, approval, and sending rules in application services.
 - Packaged the static frontend and FastAPI-compatible service in one Cloud Run container while keeping their source boundaries separate.
 
@@ -30,10 +36,14 @@ Status: **IMPLEMENTATION AND HOSTED ROUTES VERIFIED; FRESH-REVIEWER FLOW STILL O
 | Frontend type check | Passed |
 | Vite production build | Passed for the SPA entrypoint and client routes `/`, `/projects/`, and `/evals` |
 | Frontend dependency audit | `0 vulnerabilities` |
-| Full Python suite | `212 passed` |
+| Full Python suite | `218 passed` |
 | Docker packaging contract tests | Passed; local image build unavailable because Docker is not installed on this workstation |
 | Fresh Vite desktop visual review | Passed for overview, projects, and agent readiness; no console errors observed |
-| Fresh Vite narrow visual review | Passed at 390 × 1000 with no horizontal overflow |
+| Fresh Vite overview review packet | Proposal and email tabs verified; modal closes by button, backdrop, and Escape |
+| Fresh Vite consolidated overview | Workspace overview header, refresh/scope actions, two-panel board, and right-side scope drawer verified at 1280 × 720 and the supplied wide desktop size with no page overflow |
+| Final visual-polish pass | Metric labels, inbox rows, commercial-review controls, drawer alignment, and touch targets verified at desktop and mobile breakpoints |
+| Sidebar and overview alignment pass | KPI gaps measured at 12px, compact header clearance at 16px, brand/header centers within 2px, matching mobile work-area widths, and no horizontal overflow at 1280 × 720, 1909 × 867, or 390 × 844 |
+| Fresh Vite narrow visual review | Passed at 390 × 844 with no horizontal overflow |
 | Live Cloud Run deployment of the combined image | Authorized requests returned `200` for `/health`, `/`, `/projects`, and `/evals`; see `docs/evidence/DAY_14_HOSTED_ROUTE_EVIDENCE.md` |
 
 ## Remaining Day 15 gate
@@ -41,4 +51,4 @@ Status: **IMPLEMENTATION AND HOSTED ROUTES VERIFIED; FRESH-REVIEWER FLOW STILL O
 - Have a fresh reviewer identify the required action, trace the module/price evidence, and complete an approval flow without explanation.
 - Record hosted screenshots and usability notes.
 
-The real Gmail `users.watch` activation remains held. This frontend work does not authorize Gmail event delivery or email sending.
+Hosted Gmail activation and the end-to-end send/accept/change-order path are now verified separately in `docs/evidence/HOSTED_PRECHECK_2026-08-31.md`.

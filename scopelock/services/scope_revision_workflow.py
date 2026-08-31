@@ -21,6 +21,7 @@ from scopelock.domain.workflow_models import (
     ProjectRecord,
     ScopeBufferRecord,
     ScopeEventRecord,
+    StateTransitionRecord,
 )
 from scopelock.repositories.contracts import ApplicationRepository
 from scopelock.repositories.model_store import CollectionName, ModelStore
@@ -224,7 +225,21 @@ class ScopeRevisionWorkflow:
             )
             if scope is None:
                 raise KeyError("Accepted artifact has no scope")
-            return artifact, scope, self._require_project(artifact.project_id)
+            # A previous acceptance request may have persisted the artifact and
+            # scope before failing while recording a project transition.  Make
+            # retries converge the project to the accepted canonical state
+            # instead of returning a partially-applied snapshot.
+            project = self._require_project(artifact.project_id)
+            project, transition = self._project_after_acceptance(
+                project, artifact=artifact, scope=scope, accepted_at=at
+            )
+            if transition is not None:
+                self._store.create(CollectionName.STATE_TRANSITIONS, transition)
+            self._store.replace(CollectionName.PROJECTS, project)
+            if artifact.source_buffer_id:
+                buffer = self._require_buffer(artifact.source_buffer_id)
+                self._advance_buffer_events(buffer, ScopeEventStatus.APPLIED)
+            return artifact, scope, project
         if artifact.status != ArtifactStatus.SENT:
             raise ValueError("Only a confirmed sent artifact can be accepted")
         project = self._require_project(artifact.project_id)
@@ -259,23 +274,10 @@ class ScopeRevisionWorkflow:
                 )
         self._store.replace(CollectionName.SCOPE_VERSIONS, accepted_scope)
         self._store.replace(CollectionName.ARTIFACTS, accepted_artifact)
-        project = project.model_copy(
-            update={
-                "baseline_scope_version_id": accepted_scope.id,
-                "active_scope_version_id": accepted_scope.id,
-                "active_proposal_id": accepted_artifact.id,
-                "current_price_usd": accepted_scope.total_price_usd,
-                "current_timeline_days": accepted_scope.timeline_days,
-                "updated_at": at,
-            }
+        project, transition = self._project_after_acceptance(
+            project, artifact=accepted_artifact, scope=accepted_scope, accepted_at=at
         )
-        if project.lifecycle_status == ProjectLifecycleStatus.AWAITING_USER_REVIEW:
-            project, transition = advance_project(
-                project,
-                ProjectLifecycleStatus.ACTIVE_PROJECT,
-                reason="client acceptance confirmed",
-                at=at,
-            )
+        if transition is not None:
             self._store.create(CollectionName.STATE_TRANSITIONS, transition)
         self._store.replace(CollectionName.PROJECTS, project)
         if artifact.source_buffer_id:
@@ -295,6 +297,42 @@ class ScopeRevisionWorkflow:
             },
         )
         return accepted_artifact, accepted_scope, project
+
+    @staticmethod
+    def _project_after_acceptance(
+        project: ProjectRecord,
+        *,
+        artifact: CommercialArtifact,
+        scope: ScopeVersion,
+        accepted_at: datetime,
+    ) -> tuple[ProjectRecord, StateTransitionRecord | None]:
+        """Converge project state after an accepted commercial artifact.
+
+        The artifact ID is part of the transition reason so distinct accepted
+        artifacts cannot collide on the deterministic transition document ID.
+        Replaying the same acceptance remains idempotent because the resulting
+        project state and transition ID are stable for that artifact.
+        """
+
+        project = project.model_copy(
+            update={
+                "baseline_scope_version_id": scope.id,
+                "active_scope_version_id": scope.id,
+                "active_proposal_id": artifact.id,
+                "current_price_usd": scope.total_price_usd,
+                "current_timeline_days": scope.timeline_days,
+                "updated_at": accepted_at,
+            }
+        )
+        transition = None
+        if project.lifecycle_status == ProjectLifecycleStatus.AWAITING_USER_REVIEW:
+            project, transition = advance_project(
+                project,
+                ProjectLifecycleStatus.ACTIVE_PROJECT,
+                reason=f"client acceptance confirmed for {artifact.id}",
+                at=accepted_at,
+            )
+        return project, transition
 
     def accept_sent_artifact_from_record(
         self,

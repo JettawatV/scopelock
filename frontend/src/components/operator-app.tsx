@@ -12,10 +12,13 @@ import {
   LockKeyhole,
   LogOut,
   Mail,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
   ShieldCheck,
   Sparkles,
   TriangleAlert,
+  X,
 } from "lucide-react";
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 
@@ -40,9 +43,8 @@ import type {
 } from "@/lib/types";
 
 type View = "overview" | "projects" | "evals";
-type Health = "checking" | "online" | "offline";
-
 const OPERATOR_ID_KEY = "scopelock.operatorId";
+const SIDEBAR_COLLAPSED_KEY = "scopelock.sidebarCollapsed";
 const REVIEW_STATUSES = new Set([
   "AWAITING_USER_REVIEW",
   "NEEDS_REVIEW",
@@ -73,87 +75,99 @@ function navigateWithinDashboard(event: MouseEvent<HTMLAnchorElement>) {
 
 function AppHeader({
   view,
-  health,
+  sidebarCollapsed,
   connected,
   demo,
+  busy,
+  onToggleSidebar,
+  onRefresh,
+  onScopeIntelligence,
   onDisconnect,
 }: {
   view: View;
-  health: Health;
+  sidebarCollapsed: boolean;
   connected: boolean;
   demo: boolean;
+  busy: boolean;
+  onToggleSidebar: () => void;
+  onRefresh: () => void;
+  onScopeIntelligence: () => void;
   onDisconnect: () => void;
 }) {
-  const navigation: Array<[View, string, string]> = [
-    ["overview", "Overview", "/"],
-    ["projects", "Projects", "/projects/"],
-    ["evals", "Agent readiness", "/evals/"],
+  const navigation: Array<[View, string, string, React.ReactNode]> = [
+    ["overview", "Overview", "/", <Inbox key="overview-icon" size={17} aria-hidden="true" />],
+    ["projects", "Projects", "/projects/", <FileCheck2 key="projects-icon" size={17} aria-hidden="true" />],
+    ["evals", "Agent readiness", "/evals/", <ShieldCheck key="evals-icon" size={17} aria-hidden="true" />],
   ];
   return (
-    <header className="operator-header border-b border-white/10 bg-[var(--ink)] text-white">
-      <div className="mx-auto flex min-h-20 max-w-[1480px] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-7 lg:px-10">
-        <div className="flex w-full min-w-0 items-center justify-between gap-3 sm:contents">
-          <a href={dashboardHref("/", demo)} onClick={navigateWithinDashboard} className="flex min-w-0 items-center gap-3 rounded-lg">
-            <span className="brand-mark grid size-10 shrink-0 place-items-center rounded-lg bg-white text-[var(--ink)]">
-              <LockKeyhole aria-hidden="true" size={20} strokeWidth={2.4} />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-lg font-black tracking-[-0.03em]">ScopeLock</span>
-              <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--status-muted)]">
-                Operator console
-              </span>
-            </span>
-          </a>
-          <div className="flex shrink-0 items-center gap-3 text-xs font-bold">
-            <span
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-2 text-[var(--on-dark)]"
-              aria-label={demo ? "Demo fixture" : health === "online" ? "Service online" : health}
-            >
-              <span
-                className={`size-2 rounded-full ${
-                  health === "online"
-                    ? "bg-[var(--status-light)]"
-                    : health === "offline"
-                      ? "bg-[var(--status-dark)]"
-                      : "bg-[var(--status-muted)]"
-                }`}
-              />
-              {demo ? "Demo fixture" : health === "online" ? "Service online" : health}
-            </span>
-            {connected && !demo ? (
-              <button
-                type="button"
-                onClick={onDisconnect}
-                className="grid size-11 place-items-center rounded-lg text-[var(--status-muted)] hover:bg-white/8 hover:text-white"
-                aria-label="Disconnect operator session"
-                title="Disconnect"
-              >
-                <LogOut size={18} aria-hidden="true" />
-              </button>
-            ) : null}
-          </div>
-        </div>
-
-        <nav aria-label="Primary" className="order-3 flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto">
-          {navigation.map(([key, label, href]) => (
-            <a
-              key={key}
-              href={dashboardHref(href, demo)}
-              onClick={navigateWithinDashboard}
-              aria-current={view === key ? "page" : undefined}
-              className={`min-h-11 whitespace-nowrap rounded-lg px-4 py-3 text-sm font-bold transition-colors ${
-                view === key
-                  ? "bg-white text-[var(--ink)]"
-                  : "text-[var(--status-muted)] hover:bg-white/8 hover:text-white"
-              }`}
-            >
-              {label}
+    <>
+      <aside id="workspace-navigation" className="operator-sidebar" aria-label="Workspace navigation">
+        <a href={dashboardHref("/", demo)} onClick={navigateWithinDashboard} className="sidebar-brand rounded-lg" aria-label="ScopeLock home">
+          <span className="sidebar-brand-mark grid size-10 shrink-0 place-items-center rounded-lg text-[var(--ink)]">
+            <LockKeyhole aria-hidden="true" size={20} strokeWidth={2.4} />
+          </span>
+          <span className="sidebar-brand-copy min-w-0">
+            <span className="block text-lg font-black tracking-[-0.035em]">ScopeLock</span>
+            <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Operator console</span>
+          </span>
+        </a>
+        <p className="sidebar-section-label">Workspace</p>
+        <nav aria-label="Primary" className="sidebar-nav">
+          {navigation.map(([key, label, href, icon]) => (
+            <a key={key} href={dashboardHref(href, demo)} onClick={navigateWithinDashboard} aria-label={label} title={sidebarCollapsed ? label : undefined} aria-current={view === key ? "page" : undefined} className={`sidebar-link ${view === key ? "is-active" : ""}`}>
+              {icon}<span className="sidebar-link-label">{label}</span>
             </a>
           ))}
         </nav>
-
-      </div>
-    </header>
+        <div className="sidebar-note">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[var(--muted)]">Guardrail</p>
+          <p className="mt-2 text-xs font-semibold leading-5 text-[var(--muted-strong)]">Commercial sends stay behind explicit operator approval.</p>
+        </div>
+        <div className="sidebar-footer"><span className="size-2 rounded-full bg-[var(--ink)]" /> Human approval required</div>
+      </aside>
+      <header className="operator-header">
+        <div className="operator-header-inner">
+          <div className="operator-header-identity">
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="operator-header-sidebar-button"
+              aria-controls="workspace-navigation"
+              aria-expanded={!sidebarCollapsed}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
+            </button>
+            <span className="operator-header-title">
+              {view === "overview" ? "Workspace overview" : view === "projects" ? "Project inbox" : "Agent readiness"}
+            </span>
+          </div>
+          <div className="operator-header-actions">
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={!connected || demo || busy}
+              className="operator-header-icon-button"
+              aria-label="Refresh workspace"
+              title="Refresh workspace"
+            >
+              <RefreshCw size={17} className={busy ? "animate-spin" : ""} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={onScopeIntelligence}
+              className="operator-header-icon-button"
+              aria-label="Open scope intelligence"
+              title="Scope intelligence"
+            >
+              <Activity size={18} aria-hidden="true" />
+            </button>
+            {connected && !demo ? <button type="button" onClick={onDisconnect} className="grid size-11 place-items-center rounded-lg text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--ink)]" aria-label="Disconnect operator session" title="Disconnect"><LogOut size={18} aria-hidden="true" /></button> : null}
+          </div>
+        </div>
+      </header>
+    </>
   );
 }
 
@@ -261,23 +275,25 @@ function MetricCard({
   detail,
   icon,
   accent = false,
+  compact = false,
 }: {
   label: string;
   value: string;
   detail: string;
   icon: React.ReactNode;
   accent?: boolean;
+  compact?: boolean;
 }) {
   return (
-    <article className={`panel p-5 sm:p-6 ${accent ? "border-[var(--line-strong)] bg-[var(--surface-soft)]" : ""}`}>
+    <article className={`panel metric-card ${compact ? "p-4" : "p-5 sm:p-6"} ${accent ? "metric-card-accent" : ""}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-[var(--muted)]">{label}</p>
-          <p className="tabular mt-3 text-3xl font-black tracking-[-0.045em]">{value}</p>
+          <p className="metric-card-label font-extrabold uppercase text-[var(--muted)]">{label}</p>
+          <p className={`tabular ${compact ? "mt-2 text-2xl" : "mt-3 text-3xl"} font-black tracking-[-0.045em]`}>{value}</p>
         </div>
-        <span className="grid size-10 place-items-center rounded-lg bg-[var(--surface-muted)] text-[var(--ink)]">{icon}</span>
+        <span className="metric-card-icon grid size-10 place-items-center rounded-lg text-[var(--ink)]">{icon}</span>
       </div>
-      <p className="mt-4 text-xs font-semibold leading-5 text-[var(--muted)]">{detail}</p>
+      <p className={`${compact ? "mt-2" : "mt-4"} text-xs font-semibold leading-5 text-[var(--muted)]`}>{detail}</p>
     </article>
   );
 }
@@ -305,6 +321,132 @@ function ScopeEventList({ events }: { events: ScopeEvent[] }) {
           ) : null}
         </article>
       ))}
+    </div>
+  );
+}
+
+function ScopeIntelligenceModal({
+  data,
+  open,
+  onClose,
+}: {
+  data: DashboardSnapshot | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose, open]);
+
+  if (!open) return null;
+
+  const changeArtifact = data?.artifacts.find(
+    (item) => item.artifact_type === "CHANGE_ORDER" && REVIEW_STATUSES.has(item.status),
+  );
+  const changeProject = changeArtifact
+    ? data?.projects.find((item) => item.id === changeArtifact.project_id)
+    : undefined;
+
+  return (
+    <div
+      className="scope-intelligence-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="scope-intelligence-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="scope-intelligence-title"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] px-5 py-4 sm:px-6">
+          <div>
+            <p className="eyebrow">Scope intelligence</p>
+            <h2 id="scope-intelligence-title" className="mt-1 text-xl font-black tracking-[-0.03em]">How ScopeLock protects the baseline</h2>
+            <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--muted)]">
+              New client messages are compared with the accepted scope, priced from the SOP, and held for your approval before any commercial communication.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-11 shrink-0 place-items-center rounded-lg text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--ink)]"
+            aria-label="Close scope intelligence"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="scope-intelligence-body">
+          <div className="grid gap-2">
+            {[
+              ["01", "Read the thread", "Project-linked Gmail messages are monitored without exposing the full mailbox."],
+              ["02", "Classify the change", "The agent distinguishes clarification, expansion, reduction, and replacement."],
+              ["03", "Calculate the impact", "Deterministic SOP rules calculate price and timeline deltas for review."],
+            ].map(([step, title, description]) => (
+              <article key={step} className="scope-intelligence-step flex items-start gap-3">
+                <span className="scope-intelligence-step-number shrink-0">{step}</span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-black">{title}</h3>
+                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">{description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {changeArtifact && changeProject ? (
+            <section className="mt-5 rounded-xl border border-[var(--line-strong)] bg-[var(--surface-soft)] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="eyebrow">Current signal</p>
+                  <h3 className="mt-1 text-base font-black">{changeProject.title}</h3>
+                  <p className="mt-1 text-xs font-semibold text-[var(--muted)]">Initial scope change awaiting review</p>
+                </div>
+                <StatusPill status="NEEDS_REVIEW" />
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-[var(--line)] bg-white p-3">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Price impact</p>
+                  <p className="tabular mt-1 text-xl font-black">{money(changeArtifact.pricing_result.total_usd - changeProject.current_price_usd, true)}</p>
+                </div>
+                <div className="rounded-lg border border-[var(--line)] bg-white p-3">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Timeline impact</p>
+                  <p className="tabular mt-1 text-xl font-black">+{Math.max(0, changeArtifact.timeline_result.total_days - changeProject.current_timeline_days)} days</p>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          <section className="mt-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="eyebrow">Evidence trail</p>
+                <h3 className="mt-1 text-base font-black">Latest scope events</h3>
+              </div>
+              <span className="text-xs font-bold text-[var(--muted)]">{data?.scope_events.length ?? 0} recorded</span>
+            </div>
+            <div className="mt-3">
+              {data ? <ScopeEventList events={data.scope_events} /> : <EmptyState>Connect the operator console to view live scope events.</EmptyState>}
+            </div>
+          </section>
+        </div>
+
+        <div className="flex items-center justify-end border-t border-[var(--line)] px-5 py-4 sm:px-6">
+          <button type="button" onClick={onClose} className="min-h-11 rounded-lg bg-[var(--ink)] px-4 text-sm font-extrabold text-white hover:bg-[var(--ink-strong)]">Close</button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -374,75 +516,18 @@ function BufferCard({
   );
 }
 
-function WorkspaceCommandCenter({
-  artifact,
-  actionCount,
-  pendingDelta,
-  demo,
-  busy,
-  onRefresh,
-}: {
-  artifact?: Artifact;
-  actionCount: number;
-  pendingDelta: number;
-  demo: boolean;
-  busy: boolean;
-  onRefresh: () => void;
-}) {
-  const openArtifact = () => {
-    if (!artifact) return;
-    document.getElementById(`artifact-${artifact.id}`)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
-
-  return (
-    <aside className="panel p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="eyebrow">Command center</p>
-          <h2 className="mt-1 text-xl font-black tracking-[-0.03em]">Decide the next move</h2>
-        </div>
-        <span className="grid size-10 place-items-center rounded-full bg-[var(--ink)] text-white"><CheckCircle2 size={19} /></span>
-      </div>
-      <dl className="mt-5 grid grid-cols-2 gap-3">
-        <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3">
-          <dt className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Action required</dt>
-          <dd className="tabular mt-1 text-2xl font-black">{actionCount}</dd>
-        </div>
-        <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3">
-          <dt className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Scope delta</dt>
-          <dd className="tabular mt-1 text-lg font-black">{money(pendingDelta, true)}</dd>
-        </div>
-      </dl>
-      <button
-        type="button"
-        disabled={!artifact}
-        onClick={openArtifact}
-        className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--ink)] px-4 text-sm font-extrabold text-white hover:bg-[var(--ink-strong)] disabled:opacity-45"
-      >
-        <FileCheck2 size={17} /> {artifact ? "Open full proposal" : "No proposal to review"}
-      </button>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <a href={dashboardHref("/projects/", demo)} onClick={navigateWithinDashboard} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-center text-sm font-extrabold hover:bg-[var(--surface-soft)]"><Inbox size={16} /> Projects</a>
-        <button type="button" disabled={busy || demo} onClick={onRefresh} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm font-extrabold hover:bg-[var(--surface-soft)] disabled:opacity-45"><RefreshCw className={busy ? "animate-spin" : ""} size={16} /> Refresh</button>
-      </div>
-      <a href={dashboardHref("/evals/", demo)} onClick={navigateWithinDashboard} className="mt-4 inline-flex items-center gap-1 text-xs font-extrabold text-[var(--muted)] underline underline-offset-4">Review agent evidence <ChevronRight size={14} /></a>
-    </aside>
-  );
-}
-
 function GmailReviewPanel({
   data,
   demo,
   busy,
   onCommand,
+  compact = false,
 }: {
   data: DashboardSnapshot;
   demo: boolean;
   busy: boolean;
   onCommand: (path: string, payload: Record<string, string>) => Promise<void>;
+  compact?: boolean;
 }) {
   const [confirmWatch, setConfirmWatch] = useState(false);
   const projectsById = new Map(data.projects.map((project) => [project.id, project]));
@@ -454,29 +539,43 @@ function GmailReviewPanel({
   };
 
   return (
-    <section className="panel flex min-h-[31rem] min-w-0 flex-col p-5 sm:p-6">
+    <section className={`panel gmail-review-panel flex min-w-0 flex-col p-5 sm:p-6 ${compact ? "overview-inbox-panel" : "min-h-[31rem]"}`}>
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--line)] pb-5">
         <div>
           <p className="eyebrow">Project-linked Gmail</p>
-          <h2 className="mt-1 text-xl font-black tracking-[-0.03em]">Gmail review</h2>
-          <p className="mt-2 text-xs leading-5 text-[var(--muted)]">Metadata only. ScopeLock shows messages linked to a project—never a full mailbox.</p>
+          <h2 className="mt-1 text-xl font-bold tracking-[-0.025em]">Gmail review</h2>
+          {!compact ? <p className="mt-2 text-xs leading-5 text-[var(--muted)]">Metadata only · project-linked messages, never a full mailbox.</p> : <p className="mt-2 text-[10px] font-bold text-[var(--muted)]">Project-linked metadata only</p>}
         </div>
         {watch ? <StatusPill status="MONITORING" /> : <StatusPill status="NOT_CONNECTED" />}
       </div>
 
       {watch ? (
-        <div className="mt-4 rounded-lg bg-[var(--surface-soft)] px-4 py-3 text-xs leading-5 text-[var(--muted)]">
+        <div className={`overview-watch-strip mt-4 rounded-lg bg-[var(--surface-soft)] px-4 py-3 text-xs leading-5 text-[var(--muted)] ${compact ? "truncate whitespace-nowrap" : ""}`}>
           Monitoring <span className="font-extrabold text-[var(--ink)]">{watch.mailbox}</span> · watch expires {time(watch.expiration)}
         </div>
       ) : null}
 
       {data.inbox_messages.length ? (
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
-          <div className="grid gap-2">
-            {data.inbox_messages.map((message) => {
+          <div className={compact ? "overview-message-list" : "grid gap-2"}>
+            {data.inbox_messages.slice(0, compact ? 2 : undefined).map((message) => {
               const project = projectsById.get(message.project_id);
+              if (compact) {
+                return (
+                  <article key={message.id} className="overview-message-row bg-white px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="truncate text-xs font-bold">{message.subject || "No subject"}</p>
+                      <p className="shrink-0 text-[10px] font-bold text-[var(--muted)]">{time(message.received_at)}</p>
+                    </div>
+                    <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2">
+                      <p className="truncate text-[10px] text-[var(--muted)]">{project?.title ?? "Project"}</p>
+                      <StatusPill status={message.direction} />
+                    </div>
+                  </article>
+                );
+              }
               return (
-                <article key={message.id} className="rounded-lg border border-[var(--line)] bg-white p-4">
+                <article key={message.id} className={`rounded-lg border border-[var(--line)] bg-white ${compact ? "p-3" : "p-4"}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-extrabold">{message.subject || "No subject"}</p>
@@ -527,7 +626,6 @@ function Overview({
   setOperatorId,
   busy,
   onCommand,
-  onRefresh,
 }: {
   data: DashboardSnapshot;
   demo: boolean;
@@ -535,7 +633,6 @@ function Overview({
   setOperatorId: (value: string) => void;
   busy: boolean;
   onCommand: (path: string, payload: Record<string, string>) => Promise<void>;
-  onRefresh: () => void;
 }) {
   const artifact = data.artifacts.find((item) => REVIEW_STATUSES.has(item.status)) ?? data.artifacts[0];
   const project = artifact ? data.projects.find((item) => item.id === artifact.project_id) : undefined;
@@ -551,65 +648,35 @@ function Overview({
     .reduce((sum, item) => {
       const baselineProject = data.projects.find((candidate) => candidate.id === item.project_id);
       return sum + item.pricing_result.total_usd - (baselineProject?.current_price_usd ?? 0);
-    }, 0);
+  }, 0);
   const pendingDelta = bufferedDelta + artifactDelta;
 
   return (
-    <>
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Action required" value={String(actionCount)} detail="Review items and ready scope buffers" icon={<CircleAlert size={19} />} accent={actionCount > 0} />
-        <MetricCard label="Monitored projects" value={String(data.projects.length)} detail="Gmail threads with application state" icon={<Inbox size={19} />} />
-        <MetricCard label="Pending scope delta" value={money(pendingDelta, true)} detail="Calculated now; never sent automatically" icon={<Activity size={19} />} />
-        <MetricCard label="Agent gate" value={data.readiness.status} detail={`${data.readiness.checks.reduce((sum, item) => sum + item.passed, 0)} reviewed checks passed`} icon={<ShieldCheck size={19} />} />
+    <div className="overview-viewport">
+      <section className="overview-metrics grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Action required" value={String(actionCount)} detail="Review items and ready scope buffers" icon={<CircleAlert size={19} />} accent={actionCount > 0} compact />
+        <MetricCard label="Monitored projects" value={String(data.projects.length)} detail="Gmail threads with application state" icon={<Inbox size={19} />} compact />
+        <MetricCard label="Pending scope delta" value={money(pendingDelta, true)} detail="Calculated now; never sent automatically" icon={<Activity size={19} />} compact />
+        <MetricCard label="Agent gate" value={data.readiness.status} detail={`${data.readiness.checks.reduce((sum, item) => sum + item.passed, 0)} reviewed checks passed`} icon={<ShieldCheck size={19} />} compact />
       </section>
 
-      <section className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
-        <GmailReviewPanel data={data} demo={demo} busy={busy} onCommand={onCommand} />
-        <WorkspaceCommandCenter artifact={artifact} actionCount={actionCount} pendingDelta={pendingDelta} demo={demo} busy={busy} onRefresh={onRefresh} />
-      </section>
-
-      <section className="mt-6">
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <div>
-            <p className="eyebrow">Priority queue</p>
-            <h2 className="mt-1 text-xl font-black tracking-[-0.03em]">Commercial review</h2>
-          </div>
-          <a href={dashboardHref("/projects/", demo)} onClick={navigateWithinDashboard} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-3 text-sm font-extrabold text-[var(--ink)]">All projects <ChevronRight size={16} /></a>
+      <section className="overview-board mt-2 min-w-0">
+        <div className="overview-inbox min-w-0">
+          <GmailReviewPanel data={data} demo={demo} busy={busy} onCommand={onCommand} compact />
         </div>
-        {artifact ? (
-          <ArtifactReview artifact={artifact} project={project} inboxMessages={data.inbox_messages} demo={demo} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} />
-        ) : (
-          <EmptyState>No commercial artifact needs review.</EmptyState>
-        )}
-      </section>
 
-      <section className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <div className="panel min-w-0 p-5 sm:p-6">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="panel overview-review priority-review-panel min-w-0 overflow-hidden">
+          <div className="priority-review-header flex items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-4 sm:px-6">
             <div>
-              <p className="eyebrow">Thread intelligence</p>
-              <h2 className="mt-1 text-xl font-black tracking-[-0.03em]">Recent scope events</h2>
+              <p className="eyebrow">Priority queue</p>
+              <h2 className="mt-1 text-lg font-bold tracking-[-0.025em]">Commercial review</h2>
             </div>
-            <Activity className="text-[var(--ink)]" size={20} />
+            <a href={dashboardHref("/projects/", demo)} onClick={navigateWithinDashboard} className="overview-all-projects inline-flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-extrabold text-[var(--muted)] hover:text-[var(--ink)]">All projects <ChevronRight size={14} /></a>
           </div>
-          <ScopeEventList events={data.scope_events} />
-        </div>
-        <div className="grid min-w-0 content-start gap-6">
-          <div className="panel min-w-0 p-5 sm:p-6">
-            <p className="eyebrow">Consolidation</p>
-            <h2 className="mt-1 text-xl font-black tracking-[-0.03em]">Scope buffer</h2>
-            <div className="mt-4">
-              {data.scope_buffers[0] ? <BufferCard buffer={data.scope_buffers[0]} demo={demo} busy={busy} onCommand={onCommand} /> : <EmptyState>No scope change is waiting to be consolidated.</EmptyState>}
-            </div>
-          </div>
-          <div className="panel min-w-0 p-5 sm:p-6">
-            <p className="eyebrow">Observability</p>
-            <h2 className="mt-1 text-xl font-black tracking-[-0.03em]">Recent agent activity</h2>
-            <div className="mt-4"><AgentActivity runs={data.agent_runs} /></div>
-          </div>
-        </div>
+          {artifact ? <ArtifactReview artifact={artifact} project={project} inboxMessages={data.inbox_messages} demo={demo} compact operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : <div className="flex flex-1 items-center justify-center p-6"><EmptyState>No commercial artifact needs review.</EmptyState></div>}
+        </section>
       </section>
-    </>
+    </div>
   );
 }
 
@@ -824,7 +891,6 @@ function Evals({ data }: { data: DashboardSnapshot }) {
 }
 
 export function OperatorApp({ view }: { view: View }) {
-  const [health, setHealth] = useState<Health>("checking");
   const [operatorKey, setOperatorKey] = useState("");
   const [operatorId, setOperatorIdState] = useState("");
   const [data, setData] = useState<DashboardSnapshot | null>(null);
@@ -832,6 +898,14 @@ export function OperatorApp({ view }: { view: View }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [demo, setDemo] = useState(false);
+  const [scopeIntelligenceOpen, setScopeIntelligenceOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
 
   const load = async (key: string) => {
     const snapshot = await apiRequest<DashboardSnapshot>("/api/dashboard", key);
@@ -839,13 +913,9 @@ export function OperatorApp({ view }: { view: View }) {
   };
 
   useEffect(() => {
-    fetch("/health", { cache: "no-store" })
-      .then((response) => setHealth(response.ok ? "online" : "offline"))
-      .catch(() => setHealth("offline"));
     const params = new URLSearchParams(window.location.search);
     if (params.get("demo") === "1") {
       setDemo(true);
-      setHealth("online");
       setData(demoDashboard);
       return;
     }
@@ -881,6 +951,18 @@ export function OperatorApp({ view }: { view: View }) {
     sessionStorage.setItem(OPERATOR_ID_KEY, value);
   };
 
+  const toggleSidebar = () => {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      try {
+        window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      } catch {
+        // The sidebar still works when browser preference storage is unavailable.
+      }
+      return next;
+    });
+  };
+
   const connect = async (key: string) => {
     setBusy(true);
     setError(null);
@@ -902,6 +984,21 @@ export function OperatorApp({ view }: { view: View }) {
     setOperatorKey("");
     setData(null);
     setNotice(null);
+    setScopeIntelligenceOpen(false);
+  };
+
+  const refreshDashboard = async () => {
+    if (demo || !operatorKey) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await load(operatorKey);
+      setNotice("Dashboard refreshed.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The dashboard could not be refreshed.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const onCommand = async (path: string, payload: Record<string, string>) => {
@@ -926,35 +1023,39 @@ export function OperatorApp({ view }: { view: View }) {
   const title = useMemo(() => {
     if (view === "projects") return ["Project inbox", "Scope and commercial history"];
     if (view === "evals") return ["Agent readiness", "Measured confidence before automation"];
-    return ["Good morning", "Protect the scope. Keep the relationship."];
+    return ["Workspace overview", "Keep every commercial decision in view."];
   }, [view]);
 
   return (
-    <div className="operator-shell">
-      <AppHeader view={view} health={health} connected={Boolean(data)} demo={demo} onDisconnect={disconnect} />
+    <div className={`operator-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <AppHeader
+        view={view}
+        sidebarCollapsed={sidebarCollapsed}
+        connected={Boolean(data)}
+        demo={demo}
+        busy={busy}
+        onToggleSidebar={toggleSidebar}
+        onRefresh={() => void refreshDashboard()}
+        onScopeIntelligence={() => setScopeIntelligenceOpen(true)}
+        onDisconnect={disconnect}
+      />
       {!data ? <ConnectPanel busy={busy} error={error} onConnect={connect} /> : (
-        <main id="main-content" className="mx-auto max-w-[1480px] px-4 py-8 sm:px-7 lg:px-10 lg:py-10">
+        <main id="main-content" className={`mx-auto max-w-[1600px] px-4 sm:px-7 lg:px-10 ${view === "overview" ? "overview-main pt-2 pb-0 lg:pt-2" : "py-8 lg:py-10"}`}>
           {demo ? (
-            <div className="mb-6 flex flex-col gap-3 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-soft)] px-4 py-3 text-sm font-bold text-[var(--ink)] sm:flex-row sm:items-center sm:justify-between">
+            <div className="overview-demo-banner mb-6 flex flex-col gap-3 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-soft)] px-4 py-3 text-sm font-bold text-[var(--ink)] sm:flex-row sm:items-center sm:justify-between">
               <span className="flex min-w-0 items-center gap-2 break-words"><TriangleAlert size={17} className="shrink-0" /> Reviewed demo fixture—no live Gmail data or external actions.</span>
               <a href={view === "overview" ? "/" : `/${view}/`} className="underline underline-offset-4">Leave demo</a>
             </div>
           ) : null}
-          <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="eyebrow">{title[0]}</p>
-              <h1 className="mt-2 text-balance text-3xl font-black tracking-[-0.045em] sm:text-4xl">{title[1]}</h1>
-              <p className="mt-3 text-sm font-semibold text-[var(--muted)]">Last refreshed {time(data.generated_at)}</p>
-            </div>
-            <button
-              type="button"
-              disabled={busy || demo}
-              onClick={() => void load(operatorKey)}
-              className="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-lg border border-[var(--line-strong)] bg-white px-4 text-sm font-extrabold hover:bg-[var(--surface-soft)] disabled:opacity-45 sm:self-auto"
-            >
-              <RefreshCw className={busy ? "animate-spin" : ""} size={16} /> Refresh
-            </button>
-          </header>
+          {view !== "overview" ? (
+            <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="eyebrow">{title[0]}</p>
+                <h1 className="mt-2 text-balance text-3xl font-black tracking-[-0.045em] sm:text-4xl">{title[1]}</h1>
+                <p className="mt-3 text-sm font-semibold text-[var(--muted)]">Last refreshed {time(data.generated_at)}</p>
+              </div>
+            </header>
+          ) : null}
           <div aria-live="polite" aria-atomic="true">
             {notice ? <p className="mb-6 flex gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface-muted)] px-4 py-3 text-sm font-bold text-[var(--ink)]"><CheckCircle2 size={18} />{notice}</p> : null}
             {error ? <p role="alert" className="mb-6 flex gap-2 rounded-lg border border-[var(--line-dark)] bg-[var(--surface-muted)] px-4 py-3 text-sm font-bold text-[var(--ink)]"><CircleAlert size={18} />{error}</p> : null}
@@ -965,7 +1066,7 @@ export function OperatorApp({ view }: { view: View }) {
               <ul className="mt-2 list-disc pl-5">{data.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
             </div>
           ) : null}
-          {view === "overview" ? <Overview data={data} demo={demo} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} onRefresh={() => void load(operatorKey)} /> : null}
+          {view === "overview" ? <Overview data={data} demo={demo} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : null}
           {view === "projects" ? <Projects data={data} demo={demo} operatorKey={operatorKey} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : null}
           {view === "evals" ? <Evals data={data} /> : null}
           <footer className="mt-10 flex flex-col gap-2 border-t border-[var(--line)] py-6 text-xs font-semibold text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
@@ -974,6 +1075,7 @@ export function OperatorApp({ view }: { view: View }) {
           </footer>
         </main>
       )}
+      <ScopeIntelligenceModal data={data} open={scopeIntelligenceOpen} onClose={() => setScopeIntelligenceOpen(false)} />
     </div>
   );
 }
