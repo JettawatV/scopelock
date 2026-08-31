@@ -10,24 +10,6 @@ context documents if there is a conflict.
 ## Contents
 
 - `AGENTS.md` — authoritative build instructions and anti-drift rules
-- `docs/PRODUCT_SPEC.md` — what ScopeLock does and does not do
-- `docs/ARCHITECTURE.md` — system and Google Cloud architecture
-- `docs/DOMAIN_MODEL.md` — entities, state machines, lifecycle rules
-- `docs/AGENT_DESIGN.md` — ADK/Gemini agent responsibilities and tool boundaries
-- `docs/JVL_SOP_SPEC.md` — how business SOP drives deterministic pricing/timeline
-- `docs/EVAL_PLAN.md` — evals, trajectory tests, safety invariants
-- `docs/IMPLEMENTATION_PLAN.md` — build order for the remaining hackathon days
-- `docs/DAILY_IMPLEMENTATION_PLAN.md` — granular daily checklists, evidence, and move-on gates
-- `docs/RISK_REGISTER.md` — active delivery, safety, integration, and demo risks
-- `docs/FIRESTORE_SCHEMA.md` — persistent collection ownership, unique keys, and CAS rules
-- `docs/GMAIL_OAUTH_AND_PUBSUB_SETUP.md` — exact owner actions and live Gmail gate
-- `docs/GMAIL_SECURITY_GATE.md` — pre-connection threat model, owner controls, attack checks, and stop conditions
-- `docs/CLOUD_RUN_DEPLOYMENT.md` — private container, Secret Manager, IAM, Pub/Sub, and hosted-gate runbook
-- `docs/LOCAL_DEMO_RUNBOOK.md` — exact non-UI golden-path rehearsal
-- `docs/MIDPOINT_REFACTOR.md` — shared persistence, identity, state, and workflow boundaries
-- `docs/HACKATHON_REQUIREMENTS.md` — concise guardrails; official uploaded rules override it
-- `docs/DEMO_GOLDEN_PATH.md` — one scenario the entire build should optimize around
-- `docs/evidence/FINAL_DEMO_READINESS_AUDIT.md` — current pass/hold decision and recording stop conditions
 - `config/jvl_sop.example.yaml` — illustrative machine-readable SOP
 - `evals/scopelock_eval_cases.jsonl` — 25 starter semantic eval cases
 - `app/agent.py` — ADK-native `ScopeLock` root agent
