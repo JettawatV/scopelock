@@ -27,6 +27,7 @@ from scopelock.domain.workflow_models import (
 )
 from scopelock.repositories.in_memory import InMemoryApplicationRepository
 from scopelock.services.inbound_processing_workflow import InboundProcessingWorkflow
+from scopelock.services.scope_revision_workflow import ScopeRevisionWorkflow
 from scopelock.services.sop_service import load_sop
 from scopelock.testing.local_golden_path import load_local_golden_fixture
 
@@ -439,3 +440,180 @@ def test_closure_before_multiple_changes_still_finalizes_the_buffer(tmp_path):
     assert result.status == InboundProcessingStatus.SCOPE_EVENTS_RECORDED
     assert len(result.scope_event_ids) == 3
     assert buffer.status == ScopeBufferStatus.READY_TO_FINALIZE
+
+
+def test_separate_expansion_and_closure_messages_update_one_buffer(tmp_path):
+    email, analysis, _ = load_local_golden_fixture()
+
+    def scope_factory(context: AnalysisContext) -> ScopeAnalysis:
+        assert context.current_scope is not None
+        common = [
+            EvidenceRef(
+                source_type="gmail",
+                source_id=context.current_email.message_id,
+                quote_or_rule=context.current_email.body,
+            ),
+            EvidenceRef(
+                source_type="scope_version",
+                source_id=context.current_scope.id,
+                quote_or_rule=context.current_scope.requirements[0].description,
+            ),
+        ]
+        if "everything" in context.current_email.body.casefold():
+            return ScopeAnalysis(
+                events=[
+                    ScopeEventProposal(
+                        classification=ScopeEventClassification.CLOSURE,
+                        description="The client says this is everything.",
+                        rationale="Explicit closure.",
+                        evidence=common,
+                        confidence=95,
+                    )
+                ],
+                conversation_closure=True,
+                overall_confidence=95,
+                source_language="en",
+            )
+        return ScopeAnalysis(
+            events=[
+                ScopeEventProposal(
+                    classification=ScopeEventClassification.EXPANSION,
+                    description="Add LINE notifications.",
+                    sop_module_keys=["line_notifications"],
+                    quantities=[{"module_key": "line_notifications", "quantity": 1}],
+                    rationale="Independent supported expansion.",
+                    evidence=[
+                        *common,
+                        EvidenceRef(
+                            source_type="sop",
+                            source_id="line_notifications",
+                            source_version="jvl-demo-v1",
+                            quote_or_rule="Send workflow notifications through LINE.",
+                        ),
+                    ],
+                    confidence=95,
+                )
+            ],
+            conversation_closure=False,
+            overall_confidence=95,
+            source_language="en",
+        )
+
+    _, repository, _, workflow = _workflow(
+        tmp_path,
+        analysis,
+        scope_factory=scope_factory,
+    )
+    initial = asyncio.run(workflow.process(email))
+    expansion = email.model_copy(
+        update={
+            "message_id": "gmail-separate-expansion",
+            "body": "Please add LINE notifications.",
+            "received_at": email.received_at + timedelta(minutes=5),
+        }
+    )
+    closure = email.model_copy(
+        update={
+            "message_id": "gmail-separate-closure",
+            "body": "That's everything. Please send the revised proposal.",
+            "received_at": email.received_at + timedelta(minutes=6),
+        }
+    )
+
+    first = asyncio.run(workflow.process(expansion))
+    second = asyncio.run(workflow.process(closure))
+    buffers = repository.list(collection="buffers")
+
+    assert initial.status == InboundProcessingStatus.PROPOSAL_CREATED
+    assert first.status == InboundProcessingStatus.SCOPE_EVENTS_RECORDED
+    assert second.status == InboundProcessingStatus.SCOPE_EVENTS_RECORDED
+    assert len(buffers) == 1
+    buffer = ScopeBufferRecord.model_validate(buffers[0].payload)
+    assert len(buffer.event_ids) == 1
+    assert buffer.status == ScopeBufferStatus.READY_TO_FINALIZE
+
+
+def test_separate_expansions_consolidate_into_one_revision(tmp_path):
+    email, analysis, _ = load_local_golden_fixture()
+
+    def scope_factory(context: AnalysisContext) -> ScopeAnalysis:
+        assert context.current_scope is not None
+        key = (
+            "line_approval"
+            if "approve" in context.current_email.body.casefold()
+            else "line_notifications"
+        )
+        return ScopeAnalysis(
+            events=[
+                ScopeEventProposal(
+                    classification=ScopeEventClassification.EXPANSION,
+                    description=f"Add {key}.",
+                    sop_module_keys=[key],
+                    quantities=[{"module_key": key, "quantity": 1}],
+                    rationale="Independent supported expansion.",
+                    evidence=[
+                        EvidenceRef(
+                            source_type="gmail",
+                            source_id=context.current_email.message_id,
+                            quote_or_rule=context.current_email.body,
+                        ),
+                        EvidenceRef(
+                            source_type="scope_version",
+                            source_id=context.current_scope.id,
+                            quote_or_rule=context.current_scope.requirements[0].description,
+                        ),
+                        EvidenceRef(
+                            source_type="sop",
+                            source_id=key,
+                            source_version="jvl-demo-v1",
+                            quote_or_rule=key,
+                        ),
+                    ],
+                    confidence=95,
+                )
+            ],
+            conversation_closure=False,
+            overall_confidence=95,
+            source_language="en",
+        )
+
+    catalog = load_sop("config/jvl_sop.example.yaml")
+    _, repository, _, workflow = _workflow(
+        tmp_path,
+        analysis,
+        scope_factory=scope_factory,
+    )
+    asyncio.run(workflow.process(email))
+    first = email.model_copy(
+        update={
+            "message_id": "gmail-expansion-one",
+            "body": "Please add LINE notifications.",
+            "received_at": email.received_at + timedelta(minutes=5),
+        }
+    )
+    second = email.model_copy(
+        update={
+            "message_id": "gmail-expansion-two",
+            "body": "Managers should also approve requests from LINE.",
+            "received_at": email.received_at + timedelta(minutes=6),
+        }
+    )
+
+    asyncio.run(workflow.process(first))
+    asyncio.run(workflow.process(second))
+    buffers = repository.list(collection="buffers")
+    assert len(buffers) == 1
+    buffer = ScopeBufferRecord.model_validate(buffers[0].payload)
+    assert len(buffer.event_ids) == 2
+    assert buffer.net_price_delta_usd == 1_500
+    assert buffer.net_timeline_delta_days == 5
+
+    finalized = ScopeRevisionWorkflow(
+        catalog=catalog,
+        repository=repository,
+    ).finalize_due(now=buffer.quiet_window_expires_at)
+
+    assert len(finalized) == 1
+    assert len(repository.list(collection="buffers")) == 1
+    assert len(repository.list(collection="artifacts")) == 2
+    assert finalized[0].artifact.version_number == 2

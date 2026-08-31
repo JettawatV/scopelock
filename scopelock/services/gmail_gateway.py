@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import mimetypes
 import re
 from collections.abc import Mapping
 from email.message import EmailMessage
@@ -203,10 +204,16 @@ def build_same_thread_reply(
     email["In-Reply-To"] = source_rfc_id
     email["References"] = references
     email.set_content(text_body)
+    content_type, _ = mimetypes.guess_type(attachment_name)
+    maintype, subtype = (
+        content_type.split("/", 1)
+        if content_type is not None
+        else ("application", "octet-stream")
+    )
     email.add_attachment(
         attachment_bytes,
-        maintype="application",
-        subtype="json",
+        maintype=maintype,
+        subtype=subtype,
         filename=attachment_name,
     )
     raw = base64.urlsafe_b64encode(email.as_bytes()).decode("ascii").rstrip("=")

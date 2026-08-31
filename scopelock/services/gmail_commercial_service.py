@@ -7,7 +7,12 @@ from datetime import datetime, timezone
 from email.utils import parseaddr
 
 from scopelock.domain.enums import ApprovalStatus, ArtifactStatus, SendIntentStatus
-from scopelock.domain.models import ApprovalRecord, CommercialArtifact, SendIntent
+from scopelock.domain.models import (
+    ApprovalRecord,
+    CommercialArtifact,
+    ScopeVersion,
+    SendIntent,
+)
 from scopelock.domain.state_machines import transition_artifact
 from scopelock.domain.workflow_models import (
     AuditRecord,
@@ -24,13 +29,14 @@ from scopelock.security import (
 from scopelock.services.approval_policy import (
     ApprovalPolicy,
     ApprovalPolicyViolation,
-    artifact_content_bytes,
     decide_artifact,
     send_idempotency_key,
 )
 from scopelock.services.gmail_gateway import GmailGateway, build_same_thread_reply
 from scopelock.services.idempotency_service import IdempotencyKeys
 from scopelock.services.identity import stable_id
+from scopelock.services.proposal_pdf_service import render_commercial_artifact_pdf
+from scopelock.domain.workflow_models import ProjectRecord
 
 
 class GmailCommercialService:
@@ -217,7 +223,7 @@ class GmailCommercialService:
                 recipient_email=client_email,
                 text_body=self._email_body(artifact),
                 attachment_name=self._attachment_name(artifact),
-                attachment_bytes=artifact_content_bytes(artifact),
+                attachment_bytes=self._attachment_bytes(artifact),
             )
             response = self._gateway.create_draft(self._mailbox, message=message)
             draft_id = str(response.get("id") or "")
@@ -445,25 +451,13 @@ class GmailCommercialService:
         )
 
     def _thread_id(self, artifact: CommercialArtifact) -> str:
-        project = self._repository.get(
-            collection=CollectionName.PROJECTS.value,
-            document_id=artifact.project_id,
-        )
-        if project is None:
-            raise KeyError(f"Missing project {artifact.project_id}")
         return require_bounded_identifier(
-            str(project.payload["gmail_thread_id"]), label="Gmail thread id"
+            self._project(artifact).gmail_thread_id, label="Gmail thread id"
         )
 
     def _client_email(self, artifact: CommercialArtifact) -> str:
-        project = self._repository.get(
-            collection=CollectionName.PROJECTS.value,
-            document_id=artifact.project_id,
-        )
-        if project is None:
-            raise KeyError(f"Missing project {artifact.project_id}")
         client_email = require_email_address(
-            str(project.payload["client_email"]), label="project client email"
+            self._project(artifact).client_email, label="project client email"
         )
         if client_email == self._mailbox:
             raise ApprovalPolicyViolation(
@@ -525,7 +519,44 @@ class GmailCommercialService:
     @staticmethod
     def _attachment_name(artifact: CommercialArtifact) -> str:
         label = artifact.artifact_type.value.casefold().replace("_", "-")
-        return f"{label}-v{artifact.version_number}.json"
+        return f"{label}-v{artifact.version_number}.pdf"
+
+    def _project(self, artifact: CommercialArtifact) -> ProjectRecord:
+        project = self._store.get(
+            CollectionName.PROJECTS, artifact.project_id, ProjectRecord
+        )
+        if project is None:
+            raise KeyError(f"Missing project {artifact.project_id}")
+        return project
+
+    def _attachment_bytes(self, artifact: CommercialArtifact) -> bytes:
+        project = self._project(artifact)
+        proposed_scope = self._store.get(
+            CollectionName.SCOPE_VERSIONS,
+            artifact.proposed_scope_version_id,
+            ScopeVersion,
+        )
+        if proposed_scope is None:
+            raise KeyError(
+                f"Missing proposed scope {artifact.proposed_scope_version_id}"
+            )
+        baseline_scope = None
+        if artifact.baseline_scope_version_id is not None:
+            baseline_scope = self._store.get(
+                CollectionName.SCOPE_VERSIONS,
+                artifact.baseline_scope_version_id,
+                ScopeVersion,
+            )
+            if baseline_scope is None:
+                raise KeyError(
+                    f"Missing baseline scope {artifact.baseline_scope_version_id}"
+                )
+        return render_commercial_artifact_pdf(
+            artifact=artifact,
+            project=project,
+            proposed_scope=proposed_scope,
+            baseline_scope=baseline_scope,
+        )
 
     def _audit(
         self,

@@ -296,6 +296,30 @@ class ScopeRevisionWorkflow:
         )
         return accepted_artifact, accepted_scope, project
 
+    def accept_sent_artifact_from_record(
+        self,
+        artifact_id: str,
+        *,
+        inbound_message_record_id: str,
+        correlation_id: str,
+        accepted_at: datetime | None = None,
+    ) -> tuple[CommercialArtifact, ScopeVersion, ProjectRecord]:
+        """Resolve safe dashboard metadata to server-side Gmail evidence."""
+
+        record = self._store.get(
+            CollectionName.INBOUND_MESSAGES,
+            inbound_message_record_id,
+            InboundMessageRecord,
+        )
+        if record is None:
+            raise KeyError(f"Unknown inbound message {inbound_message_record_id}")
+        return self.accept_sent_artifact(
+            artifact_id,
+            acceptance_message_id=record.email.message_id,
+            correlation_id=correlation_id,
+            accepted_at=accepted_at,
+        )
+
     def _require_acceptance_evidence(
         self,
         project: ProjectRecord,

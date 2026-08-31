@@ -396,7 +396,11 @@ def test_approval_creates_same_thread_draft_and_replay_sends_once():
     assert parsed["Subject"] == "Automation requirements"
     assert parsed["In-Reply-To"] == "<message-1@example.com>"
     assert "<root@example.com>" in parsed["References"]
-    assert len(list(parsed.iter_attachments())) == 1
+    attachments = list(parsed.iter_attachments())
+    assert len(attachments) == 1
+    assert attachments[0].get_filename() == "proposal-v1.pdf"
+    assert attachments[0].get_content_type() == "application/pdf"
+    assert attachments[0].get_payload(decode=True).startswith(b"%PDF-")
 
 
 def test_no_approval_means_no_draft_or_send():
@@ -532,14 +536,15 @@ def test_scope_buffer_finalizes_sends_and_updates_canonical_scope_only_on_accept
         received_at=NOW,
         direction=EmailDirection.INBOUND,
     )
+    acceptance_record = InboundMessageRecord(
+        id=stable_id("inbound-message", acceptance_email.message_id),
+        email=acceptance_email,
+        correlation_id="corr-client-acceptance",
+        created_at=NOW,
+    )
     store.create(
         CollectionName.INBOUND_MESSAGES,
-        InboundMessageRecord(
-            id=stable_id("inbound-message", acceptance_email.message_id),
-            email=acceptance_email,
-            correlation_id="corr-client-acceptance",
-            created_at=NOW,
-        ),
+        acceptance_record,
         unique_keys={
             "gmail_message_id": IdempotencyKeys.gmail_message(
                 acceptance_email.message_id
@@ -547,11 +552,13 @@ def test_scope_buffer_finalizes_sends_and_updates_canonical_scope_only_on_accept
         },
         immutable=True,
     )
-    accepted_artifact, accepted_scope, final_project = revisions.accept_sent_artifact(
-        approved.id,
-        acceptance_message_id=acceptance_email.message_id,
-        correlation_id="corr-client-acceptance",
-        accepted_at=NOW,
+    accepted_artifact, accepted_scope, final_project = (
+        revisions.accept_sent_artifact_from_record(
+            approved.id,
+            inbound_message_record_id=acceptance_record.id,
+            correlation_id="corr-client-acceptance",
+            accepted_at=NOW,
+        )
     )
 
     old_baseline = store.get(CollectionName.SCOPE_VERSIONS, baseline.id, type(baseline))

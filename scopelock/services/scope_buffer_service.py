@@ -117,7 +117,11 @@ class ScopeBufferService:
             else event.replacements
         )
         created_at = existing.created_at if existing else event.created_at
-        buffer_id = stable_id("buffer", baseline.id, *event_ids)
+        # A buffer represents the pending commercial delta for one authoritative
+        # baseline.  Its identity must stay stable while related events arrive;
+        # otherwise every message creates a prefix buffer and quiet-window
+        # finalization can emit duplicate revisions.
+        buffer_id = existing.id if existing else stable_id("buffer", baseline.id)
         buffer = ScopeBufferRecord(
             id=buffer_id,
             project_id=event.project_id,

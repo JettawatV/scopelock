@@ -207,10 +207,11 @@ sending clarification, expansion, and closure messages, approving the one
 consolidated revision, and confirming that the accepted baseline changes only
 after client acceptance is recorded.
 
-The acceptance command now requires `source_gmail_message_id`; that message must
-already be persisted as inbound mail from the project's bound client in the
-same Gmail thread. The operator still confirms the semantics of the acceptance,
-but cannot substitute a free-text identity.
+The acceptance command requires `source_inbound_message_id`, the safe record ID
+shown by the dashboard. The backend resolves that record to its private Gmail
+message ID and verifies that it is persisted inbound mail from the project's
+bound client in the same Gmail thread. The operator still confirms the
+semantics of the acceptance, but cannot substitute a free-text identity.
 
 ## References
 

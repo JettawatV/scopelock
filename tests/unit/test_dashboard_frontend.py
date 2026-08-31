@@ -275,6 +275,16 @@ def test_frontend_uses_vite_static_spa_contract():
     assert (ROOT / "frontend" / "index.html").exists()
     assert (ROOT / "frontend" / "src" / "globals.css").exists()
     assert (ROOT / "frontend" / "src" / "components" / "operator-app.tsx").exists()
+    assert (
+        ROOT
+        / "frontend"
+        / "src"
+        / "components"
+        / "commercial-artifact-review.tsx"
+    ).exists()
+    assert (
+        ROOT / "frontend" / "src" / "components" / "dashboard-primitives.tsx"
+    ).exists()
     assert (ROOT / "frontend" / "src" / "lib" / "types.ts").exists()
     assert (ROOT / "frontend" / "vite.config.ts").exists()
     assert not (ROOT / "frontend" / "app").exists()

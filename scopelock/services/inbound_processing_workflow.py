@@ -485,7 +485,10 @@ class InboundProcessingWorkflow:
             final_buffer = buffer_service.mark_ready_on_closure(final_buffer)
 
         if final_buffer is not None and not needs_review:
-            self._store.create(CollectionName.BUFFERS, final_buffer)
+            if existing_buffer is not None and final_buffer.id == existing_buffer.id:
+                self._store.replace(CollectionName.BUFFERS, final_buffer)
+            else:
+                self._store.create(CollectionName.BUFFERS, final_buffer)
             if project.scope_buffer_id != final_buffer.id:
                 project = project.model_copy(
                     update={

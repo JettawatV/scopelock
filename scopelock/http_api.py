@@ -94,7 +94,7 @@ class ActionCommand(CommandModel):
 
 
 class AcceptanceCommand(CommandModel):
-    source_gmail_message_id: str = Field(min_length=1, max_length=256)
+    source_inbound_message_id: str = Field(min_length=1, max_length=256)
     correlation_id: str = Field(min_length=1, max_length=128)
 
 
@@ -620,10 +620,12 @@ def create_app(
         configured: GmailApiRuntime = Depends(operator_runtime),
     ) -> dict[str, Any]:
         try:
-            artifact, scope, project = configured.revision_workflow.accept_sent_artifact(
-                artifact_id,
-                acceptance_message_id=command.source_gmail_message_id,
-                correlation_id=command.correlation_id,
+            artifact, scope, project = (
+                configured.revision_workflow.accept_sent_artifact_from_record(
+                    artifact_id,
+                    inbound_message_record_id=command.source_inbound_message_id,
+                    correlation_id=command.correlation_id,
+                )
             )
         except KeyError as error:
             raise HTTPException(status_code=404, detail="Artifact not found") from error

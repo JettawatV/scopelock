@@ -27,6 +27,7 @@ context documents if there is a conflict.
 - `docs/MIDPOINT_REFACTOR.md` — shared persistence, identity, state, and workflow boundaries
 - `docs/HACKATHON_REQUIREMENTS.md` — concise guardrails; official uploaded rules override it
 - `docs/DEMO_GOLDEN_PATH.md` — one scenario the entire build should optimize around
+- `docs/evidence/FINAL_DEMO_READINESS_AUDIT.md` — current pass/hold decision and recording stop conditions
 - `config/jvl_sop.example.yaml` — illustrative machine-readable SOP
 - `evals/scopelock_eval_cases.jsonl` — 25 starter semantic eval cases
 - `app/agent.py` — ADK-native `ScopeLock` root agent
@@ -60,8 +61,8 @@ python -m pytest -q
 
 The project `uv.lock` pins the resolved dependency set. Verified on
 2026-08-29 with Python 3.13.14, ADK 2.8.0, the Gmail API/OAuth clients,
-successful ADK discovery, pytest 9.1.1, and the 203-test pre-Gmail agent gate.
-The latest complete local suite passes 213 tests.
+successful ADK discovery, pytest 9.1.1, and the reviewed pre-Gmail agent gate.
+The latest complete local suite passes 216 tests.
 This uv-managed environment does not require an embedded `pip` module.
 
 ## Development workflow
@@ -73,6 +74,34 @@ ScopeLock (root agent)
 ├── Requirement Analyzer (typed new-project analysis)
 └── Scope Analyzer (typed existing-project change analysis)
 ```
+
+### Architecture
+
+```mermaid
+flowchart LR
+    Client[Client Gmail thread] -->|inbound email| Gmail[Gmail API users.watch]
+    Gmail --> PubSub[Google Cloud Pub/Sub]
+    PubSub -->|authenticated push| API[Private Cloud Run service]
+
+    subgraph Runtime[ScopeLock runtime]
+        API --> Router[Deterministic event router]
+        Router --> ADK[Google ADK agents on Gemini 3.5 Flash]
+        ADK -->|typed intent and module choices| Commerce[Deterministic pricing timeline and state machines]
+        Commerce --> Store[(Firestore immutable records)]
+        Store --> Dashboard[React operator dashboard]
+        Dashboard -->|explicit approval| SendGate[Approval and checksum gate]
+    end
+
+    SendGate -->|approved draft and send only| Gmail
+    Gmail -->|same thread| Client
+
+    ADK -. no pricing approval state mutation or send tools .-> SendGate
+```
+
+Gemini performs bounded interpretation. Application code owns commercial
+calculation, state transitions, idempotency, and send authorization. A Gmail
+send is unreachable until the exact sealed artifact version has a matching
+human approval.
 
 Requirement Analyzer v5 passes 12/12, Scope Analyzer v4 passes 35/35, both
 native ADK trajectory cases pass, and the focused repeatability gate passes
@@ -277,6 +306,22 @@ The backend container is defined by `Dockerfile` and starts through the
 fail-closed `scopelock.cloud_run` entry point. Follow
 `docs/CLOUD_RUN_DEPLOYMENT.md`; never upload local `.env`, OAuth files, tokens,
 or service-account keys in a Cloud Build context.
+
+## Hackathon and third-party disclosure
+
+The recorded Git history for this repository begins on 2026-08-27, inside the
+All Things Agentic Hackathon build window. ScopeLock's application code, agent
+prompts, tests, demo fixtures, and operator UI in this repository were created
+for this entry. No client code, client data, testimonials, or prior performance
+claims are included.
+
+ScopeLock uses third-party and platform building blocks rather than claiming
+them as original work: Google ADK, Gemini through Vertex AI, Gmail API, Cloud
+Run, Pub/Sub, Firestore, FastAPI, Pydantic, React, Vite, Tailwind CSS,
+ReportLab, and their locked transitive dependencies. Exact Python and Node
+packages are recorded in `uv.lock` and `frontend/package-lock.json`. The owner
+must update this disclosure before submission if any material pre-existing code
+or asset is later added.
 
 ## Repository layout
 

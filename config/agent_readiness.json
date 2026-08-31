@@ -1,6 +1,6 @@
 {
   "status": "PASS",
-  "verified_at": "2026-08-30T10:02:42Z",
+  "verified_at": "2026-08-31T01:28:12Z",
   "model": "gemini-3.5-flash",
   "prompt_versions": [
     "requirement_analyzer_v5",
@@ -10,8 +10,8 @@
     {
       "key": "deterministic",
       "label": "Deterministic contract and workflow tests",
-      "passed": 213,
-      "expected": 213
+      "passed": 216,
+      "expected": 216
     },
     {
       "key": "requirement_eval",
