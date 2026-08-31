@@ -78,6 +78,27 @@ class DashboardInboxMessage(StrictFrozenContractModel):
     attachment_count: int = Field(ge=0, strict=True)
 
 
+class DashboardMessageAttachment(StrictFrozenContractModel):
+    """Safe attachment metadata without Gmail attachment identifiers."""
+
+    filename: str
+    mime_type: str
+    size: int = Field(ge=0, strict=True)
+
+
+class DashboardMessageDetail(DashboardInboxMessage):
+    """One explicitly selected, project-linked message for operator review.
+
+    Message bodies stay out of the overview projection and are returned only
+    through the authenticated single-message endpoint. Raw hashes, recipients,
+    history IDs, and attachment IDs remain excluded.
+    """
+
+    body: str
+    body_format: str
+    attachments: tuple[DashboardMessageAttachment, ...] = ()
+
+
 class GmailWatchSnapshot(StrictFrozenContractModel):
     """Safe watch status for the operator; topic and history stay private."""
 
@@ -191,6 +212,56 @@ class DashboardQueryService:
             scope_buffers=self._recent(buffers, "updated_at"),
             agent_runs=self._recent(agent_runs, "started_at"),
             warnings=tuple(warnings),
+        )
+
+    def message_detail(self, message_id: str) -> DashboardMessageDetail:
+        """Return one bounded message only when it belongs to a known project."""
+
+        warnings: list[str] = []
+        projects = self._load(CollectionName.PROJECTS, ProjectRecord, warnings)
+        record = next(
+            (
+                item
+                for item in self._load(
+                    CollectionName.INBOUND_MESSAGES,
+                    InboundMessageRecord,
+                    warnings,
+                )
+                if item.id == message_id
+            ),
+            None,
+        )
+        if record is None:
+            raise KeyError(message_id)
+        project = next(
+            (
+                item
+                for item in projects
+                if item.gmail_thread_id == record.email.thread_id
+            ),
+            None,
+        )
+        if project is None:
+            raise KeyError(message_id)
+        return DashboardMessageDetail(
+            id=record.id,
+            project_id=project.id,
+            sender_name=record.email.sender_name,
+            sender_email=record.email.sender_email,
+            subject=record.email.subject,
+            received_at=record.email.received_at,
+            direction=record.email.direction.value,
+            attachment_count=len(record.email.attachments),
+            body=record.email.body,
+            body_format=record.email.body_format.value,
+            attachments=tuple(
+                DashboardMessageAttachment(
+                    filename=item.filename,
+                    mime_type=item.mime_type,
+                    size=item.size,
+                )
+                for item in record.email.attachments
+            ),
         )
 
     def _agent_runs(self, warnings: list[str]) -> tuple[DashboardAgentRun, ...]:

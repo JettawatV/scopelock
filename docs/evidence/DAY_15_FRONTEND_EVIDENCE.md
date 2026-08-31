@@ -4,6 +4,8 @@ Recorded: **2026-08-31**
 
 Status: **IMPLEMENTATION, HOSTED ROUTES, AND REVIEWER FLOW VERIFIED**
 
+Final desktop snapshot: [`FINAL_OVERVIEW_2026-08-31.png`](./FINAL_OVERVIEW_2026-08-31.png)
+
 ## Implemented surface
 
 - Added a Vite 7.3.6 static React SPA with TypeScript and Tailwind.
@@ -16,6 +18,8 @@ Status: **IMPLEMENTATION, HOSTED ROUTES, AND REVIEWER FLOW VERIFIED**
 - Refined the final visual system with a quieter system-font hierarchy, consistent low-elevation surfaces, compact metric rhythm, and a consolidated project-message list instead of nested message cards.
 - Standardized the overview on a 12px card gap, added deliberate clearance below the workspace bar, aligned the ScopeLock brand to the header grid, replaced the sidebar edge marker with a contained active state, and gave Gmail and Priority Queue matching outer card shells.
 - Added an accessible desktop sidebar toggle with a compact icon-only rail, labelled navigation tooltips, remembered operator preference, and an unchanged mobile navigation pattern.
+- Moved the sidebar toggle into the navigation rail, placed KPI icons on the left, expanded Gmail and Priority Queue into simpler full-width sections, added authenticated on-demand email reading, and surfaced the active SOP catalog on the overview.
+- Reworked the review packet into Overview, Proposal review, and editable Email draft tabs; the exact sealed PDF loads in the proposal tab and compact-dashboard approval/send controls now live inside the review packet.
 - Kept pricing, timeline, state transitions, idempotency, approval, and sending rules in application services.
 - Packaged the static frontend and FastAPI-compatible service in one Cloud Run container while keeping their source boundaries separate.
 
@@ -35,6 +39,7 @@ Status: **IMPLEMENTATION, HOSTED ROUTES, AND REVIEWER FLOW VERIFIED**
 | Focused API, projection, static-hosting, deployment, and Vite contract tests | `17 passed` |
 | Frontend type check | Passed |
 | Vite production build | Passed for the SPA entrypoint and client routes `/`, `/projects/`, and `/evals` |
+| Final Gmail/review workflow regression | `35 passed`; includes authenticated full-message reading, exact PDF delivery, editable-email validation, and Gmail commercial integration |
 | Frontend dependency audit | `0 vulnerabilities` |
 | Full Python suite | `218 passed` |
 | Docker packaging contract tests | Passed; local image build unavailable because Docker is not installed on this workstation |
@@ -44,6 +49,7 @@ Status: **IMPLEMENTATION, HOSTED ROUTES, AND REVIEWER FLOW VERIFIED**
 | Final visual-polish pass | Metric labels, inbox rows, commercial-review controls, drawer alignment, and touch targets verified at desktop and mobile breakpoints |
 | Sidebar and overview alignment pass | KPI gaps measured at 12px, compact header clearance at 16px, brand/header centers within 2px, matching mobile work-area widths, and no horizontal overflow at 1280 × 720, 1909 × 867, or 390 × 844 |
 | Fresh Vite narrow visual review | Passed at 390 × 844 with no horizontal overflow |
+| Final overview interaction review | Passed at 1440 × 900 and 390 × 844; collapse rail, full-message modal, three-tab review packet, embedded proposal PDF source, and editable email were exercised |
 | Live Cloud Run deployment of the combined image | Authorized requests returned `200` for `/health`, `/`, `/projects`, and `/evals`; see `docs/evidence/DAY_14_HOSTED_ROUTE_EVIDENCE.md` |
 
 ## Remaining Day 15 gate

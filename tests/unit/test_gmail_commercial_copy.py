@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+import pytest
+
 from scopelock.domain.enums import ArtifactStatus, ArtifactType
 from scopelock.domain.models import (
     CommercialArtifact,
@@ -8,6 +10,7 @@ from scopelock.domain.models import (
     PricingResult,
     TimelineResult,
 )
+from scopelock.services.approval_policy import ApprovalPolicyViolation
 from scopelock.services.gmail_commercial_service import GmailCommercialService
 
 
@@ -62,3 +65,17 @@ def test_commercial_email_copy_is_client_facing_and_contains_scope_summary():
     assert "Delivery: 5 business days" in body
     assert "operations dashboard" in body
     assert "explicit operator approval" not in body
+
+
+def test_operator_edited_email_body_is_bounded_before_gmail_draft_creation():
+    assert GmailCommercialService._validated_email_body("  Hello client.  ") == (
+        "Hello client."
+    )
+
+    with pytest.raises(ApprovalPolicyViolation) as empty:
+        GmailCommercialService._validated_email_body("   ")
+    assert empty.value.code == "EMPTY_EMAIL_BODY"
+
+    with pytest.raises(ApprovalPolicyViolation) as too_long:
+        GmailCommercialService._validated_email_body("x" * 20_001)
+    assert too_long.value.code == "EMAIL_BODY_TOO_LONG"

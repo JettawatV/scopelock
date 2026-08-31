@@ -34,6 +34,27 @@ export async function apiRequest<T>(
   return body as T;
 }
 
+export async function apiBlobRequest(
+  path: string,
+  operatorKey: string,
+): Promise<Blob> {
+  const response = await fetch(path, {
+    cache: "no-store",
+    headers: { "X-ScopeLock-Operator-Key": operatorKey },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const detail = body?.detail;
+    throw new ApiError(
+      typeof detail === "string"
+        ? detail
+        : `ScopeLock request failed (${response.status}).`,
+      response.status,
+    );
+  }
+  return response.blob();
+}
+
 export function correlationId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `ui-${Date.now()}`;
 }

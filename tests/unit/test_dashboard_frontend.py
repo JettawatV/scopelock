@@ -31,6 +31,13 @@ NOW = datetime(2026, 8, 30, 7, 17, 46, tzinfo=timezone.utc)
 ROOT = Path(__file__).resolve().parents[2]
 
 
+class _ProposalPdfService:
+    def proposal_pdf(self, artifact_id: str) -> bytes:
+        if artifact_id != "artifact-1":
+            raise KeyError(artifact_id)
+        return b"%PDF-1.4\n% ScopeLock test proposal\n"
+
+
 def _dashboard_service() -> DashboardQueryService:
     repository = InMemoryApplicationRepository(clock=lambda: NOW)
     store = ModelStore(repository)
@@ -119,7 +126,7 @@ def _runtime(service: DashboardQueryService) -> GmailApiRuntime:
     return GmailApiRuntime(
         event_service=None,
         watch_service=None,
-        commercial_service=None,
+        commercial_service=_ProposalPdfService(),
         revision_workflow=None,
         mailbox="demo@example.com",
         topic_name="projects/example/topics/gmail",
@@ -169,6 +176,16 @@ def test_dashboard_http_requires_operator_key_and_returns_project_detail():
         "/api/projects/project-1",
         headers={"X-ScopeLock-Operator-Key": "operator-secret"},
     )
+    message = client.get(
+        "/api/messages/inbound-1",
+        headers={"X-ScopeLock-Operator-Key": "operator-secret"},
+    )
+    unauthenticated_message = client.get("/api/messages/inbound-1")
+    proposal_pdf = client.get(
+        "/api/artifacts/artifact-1/proposal.pdf",
+        headers={"X-ScopeLock-Operator-Key": "operator-secret"},
+    )
+    unauthenticated_pdf = client.get("/api/artifacts/artifact-1/proposal.pdf")
 
     assert dashboard.status_code == 200
     assert dashboard.json()["projects"][0]["id"] == "project-1"
@@ -176,6 +193,15 @@ def test_dashboard_http_requires_operator_key_and_returns_project_detail():
     assert session.json() == {"status": "accepted"}
     assert detail.status_code == 200
     assert detail.json()["project"]["id"] == "project-1"
+    assert message.status_code == 200
+    assert message.json()["body"] == "Sensitive request body must-not-leak"
+    assert "raw_content_hash" not in message.json()
+    assert "recipient_emails" not in message.json()
+    assert unauthenticated_message.status_code == 401
+    assert proposal_pdf.status_code == 200
+    assert proposal_pdf.headers["content-type"] == "application/pdf"
+    assert proposal_pdf.content.startswith(b"%PDF-1.4")
+    assert unauthenticated_pdf.status_code == 401
 
 
 def test_operator_session_accepts_the_environment_key_without_starting_runtime(
@@ -224,6 +250,7 @@ def test_static_frontend_gets_ui_csp_while_api_keeps_strict_csp(
     assert "script-src 'self' 'unsafe-inline'" in asset.headers[
         "content-security-policy"
     ]
+    assert "frame-src 'self' blob:" in home.headers["content-security-policy"]
     assert asset.headers["cache-control"] == "public, max-age=31536000, immutable"
     assert health.headers["content-security-policy"] == (
         "default-src 'none'; frame-ancestors 'none'"

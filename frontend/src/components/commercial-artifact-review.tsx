@@ -1,4 +1,4 @@
-import { Check, Eye, FileText, Mail, Send, ShieldCheck, X } from "lucide-react";
+import { Check, Download, Eye, FileText, Mail, Send, ShieldCheck, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -7,7 +7,8 @@ import {
   StatusPill,
   time,
 } from "@/components/dashboard-primitives";
-import { correlationId } from "@/lib/api";
+import { apiBlobRequest, correlationId } from "@/lib/api";
+import { demoProposalPdf } from "@/lib/demo-proposal";
 import type { Artifact, InboxMessage, Project } from "@/lib/types";
 
 type ArtifactReviewProps = {
@@ -15,6 +16,7 @@ type ArtifactReviewProps = {
   project?: Project;
   inboxMessages: InboxMessage[];
   demo: boolean;
+  operatorKey: string;
   compact?: boolean;
   operatorId: string;
   setOperatorId: (value: string) => void;
@@ -22,7 +24,20 @@ type ArtifactReviewProps = {
   onCommand: (path: string, payload: Record<string, string>) => Promise<void>;
 };
 
-type PreviewTab = "proposal" | "email";
+type PreviewTab = "overview" | "document" | "email";
+
+type ReviewPacketActions = {
+  operatorId: string;
+  setOperatorId: (value: string) => void;
+  busy: boolean;
+  onCommand: (path: string, payload: Record<string, string>) => Promise<void>;
+  canDecide: boolean;
+  canSend: boolean;
+  canAccept: boolean;
+  acceptanceCandidates: InboxMessage[];
+  selectedAcceptanceId: string;
+  setAcceptanceRecordId: (value: string) => void;
+};
 
 function emailPreview(artifact: Artifact, project?: Project) {
   const title = project?.title?.trim() || "your project";
@@ -58,17 +73,27 @@ function emailPreview(artifact: Artifact, project?: Project) {
 function ArtifactPreviewModal({
   artifact,
   project,
+  operatorKey,
+  demo,
   open,
   initialTab,
+  actions,
   onClose,
 }: {
   artifact: Artifact;
   project?: Project;
+  operatorKey: string;
+  demo: boolean;
   open: boolean;
   initialTab: PreviewTab;
+  actions?: ReviewPacketActions;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<PreviewTab>(initialTab);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [sendConfirm, setSendConfirm] = useState(false);
+  const [emailDraft, setEmailDraft] = useState(() => emailPreview(artifact, project));
 
   useEffect(() => {
     if (!open) return;
@@ -84,6 +109,38 @@ function ArtifactPreviewModal({
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [initialTab, onClose, open]);
+
+  useEffect(() => {
+    if (!open || tab !== "document") return;
+    let active = true;
+    let objectUrl: string | null = null;
+    setPdfError(null);
+    setPdfUrl(null);
+    const loadPdf = async () => {
+      try {
+        const blob = demo
+          ? demoProposalPdf()
+          : await apiBlobRequest(
+              `/api/artifacts/${encodeURIComponent(artifact.id)}/proposal.pdf`,
+              operatorKey,
+            );
+        if (!active) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPdfUrl(objectUrl);
+      } catch (caught) {
+        if (active) {
+          setPdfError(
+            caught instanceof Error ? caught.message : "The proposal PDF could not be loaded.",
+          );
+        }
+      }
+    };
+    void loadPdf();
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [artifact.id, demo, open, operatorKey, tab]);
 
   if (!open) return null;
 
@@ -105,10 +162,10 @@ function ArtifactPreviewModal({
           <div>
             <p className="eyebrow">Review packet</p>
             <h2 id={`preview-title-${artifact.id}`} className="mt-1 text-xl font-black tracking-[-0.03em]">
-              Proposal and email draft
+              {project?.title ?? "Commercial review"}
             </h2>
             <p className="mt-1 text-xs text-[var(--muted)]">
-              Check the client-facing details before creating or sending a Gmail draft.
+              Review the commercial summary, exact PDF, and client email before taking action.
             </p>
           </div>
           <button
@@ -123,7 +180,8 @@ function ArtifactPreviewModal({
 
         <div className="flex gap-1 border-b border-[var(--line)] px-5 pt-3 sm:px-6">
           {([
-            ["proposal", "Proposal preview", FileText],
+            ["overview", "Overview", Eye],
+            ["document", "Proposal review", FileText],
             ["email", "Email draft", Mail],
           ] as const).map(([key, label, Icon]) => (
             <button
@@ -140,7 +198,7 @@ function ArtifactPreviewModal({
         </div>
 
         <div className="preview-modal-body">
-          {tab === "proposal" ? (
+          {tab === "overview" ? (
             <div className="grid gap-5">
               <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -182,7 +240,21 @@ function ArtifactPreviewModal({
                 </div>
               </div>
             </div>
-          ) : (
+          ) : null}
+
+          {tab === "document" ? (
+            <div className="proposal-document-viewer">
+              <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3">
+                <div><p className="text-xs font-black">Exact proposal PDF</p><p className="mt-0.5 text-[10px] text-[var(--muted)]">Generated from the sealed scope and deterministic pricing result.</p></div>
+                {pdfUrl ? <a href={pdfUrl} download={`proposal-${artifact.version_number}.pdf`} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--line)] px-3 text-xs font-bold hover:bg-[var(--surface-soft)]"><Download size={14} /> Download</a> : null}
+              </div>
+              {pdfError ? <p role="alert" className="m-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm font-bold">{pdfError}</p> : null}
+              {!pdfUrl && !pdfError ? <p className="p-6 text-center text-sm font-bold text-[var(--muted)]">Loading proposal PDF…</p> : null}
+              {pdfUrl ? <iframe title="Proposal PDF review" src={pdfUrl} className="proposal-pdf-frame" /> : null}
+            </div>
+          ) : null}
+
+          {tab === "email" ? (
             <div className="grid gap-4">
               <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -193,12 +265,39 @@ function ArtifactPreviewModal({
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-2.5 py-1 text-[10px] font-extrabold text-[var(--muted-strong)]"><Mail size={13} /> Attachment included</span>
                 </div>
               </div>
-              <pre className="preview-email-body">{emailPreview(artifact, project)}</pre>
-              <p className="flex items-start gap-2 text-xs leading-5 text-[var(--muted)]"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-[var(--ink)]" /> The draft is prepared for review only. Sending remains a separate, explicit approval-gated action.</p>
+              <label htmlFor={`email-draft-${artifact.id}`} className="sr-only">Editable client email draft</label>
+              <textarea id={`email-draft-${artifact.id}`} value={emailDraft} onChange={(event) => setEmailDraft(event.target.value)} rows={14} className="preview-email-editor" />
+              <p className="flex items-start gap-2 text-xs leading-5 text-[var(--muted)]"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-[var(--ink)]" /> Edits stay in this review packet and are used for Gmail draft creation and send. Commercial sending still requires explicit approval.</p>
             </div>
-          )}
+          ) : null}
         </div>
-        <div className="flex items-center justify-end border-t border-[var(--line)] px-5 py-4 sm:px-6">
+
+        {actions ? (
+          <div className="review-packet-actions border-t border-[var(--line)] px-5 py-4 sm:px-6">
+            {actions.canDecide ? (
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+                <div><label htmlFor={`packet-operator-${artifact.id}`} className="block text-[11px] font-extrabold">Approver identity</label><input id={`packet-operator-${artifact.id}`} type="email" value={actions.operatorId} onChange={(event) => actions.setOperatorId(event.target.value)} disabled={demo} placeholder="you@example.com" className="mt-1.5 min-h-11 w-full rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm disabled:bg-[var(--surface-muted)]" /></div>
+                <button type="button" disabled={actions.busy || demo || !actions.operatorId} onClick={() => actions.onCommand(`/artifacts/${artifact.id}/reject`, { approver_id: actions.operatorId, correlation_id: correlationId() })} className="min-h-11 rounded-lg border border-[var(--line-dark)] bg-white px-4 text-xs font-extrabold disabled:opacity-45">Reject</button>
+                <button type="button" disabled={actions.busy || demo || !actions.operatorId} onClick={() => actions.onCommand(`/artifacts/${artifact.id}/approve`, { approver_id: actions.operatorId, correlation_id: correlationId() })} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-[var(--ink)] px-4 text-xs font-extrabold text-white disabled:opacity-45"><Check size={14} /> Approve</button>
+              </div>
+            ) : null}
+
+            {actions.canSend ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button type="button" disabled={actions.busy || demo || !emailDraft.trim()} onClick={() => actions.onCommand(`/artifacts/${artifact.id}/draft`, { correlation_id: correlationId(), email_body: emailDraft })} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-[var(--line-dark)] bg-white px-4 text-xs font-extrabold disabled:opacity-45"><Mail size={14} /> Create Gmail draft</button>
+                {!sendConfirm ? <button type="button" disabled={actions.busy || demo || !emailDraft.trim()} onClick={() => setSendConfirm(true)} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-[var(--ink)] px-4 text-xs font-extrabold text-white disabled:opacity-45"><Send size={14} /> Send approved email</button> : <div className="grid grid-cols-2 gap-2 rounded-lg border border-[var(--line)] p-2"><button type="button" onClick={() => setSendConfirm(false)} className="min-h-11 rounded-lg border border-[var(--line)] text-xs font-extrabold">Cancel</button><button type="button" disabled={actions.busy} onClick={() => actions.onCommand(`/artifacts/${artifact.id}/send`, { correlation_id: correlationId(), email_body: emailDraft })} className="min-h-11 rounded-lg bg-[var(--ink)] text-xs font-extrabold text-white disabled:opacity-45">Confirm send</button></div>}
+              </div>
+            ) : null}
+
+            {actions.canAccept ? (
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                {actions.acceptanceCandidates.length ? <><label htmlFor={`packet-acceptance-${artifact.id}`} className="sr-only">Client acceptance email</label><select id={`packet-acceptance-${artifact.id}`} value={actions.selectedAcceptanceId} onChange={(event) => actions.setAcceptanceRecordId(event.target.value)} disabled={actions.busy || demo} className="min-h-11 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-xs disabled:bg-[var(--surface-muted)]">{actions.acceptanceCandidates.map((message) => <option key={message.id} value={message.id}>{message.subject || "No subject"} · {time(message.received_at)}</option>)}</select><button type="button" disabled={actions.busy || demo || !actions.selectedAcceptanceId} onClick={() => actions.onCommand(`/artifacts/${artifact.id}/accept`, { source_inbound_message_id: actions.selectedAcceptanceId, correlation_id: correlationId() })} className="min-h-11 rounded-lg bg-[var(--ink)] px-4 text-xs font-extrabold text-white disabled:opacity-45">Mark client accepted</button></> : <p className="text-xs font-bold text-[var(--muted)]">Waiting for a later inbound client reply.</p>}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex items-center justify-end border-t border-[var(--line)] px-5 py-3 sm:px-6">
           <button type="button" onClick={onClose} className="min-h-11 rounded-lg bg-[var(--ink)] px-4 text-sm font-extrabold text-white hover:bg-[var(--ink-strong)]">Close preview</button>
         </div>
       </section>
@@ -211,6 +310,7 @@ export function ArtifactReview({
   project,
   inboxMessages,
   demo,
+  operatorKey,
   compact = false,
   operatorId,
   setOperatorId,
@@ -221,7 +321,7 @@ export function ArtifactReview({
   const [revisionReason, setRevisionReason] = useState("");
   const [acceptanceRecordId, setAcceptanceRecordId] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewTab, setPreviewTab] = useState<PreviewTab>("proposal");
+  const [previewTab, setPreviewTab] = useState<PreviewTab>("overview");
   const stale = Boolean(
     project?.active_proposal_id && project.active_proposal_id !== artifact.id,
   );
@@ -255,6 +355,7 @@ export function ArtifactReview({
         artifact={artifact}
         project={project}
         demo={demo}
+        operatorKey={operatorKey}
         operatorId={operatorId}
         setOperatorId={setOperatorId}
         busy={busy}
@@ -263,8 +364,6 @@ export function ArtifactReview({
         canDecide={canDecide}
         canSend={canSend}
         canAccept={canAccept}
-        sendConfirm={sendConfirm}
-        setSendConfirm={setSendConfirm}
         acceptanceCandidates={acceptanceCandidates}
         selectedAcceptanceId={selectedAcceptanceId}
         setAcceptanceRecordId={setAcceptanceRecordId}
@@ -298,7 +397,7 @@ export function ArtifactReview({
               : artifact.project_id}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" onClick={() => { setPreviewTab("proposal"); setPreviewOpen(true); }} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--line-dark)] bg-white px-3 text-xs font-extrabold hover:bg-[var(--surface-muted)]"><Eye size={15} /> Preview proposal</button>
+            <button type="button" onClick={() => { setPreviewTab("overview"); setPreviewOpen(true); }} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--line-dark)] bg-white px-3 text-xs font-extrabold hover:bg-[var(--surface-muted)]"><Eye size={15} /> Preview proposal</button>
             <button type="button" onClick={() => { setPreviewTab("email"); setPreviewOpen(true); }} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--line)] bg-white px-3 text-xs font-extrabold text-[var(--muted-strong)] hover:bg-[var(--surface-muted)]"><Mail size={15} /> View email draft</button>
           </div>
         </div>
@@ -564,7 +663,7 @@ export function ArtifactReview({
           ) : null}
         </div>
       </div>
-      <ArtifactPreviewModal artifact={artifact} project={project} open={previewOpen} initialTab={previewTab} onClose={() => setPreviewOpen(false)} />
+      <ArtifactPreviewModal artifact={artifact} project={project} operatorKey={operatorKey} demo={demo} open={previewOpen} initialTab={previewTab} onClose={() => setPreviewOpen(false)} />
     </article>
   );
 }
@@ -573,6 +672,7 @@ function CompactArtifactReview({
   artifact,
   project,
   demo,
+  operatorKey,
   operatorId,
   setOperatorId,
   busy,
@@ -581,8 +681,6 @@ function CompactArtifactReview({
   canDecide,
   canSend,
   canAccept,
-  sendConfirm,
-  setSendConfirm,
   acceptanceCandidates,
   selectedAcceptanceId,
   setAcceptanceRecordId,
@@ -594,6 +692,7 @@ function CompactArtifactReview({
   artifact: Artifact;
   project?: Project;
   demo: boolean;
+  operatorKey: string;
   operatorId: string;
   setOperatorId: (value: string) => void;
   busy: boolean;
@@ -602,8 +701,6 @@ function CompactArtifactReview({
   canDecide: boolean;
   canSend: boolean;
   canAccept: boolean;
-  sendConfirm: boolean;
-  setSendConfirm: (value: boolean) => void;
   acceptanceCandidates: InboxMessage[];
   selectedAcceptanceId: string;
   setAcceptanceRecordId: (value: string) => void;
@@ -612,83 +709,70 @@ function CompactArtifactReview({
   setPreviewOpen: (value: boolean) => void;
   setPreviewTab: (value: PreviewTab) => void;
 }) {
+  const latestLineItem = artifact.pricing_result.line_items[
+    artifact.pricing_result.line_items.length - 1
+  ];
+  const timelineDelta = project
+    ? artifact.timeline_result.total_days - project.current_timeline_days
+    : 0;
+
   return (
     <article id={`artifact-${artifact.id}`} className="panel overview-artifact-card scroll-mt-6 overflow-hidden">
-      <div className="border-b border-[var(--line)] px-5 py-4 sm:px-6">
-        <div className="flex items-start justify-between gap-4">
+      <div className="latest-review-section px-5 py-4 sm:px-6">
+        <div className="latest-review-layout">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusPill status={artifact.status} />
-              <span className="text-[11px] font-bold text-[var(--muted)]">{humanize(artifact.artifact_type)} · v{artifact.version_number}</span>
-            </div>
-            <h2 className="mt-2 truncate text-lg font-bold tracking-[-0.025em]">{project?.title ?? "Commercial artifact"}</h2>
+            <p className="eyebrow">Latest review</p>
+            <h2 className="mt-1 truncate text-lg font-bold tracking-[-0.025em]">{project?.title ?? "Commercial artifact"}</h2>
             <p className="mt-1 truncate text-xs text-[var(--muted)]">{project?.client_name ?? artifact.project_id}</p>
-            <div className="mt-3">
-              <button type="button" onClick={() => { setPreviewTab("proposal"); setPreviewOpen(true); }} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-xs font-bold hover:bg-[var(--surface-muted)]"><Eye size={14} /> Review packet</button>
-            </div>
           </div>
-          <div className="grid shrink-0 grid-cols-2 gap-4 text-right">
-            <div>
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Price</p>
-              <p className="tabular mt-1 text-lg font-black">{money(artifact.pricing_result.total_usd)}</p>
-            </div>
-            <div>
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Timeline</p>
-              <p className="tabular mt-1 text-lg font-black">{artifact.timeline_result.total_days}d</p>
-            </div>
-          </div>
+          <dl className="latest-review-metrics">
+            <div><dt>Price</dt><dd>{money(artifact.pricing_result.total_usd)}</dd></div>
+            <div><dt>Timeline</dt><dd>{artifact.timeline_result.total_days}d</dd></div>
+            <div><dt>Current status</dt><dd><StatusPill status={artifact.status} /></dd></div>
+          </dl>
+          <button type="button" onClick={() => { setPreviewTab("overview"); setPreviewOpen(true); }} className="latest-review-button"><Eye size={15} /> Review packet</button>
         </div>
         {stale ? <p className="mt-3 rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-xs font-bold text-[var(--muted)]">Historical artifact — newer active version exists.</p> : null}
       </div>
 
-      <div className="grid gap-4 px-5 py-4 sm:px-6 lg:grid-cols-[1fr_0.9fr]">
-        <div className="min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <p className="eyebrow">Calculated scope</p>
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--muted)]"><ShieldCheck size={13} /> SOP locked</span>
-          </div>
-          <div className="mt-3 divide-y divide-[var(--line)] overflow-hidden rounded-lg border border-[var(--line)]">
-            {artifact.pricing_result.line_items.slice(0, 2).map((line) => (
-              <div key={line.module_key} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-bold">{humanize(line.module_key)}</p>
-                  <p className="mt-0.5 text-[10px] text-[var(--muted)]">Qty {line.quantity} · {humanize(line.unit_rule)}</p>
-                </div>
-                <p className="tabular shrink-0 text-xs font-black">{money(line.subtotal_usd)}</p>
-              </div>
-            ))}
-          </div>
-          {artifact.pricing_result.line_items.length > 2 ? <p className="mt-2 text-[10px] font-bold text-[var(--muted)]">+{artifact.pricing_result.line_items.length - 2} more in the preview</p> : null}
+      <div className="calculated-scope-summary">
+        <div>
+          <p className="eyebrow">Calculated scope</p>
+          <p className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-[var(--muted)]"><ShieldCheck size={13} /> {artifact.sop_version}</p>
         </div>
-
-        <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-          <p className="eyebrow">Approval</p>
-          <label htmlFor={`compact-operator-${artifact.id}`} className="mt-3 block text-[11px] font-extrabold">Approver identity</label>
-          <input id={`compact-operator-${artifact.id}`} type="email" value={operatorId} onChange={(event) => setOperatorId(event.target.value)} disabled={demo} placeholder="you@example.com" className="mt-1.5 min-h-11 w-full rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm disabled:bg-[var(--surface-muted)]" />
-
-          {canDecide ? (
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button type="button" disabled={busy || demo || !operatorId} onClick={() => onCommand(`/artifacts/${artifact.id}/approve`, { approver_id: operatorId, correlation_id: correlationId() })} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-[var(--ink)] px-3 text-xs font-extrabold text-white hover:bg-[var(--ink-strong)] disabled:opacity-45"><Check size={14} /> Approve</button>
-              <button type="button" disabled={busy || demo || !operatorId} onClick={() => onCommand(`/artifacts/${artifact.id}/reject`, { approver_id: operatorId, correlation_id: correlationId() })} className="min-h-11 rounded-lg border border-[var(--line-dark)] bg-white px-3 text-xs font-extrabold hover:bg-[var(--surface-muted)] disabled:opacity-45">Reject</button>
-            </div>
-          ) : null}
-
-          {canSend ? (
-            <div className="mt-3 grid gap-2">
-              <button type="button" disabled={busy || demo} onClick={() => onCommand(`/artifacts/${artifact.id}/draft`, { correlation_id: correlationId() })} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-[var(--line-dark)] bg-white px-3 text-xs font-extrabold hover:bg-[var(--surface-muted)] disabled:opacity-45"><Mail size={14} /> Create draft</button>
-              {!sendConfirm ? <button type="button" disabled={busy || demo} onClick={() => setSendConfirm(true)} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-[var(--ink)] px-3 text-xs font-extrabold text-white hover:bg-[var(--ink-strong)] disabled:opacity-45"><Send size={14} /> Send approved email</button> : <div className="rounded-lg border border-[var(--line-strong)] bg-white p-3"><p className="text-[11px] font-bold leading-4">Send this approved artifact in the client thread?</p><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => setSendConfirm(false)} className="min-h-11 rounded-lg border border-[var(--line)] text-[11px] font-extrabold">Cancel</button><button type="button" disabled={busy} onClick={() => onCommand(`/artifacts/${artifact.id}/send`, { correlation_id: correlationId() })} className="min-h-11 rounded-lg bg-[var(--ink)] text-[11px] font-extrabold text-white disabled:opacity-45">Confirm</button></div></div>}
-            </div>
-          ) : null}
-
-          {canAccept ? (
-            <div className="mt-3 border-t border-[var(--line)] pt-3">
-              <p className="text-[11px] font-extrabold">Confirm client acceptance</p>
-              {acceptanceCandidates.length ? <><label htmlFor={`compact-acceptance-${artifact.id}`} className="sr-only">Client acceptance email</label><select id={`compact-acceptance-${artifact.id}`} value={selectedAcceptanceId} onChange={(event) => setAcceptanceRecordId(event.target.value)} disabled={busy || demo} className="mt-2 min-h-10 w-full rounded-lg border border-[var(--line-strong)] bg-white px-2 text-xs disabled:bg-[var(--surface-muted)]">{acceptanceCandidates.map((message) => <option key={message.id} value={message.id}>{message.subject || "No subject"} · {time(message.received_at)}</option>)}</select><button type="button" disabled={busy || demo || !selectedAcceptanceId} onClick={() => onCommand(`/artifacts/${artifact.id}/accept`, { source_inbound_message_id: selectedAcceptanceId, correlation_id: correlationId() })} className="mt-2 min-h-10 w-full rounded-lg border border-[var(--line-dark)] bg-white px-3 text-[11px] font-extrabold hover:bg-[var(--surface-muted)] disabled:opacity-45">Mark client accepted</button></> : <p className="mt-2 rounded-lg bg-white px-3 py-2 text-[10px] font-bold text-[var(--muted)]">Waiting for a later inbound reply.</p>}
-            </div>
-          ) : null}
+        <div className="min-w-0">
+          <p className="calculated-scope-label">Last change item</p>
+          <p className="mt-1 truncate text-xs font-black">{latestLineItem ? humanize(latestLineItem.module_key) : "No line-item change"}</p>
+          {latestLineItem ? <p className="mt-0.5 text-[10px] text-[var(--muted)]">{money(latestLineItem.subtotal_usd)} · Qty {latestLineItem.quantity}</p> : null}
+        </div>
+        <div>
+          <p className="calculated-scope-label">Timeline</p>
+          <p className="tabular mt-1 text-sm font-black">{artifact.timeline_result.total_days} days</p>
+          {timelineDelta ? <p className="mt-0.5 text-[10px] text-[var(--muted)]">{timelineDelta > 0 ? "+" : ""}{timelineDelta} days from baseline</p> : null}
         </div>
       </div>
-      <ArtifactPreviewModal artifact={artifact} project={project} open={previewOpen} initialTab={previewTab} onClose={() => setPreviewOpen(false)} />
+
+      <ArtifactPreviewModal
+        artifact={artifact}
+        project={project}
+        operatorKey={operatorKey}
+        demo={demo}
+        open={previewOpen}
+        initialTab={previewTab}
+        actions={{
+          operatorId,
+          setOperatorId,
+          busy,
+          onCommand,
+          canDecide,
+          canSend,
+          canAccept,
+          acceptanceCandidates,
+          selectedAcceptanceId,
+          setAcceptanceRecordId,
+        }}
+        onClose={() => setPreviewOpen(false)}
+      />
     </article>
   );
 }

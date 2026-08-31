@@ -15,7 +15,7 @@ from threading import Lock
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -91,6 +91,7 @@ class RevisionCommand(CommandModel):
 
 class ActionCommand(CommandModel):
     correlation_id: str = Field(min_length=1, max_length=128)
+    email_body: str | None = Field(default=None, min_length=1, max_length=20_000)
 
 
 class AcceptanceCommand(CommandModel):
@@ -255,7 +256,8 @@ def create_app(
         )
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; base-uri 'self'; connect-src 'self'; "
-            "font-src 'self'; frame-ancestors 'none'; img-src 'self' data:; "
+            "font-src 'self'; frame-ancestors 'none'; frame-src 'self' blob:; "
+            "img-src 'self' data:; "
             "object-src 'none'; script-src 'self' 'unsafe-inline'; "
             "style-src 'self' 'unsafe-inline'"
             if is_ui
@@ -420,6 +422,23 @@ def create_app(
             raise HTTPException(status_code=404, detail="Project not found") from error
         return result.model_dump(mode="json")
 
+    @app.get("/api/messages/{message_id}")
+    def message_detail(
+        message_id: str,
+        configured: GmailApiRuntime = Depends(operator_runtime),
+    ) -> dict[str, Any]:
+        if len(message_id) > 256:
+            raise HTTPException(status_code=404, detail="Message not found")
+        if configured.dashboard_service is None:
+            raise HTTPException(
+                status_code=503, detail="Dashboard read service is unavailable"
+            )
+        try:
+            result = configured.dashboard_service.message_detail(message_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Message not found") from error
+        return result.model_dump(mode="json")
+
     @app.post("/webhooks/gmail")
     async def gmail_webhook(
         request: Request,
@@ -488,6 +507,25 @@ def create_app(
         except KeyError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
+    @app.get("/api/artifacts/{artifact_id}/proposal.pdf")
+    def proposal_pdf(
+        artifact_id: str,
+        configured: GmailApiRuntime = Depends(operator_runtime),
+    ) -> Response:
+        if len(artifact_id) > 256:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        try:
+            content = configured.commercial_service.proposal_pdf(artifact_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="Artifact not found") from error
+        except ApprovalPolicyViolation as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return Response(
+            content=content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": 'inline; filename="scopelock-proposal.pdf"'},
+        )
+
     def _decision(
         artifact_id: str,
         command: DecisionCommand,
@@ -553,7 +591,9 @@ def create_app(
     ) -> dict[str, Any]:
         try:
             draft = configured.commercial_service.create_draft(
-                artifact_id, correlation_id=command.correlation_id
+                artifact_id,
+                correlation_id=command.correlation_id,
+                email_body=command.email_body,
             )
             return draft.model_dump(mode="json")
         except KeyError as error:
@@ -569,7 +609,9 @@ def create_app(
     ) -> dict[str, Any]:
         try:
             result = configured.commercial_service.send(
-                artifact_id, correlation_id=command.correlation_id
+                artifact_id,
+                correlation_id=command.correlation_id,
+                email_body=command.email_body,
             )
             code = 200 if result.status == "SENT" else 503
             if code != 200:

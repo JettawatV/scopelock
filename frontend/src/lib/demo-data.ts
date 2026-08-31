@@ -1,4 +1,4 @@
-import type { DashboardSnapshot, ProjectDetailSnapshot } from "@/lib/types";
+import type { DashboardSnapshot, InboxMessageDetail, ProjectDetailSnapshot } from "@/lib/types";
 
 const now = "2026-08-30T07:17:46Z";
 
@@ -349,6 +349,27 @@ export const demoDashboard: DashboardSnapshot = {
     note: "Reviewed demo data. Hosted event delivery remains a separate activation gate.",
   },
   warnings: [],
+};
+
+export const demoInboxMessageDetails: Record<string, InboxMessageDetail> = {
+  "demo-inbound-aurora": {
+    ...demoDashboard.inbox_messages[0],
+    body: "Hello JVL Team,\n\nWe would like an automated customer-request intake workflow that captures email requests, tracks them in an operations dashboard, and sends confirmation notifications. Please share the recommended scope, delivery timeline, and investment.\n\nBest,\nAurora Operations",
+    body_format: "PLAIN",
+    attachments: [],
+  },
+  "demo-inbound-northstar": {
+    ...demoDashboard.inbox_messages[1],
+    body: "Hi team,\n\nCan managers also approve requests from LINE and receive LINE alerts? Please let us know the impact on price and delivery.\n\nThanks,\nNorthstar Services",
+    body_format: "PLAIN",
+    attachments: [],
+  },
+  "demo-inbound-northstar-closure": {
+    ...demoDashboard.inbox_messages[2],
+    body: "That covers the additional requirements. Please prepare the updated change order for review.",
+    body_format: "PLAIN",
+    attachments: [],
+  },
 };
 
 const auroraProject = demoDashboard.projects[0];

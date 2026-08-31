@@ -152,6 +152,16 @@ export type InboxMessage = {
   attachment_count: number;
 };
 
+export type InboxMessageDetail = InboxMessage & {
+  body: string;
+  body_format: string;
+  attachments: Array<{
+    filename: string;
+    mime_type: string;
+    size: number;
+  }>;
+};
+
 export type GmailWatch = {
   mailbox: string;
   expiration: string;

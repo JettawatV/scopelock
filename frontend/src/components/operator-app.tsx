@@ -7,11 +7,13 @@ import {
   CircleAlert,
   Clock3,
   FileCheck2,
+  FileText,
   Inbox,
   KeyRound,
   LockKeyhole,
   LogOut,
   Mail,
+  Paperclip,
   PanelLeftClose,
   PanelLeftOpen,
   RefreshCw,
@@ -23,7 +25,7 @@ import {
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 
 import { apiRequest, correlationId } from "@/lib/api";
-import { demoDashboard, demoProjectDetails } from "@/lib/demo-data";
+import { demoDashboard, demoInboxMessageDetails, demoProjectDetails } from "@/lib/demo-data";
 import { ArtifactReview } from "@/components/commercial-artifact-review";
 import {
   EmptyState,
@@ -36,6 +38,8 @@ import type {
   AgentRun,
   Artifact,
   DashboardSnapshot,
+  InboxMessage,
+  InboxMessageDetail,
   Project,
   ProjectDetailSnapshot,
   ScopeBuffer,
@@ -111,11 +115,23 @@ function AppHeader({
             <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Operator console</span>
           </span>
         </a>
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="sidebar-toggle"
+          aria-controls="workspace-navigation"
+          aria-expanded={!sidebarCollapsed}
+          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
+          <span className="sidebar-toggle-label">Collapse sidebar</span>
+        </button>
         <p className="sidebar-section-label">Workspace</p>
         <nav aria-label="Primary" className="sidebar-nav">
           {navigation.map(([key, label, href, icon]) => (
             <a key={key} href={dashboardHref(href, demo)} onClick={navigateWithinDashboard} aria-label={label} title={sidebarCollapsed ? label : undefined} aria-current={view === key ? "page" : undefined} className={`sidebar-link ${view === key ? "is-active" : ""}`}>
-              {icon}<span className="sidebar-link-label">{label}</span>
+              {icon}<span className="sidebar-link-label sidebar-link-label-full">{label}</span><span className="sidebar-link-label sidebar-link-label-mobile">{key === "evals" ? "Readiness" : label}</span>
             </a>
           ))}
         </nav>
@@ -128,22 +144,12 @@ function AppHeader({
       <header className="operator-header">
         <div className="operator-header-inner">
           <div className="operator-header-identity">
-            <button
-              type="button"
-              onClick={onToggleSidebar}
-              className="operator-header-sidebar-button"
-              aria-controls="workspace-navigation"
-              aria-expanded={!sidebarCollapsed}
-              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {sidebarCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
-            </button>
             <span className="operator-header-title">
               {view === "overview" ? "Workspace overview" : view === "projects" ? "Project inbox" : "Agent readiness"}
             </span>
           </div>
           <div className="operator-header-actions">
+            {demo ? <span className="operator-demo-badge">Demo mode</span> : null}
             <button
               type="button"
               onClick={onRefresh}
@@ -286,12 +292,12 @@ function MetricCard({
 }) {
   return (
     <article className={`panel metric-card ${compact ? "p-4" : "p-5 sm:p-6"} ${accent ? "metric-card-accent" : ""}`}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex items-center gap-3">
+        <span className="metric-card-icon grid size-10 shrink-0 place-items-center rounded-lg text-[var(--ink)]">{icon}</span>
+        <div className="min-w-0">
           <p className="metric-card-label font-extrabold uppercase text-[var(--muted)]">{label}</p>
           <p className={`tabular ${compact ? "mt-2 text-2xl" : "mt-3 text-3xl"} font-black tracking-[-0.045em]`}>{value}</p>
         </div>
-        <span className="metric-card-icon grid size-10 place-items-center rounded-lg text-[var(--ink)]">{icon}</span>
       </div>
       <p className={`${compact ? "mt-2" : "mt-4"} text-xs font-semibold leading-5 text-[var(--muted)]`}>{detail}</p>
     </article>
@@ -519,17 +525,23 @@ function BufferCard({
 function GmailReviewPanel({
   data,
   demo,
+  operatorKey,
   busy,
   onCommand,
   compact = false,
 }: {
   data: DashboardSnapshot;
   demo: boolean;
+  operatorKey: string;
   busy: boolean;
   onCommand: (path: string, payload: Record<string, string>) => Promise<void>;
   compact?: boolean;
 }) {
   const [confirmWatch, setConfirmWatch] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<InboxMessage | null>(null);
+  const [messageDetail, setMessageDetail] = useState<InboxMessageDetail | null>(null);
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
   const projectsById = new Map(data.projects.map((project) => [project.id, project]));
   const watch = data.gmail_watch;
 
@@ -538,44 +550,73 @@ function GmailReviewPanel({
     void onCommand("/gmail/watch", {});
   };
 
+  const openMessage = async (message: InboxMessage) => {
+    setSelectedMessage(message);
+    setMessageDetail(null);
+    setMessageError(null);
+    if (demo) {
+      setMessageDetail(demoInboxMessageDetails[message.id] ?? null);
+      return;
+    }
+    setMessageLoading(true);
+    try {
+      const detail = await apiRequest<InboxMessageDetail>(
+        `/api/messages/${encodeURIComponent(message.id)}`,
+        operatorKey,
+      );
+      setMessageDetail(detail);
+    } catch (caught) {
+      setMessageError(
+        caught instanceof Error ? caught.message : "The selected message could not be loaded.",
+      );
+    } finally {
+      setMessageLoading(false);
+    }
+  };
+
+  const closeMessage = () => {
+    setSelectedMessage(null);
+    setMessageDetail(null);
+    setMessageError(null);
+    setMessageLoading(false);
+  };
+
   return (
+    <>
     <section className={`panel gmail-review-panel flex min-w-0 flex-col p-5 sm:p-6 ${compact ? "overview-inbox-panel" : "min-h-[31rem]"}`}>
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--line)] pb-5">
-        <div>
-          <p className="eyebrow">Project-linked Gmail</p>
-          <h2 className="mt-1 text-xl font-bold tracking-[-0.025em]">Gmail review</h2>
-          {!compact ? <p className="mt-2 text-xs leading-5 text-[var(--muted)]">Metadata only · project-linked messages, never a full mailbox.</p> : <p className="mt-2 text-[10px] font-bold text-[var(--muted)]">Project-linked metadata only</p>}
-        </div>
-        {watch ? <StatusPill status="MONITORING" /> : <StatusPill status="NOT_CONNECTED" />}
+        <p className="eyebrow">Gmail review</p>
+        {watch ? (
+          <div className="gmail-monitoring-control">
+            <button type="button" className="gmail-monitoring-button" aria-describedby="gmail-monitoring-tooltip">
+              <Activity size={13} aria-hidden="true" /> Monitoring
+            </button>
+            <div id="gmail-monitoring-tooltip" role="tooltip" className="gmail-monitoring-tooltip">
+              Monitoring <span className="font-extrabold text-[var(--ink)]">{watch.mailbox}</span> · watch expires {time(watch.expiration)}
+            </div>
+          </div>
+        ) : <StatusPill status="NOT_CONNECTED" />}
       </div>
-
-      {watch ? (
-        <div className={`overview-watch-strip mt-4 rounded-lg bg-[var(--surface-soft)] px-4 py-3 text-xs leading-5 text-[var(--muted)] ${compact ? "truncate whitespace-nowrap" : ""}`}>
-          Monitoring <span className="font-extrabold text-[var(--ink)]">{watch.mailbox}</span> · watch expires {time(watch.expiration)}
-        </div>
-      ) : null}
 
       {data.inbox_messages.length ? (
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
           <div className={compact ? "overview-message-list" : "grid gap-2"}>
-            {data.inbox_messages.slice(0, compact ? 2 : undefined).map((message) => {
+            {data.inbox_messages.slice(0, compact ? 3 : undefined).map((message) => {
               const project = projectsById.get(message.project_id);
               if (compact) {
                 return (
-                  <article key={message.id} className="overview-message-row bg-white px-3 py-2.5">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="truncate text-xs font-bold">{message.subject || "No subject"}</p>
-                      <p className="shrink-0 text-[10px] font-bold text-[var(--muted)]">{time(message.received_at)}</p>
-                    </div>
-                    <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2">
+                  <button key={message.id} type="button" onClick={() => void openMessage(message)} className="overview-message-row w-full bg-white px-4 py-3 text-left" aria-label={`Open email: ${message.subject || "No subject"}`}>
+                    <div className="overview-message-grid">
+                      <div className="min-w-0"><p className="truncate text-xs font-bold">{message.subject || "No subject"}</p><p className="mt-1 truncate text-[10px] text-[var(--muted)]">{message.sender_name || message.sender_email}</p></div>
                       <p className="truncate text-[10px] text-[var(--muted)]">{project?.title ?? "Project"}</p>
+                      <p className="shrink-0 text-[10px] font-bold text-[var(--muted)]">{time(message.received_at)}</p>
                       <StatusPill status={message.direction} />
                     </div>
-                  </article>
+                  </button>
                 );
               }
               return (
-                <article key={message.id} className={`rounded-lg border border-[var(--line)] bg-white ${compact ? "p-3" : "p-4"}`}>
+                <button key={message.id} type="button" onClick={() => void openMessage(message)} className="rounded-lg border border-[var(--line)] bg-white p-4 text-left hover:bg-[var(--surface-soft)]">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-extrabold">{message.subject || "No subject"}</p>
@@ -587,7 +628,7 @@ function GmailReviewPanel({
                     <StatusPill status={message.direction} />
                     {message.attachment_count ? <span className="text-[10px] font-bold text-[var(--muted)]">{message.attachment_count} attachment{message.attachment_count === 1 ? "" : "s"}</span> : null}
                   </div>
-                </article>
+                </button>
               );
             })}
           </div>
@@ -616,12 +657,53 @@ function GmailReviewPanel({
         </div>
       )}
     </section>
+    <MessageDetailModal message={selectedMessage} detail={messageDetail} loading={messageLoading} error={messageError} onClose={closeMessage} />
+    </>
+  );
+}
+
+function MessageDetailModal({ message, detail, loading, error, onClose }: {
+  message: InboxMessage | null;
+  detail: InboxMessageDetail | null;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!message) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [message, onClose]);
+
+  if (!message) return null;
+  return (
+    <div className="preview-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section className="message-detail-modal" role="dialog" aria-modal="true" aria-labelledby="message-detail-title">
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] px-5 py-4 sm:px-6">
+          <div className="min-w-0">
+            <p className="eyebrow">Client email</p>
+            <h2 id="message-detail-title" className="mt-1 truncate text-xl font-black tracking-[-0.03em]">{message.subject || "No subject"}</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">{message.sender_name || message.sender_email} · {time(message.received_at)}</p>
+          </div>
+          <button type="button" onClick={onClose} className="grid size-11 shrink-0 place-items-center rounded-lg text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--ink)]" aria-label="Close email"><X size={18} /></button>
+        </div>
+        <div className="message-detail-body">
+          {loading ? <p className="text-sm font-bold text-[var(--muted)]">Loading the selected project email…</p> : null}
+          {error ? <p role="alert" className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm font-bold">{error}</p> : null}
+          {detail ? <><pre className="message-body-copy">{detail.body || "This message has no text body."}</pre>{detail.attachments.length ? <div className="mt-4 grid gap-2">{detail.attachments.map((attachment) => <div key={`${attachment.filename}-${attachment.size}`} className="flex items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-xs"><Paperclip size={14} /><span className="font-bold">{attachment.filename}</span><span className="text-[var(--muted)]">{attachment.mime_type}</span></div>)}</div> : null}</> : null}
+        </div>
+      </section>
+    </div>
   );
 }
 
 function Overview({
   data,
   demo,
+  operatorKey,
   operatorId,
   setOperatorId,
   busy,
@@ -629,6 +711,7 @@ function Overview({
 }: {
   data: DashboardSnapshot;
   demo: boolean;
+  operatorKey: string;
   operatorId: string;
   setOperatorId: (value: string) => void;
   busy: boolean;
@@ -660,20 +743,23 @@ function Overview({
         <MetricCard label="Agent gate" value={data.readiness.status} detail={`${data.readiness.checks.reduce((sum, item) => sum + item.passed, 0)} reviewed checks passed`} icon={<ShieldCheck size={19} />} compact />
       </section>
 
+      <section className="sop-source-strip panel" aria-label="Active business SOP">
+        <span className="sop-source-icon"><FileText size={18} aria-hidden="true" /></span>
+        <div className="min-w-0 flex-1"><p className="text-xs font-black">Business SOP</p><p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">Configured catalog · {artifact?.sop_version ?? "No active SOP version"}</p></div>
+        <span className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[var(--muted-strong)]">{artifact?.sop_version ? "SOP loaded" : "No SOP reference"}</span>
+      </section>
+
       <section className="overview-board mt-2 min-w-0">
         <div className="overview-inbox min-w-0">
-          <GmailReviewPanel data={data} demo={demo} busy={busy} onCommand={onCommand} compact />
+          <GmailReviewPanel data={data} demo={demo} operatorKey={operatorKey} busy={busy} onCommand={onCommand} compact />
         </div>
 
         <section className="panel overview-review priority-review-panel min-w-0 overflow-hidden">
           <div className="priority-review-header flex items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-4 sm:px-6">
-            <div>
-              <p className="eyebrow">Priority queue</p>
-              <h2 className="mt-1 text-lg font-bold tracking-[-0.025em]">Commercial review</h2>
-            </div>
+            <p className="eyebrow">Priority queue</p>
             <a href={dashboardHref("/projects/", demo)} onClick={navigateWithinDashboard} className="overview-all-projects inline-flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-extrabold text-[var(--muted)] hover:text-[var(--ink)]">All projects <ChevronRight size={14} /></a>
           </div>
-          {artifact ? <ArtifactReview artifact={artifact} project={project} inboxMessages={data.inbox_messages} demo={demo} compact operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : <div className="flex flex-1 items-center justify-center p-6"><EmptyState>No commercial artifact needs review.</EmptyState></div>}
+          {artifact ? <ArtifactReview artifact={artifact} project={project} inboxMessages={data.inbox_messages} demo={demo} operatorKey={operatorKey} compact operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : <div className="flex flex-1 items-center justify-center p-6"><EmptyState>No commercial artifact needs review.</EmptyState></div>}
         </section>
       </section>
     </div>
@@ -830,7 +916,7 @@ function Projects({ data, demo, operatorKey, operatorId, setOperatorId, busy, on
               </div>
             ) : null}
           </section>
-          {artifacts.map((artifact) => <ArtifactReview key={artifact.id} artifact={artifact} project={project} inboxMessages={data.inbox_messages} demo={demo} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} />)}
+          {artifacts.map((artifact) => <ArtifactReview key={artifact.id} artifact={artifact} project={project} inboxMessages={data.inbox_messages} demo={demo} operatorKey={operatorKey} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} />)}
           {!artifacts.length ? <EmptyState>No commercial artifacts for this project.</EmptyState> : null}
           <section className="grid gap-6 xl:grid-cols-2">
             <div className="panel p-5 sm:p-6"><p className="eyebrow">Evidence trail</p><h2 className="mt-1 text-xl font-black">Scope events</h2><div className="mt-4"><ScopeEventList events={events} /></div></div>
@@ -1066,7 +1152,7 @@ export function OperatorApp({ view }: { view: View }) {
               <ul className="mt-2 list-disc pl-5">{data.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
             </div>
           ) : null}
-          {view === "overview" ? <Overview data={data} demo={demo} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : null}
+          {view === "overview" ? <Overview data={data} demo={demo} operatorKey={operatorKey} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : null}
           {view === "projects" ? <Projects data={data} demo={demo} operatorKey={operatorKey} operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : null}
           {view === "evals" ? <Evals data={data} /> : null}
           <footer className="mt-10 flex flex-col gap-2 border-t border-[var(--line)] py-6 text-xs font-semibold text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">

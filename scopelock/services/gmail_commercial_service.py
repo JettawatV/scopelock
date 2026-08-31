@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Mapping
 from datetime import datetime, timezone
 from email.utils import parseaddr
@@ -165,6 +166,7 @@ class GmailCommercialService:
         artifact_id: str,
         *,
         correlation_id: str,
+        email_body: str | None = None,
         created_at: datetime | None = None,
     ) -> GmailDraftRecord:
         artifact = self.get_artifact(artifact_id)
@@ -173,12 +175,27 @@ class GmailCommercialService:
             raise ApprovalPolicyViolation(
                 "MISSING_CHECKSUM", "Artifact is not sealed for review"
             )
+        project = self._project(artifact)
+        default_body = self._email_body(
+            artifact,
+            project_title=project.title,
+            client_name=project.client_name,
+        )
+        resolved_body = self._validated_email_body(
+            email_body if email_body is not None else default_body
+        )
         key = IdempotencyKeys.send_action(
             artifact.id,
             artifact.version_number,
             artifact.checksum,
             self._thread_id(artifact),
         )
+        if email_body is not None:
+            key = hashlib.sha256(
+                f"{key}:{hashlib.sha256(resolved_body.encode('utf-8')).hexdigest()}".encode(
+                    "utf-8"
+                )
+            ).hexdigest()
         prior = self._store.find_by_unique_key(
             CollectionName.GMAIL_DRAFTS,
             key_name="draft_action",
@@ -212,7 +229,6 @@ class GmailCommercialService:
             unique_keys={"draft_action": key},
         )
         try:
-            project = self._project(artifact)
             client_email = self._client_email(artifact)
             source = self._latest_client_thread_message(
                 thread_id, client_email=client_email
@@ -222,11 +238,7 @@ class GmailCommercialService:
                 source_message=source,
                 sender_email=self._mailbox,
                 recipient_email=client_email,
-                text_body=self._email_body(
-                    artifact,
-                    project_title=project.title,
-                    client_name=project.client_name,
-                ),
+                text_body=resolved_body,
                 attachment_name=self._attachment_name(artifact),
                 attachment_bytes=self._attachment_bytes(artifact),
             )
@@ -271,6 +283,9 @@ class GmailCommercialService:
                     "gmail_draft_id": draft_id,
                     "gmail_thread_id": thread_id,
                     "artifact_checksum": artifact.checksum,
+                    "email_body_sha256": hashlib.sha256(
+                        resolved_body.encode("utf-8")
+                    ).hexdigest(),
                 },
             )
             return completed
@@ -284,6 +299,7 @@ class GmailCommercialService:
         artifact_id: str,
         *,
         correlation_id: str,
+        email_body: str | None = None,
         attempted_at: datetime | None = None,
     ) -> GmailSendRecord:
         artifact = self.get_artifact(artifact_id)
@@ -311,6 +327,7 @@ class GmailCommercialService:
         draft = self.create_draft(
             artifact_id,
             correlation_id=correlation_id,
+            email_body=email_body,
             created_at=attempted_at,
         )
         if draft.status != "CREATED" or draft.gmail_draft_id is None:
@@ -564,6 +581,29 @@ class GmailCommercialService:
             ]
         )
         return "\n".join(lines)
+
+    @staticmethod
+    def _validated_email_body(value: str) -> str:
+        body = value.strip()
+        if not body:
+            raise ApprovalPolicyViolation(
+                "EMPTY_EMAIL_BODY", "The client email draft cannot be empty"
+            )
+        if len(body) > 20_000:
+            raise ApprovalPolicyViolation(
+                "EMAIL_BODY_TOO_LONG", "The client email draft exceeds 20,000 characters"
+            )
+        return body
+
+    def proposal_pdf(self, artifact_id: str) -> bytes:
+        """Render the exact sealed commercial artifact for operator review."""
+
+        artifact = self.get_artifact(artifact_id)
+        if artifact.checksum is None:
+            raise ApprovalPolicyViolation(
+                "MISSING_CHECKSUM", "Artifact is not sealed for review"
+            )
+        return self._attachment_bytes(artifact)
 
     @staticmethod
     def _attachment_name(artifact: CommercialArtifact) -> str:
