@@ -13,7 +13,13 @@ class SemanticContractViolation(ValueError):
 
 
 _FORBIDDEN_COMMERCE_TEXT = re.compile(
-    r"(?i)\b(price|cost|amount|timeline|duration)\b|\$\s*\d"
+    r"(?ix)"
+    r"(?:[$€£]\s*\d)"
+    r"|(?:\b(?:usd|eur|gbp)\s*\d)"
+    r"|(?:\b\d[\d,]*(?:\.\d+)?\s*(?:business\s+)?"
+    r"(?:day|days|week|weeks|month|months)\b)"
+    r"|(?:\b(?:price|cost|amount|timeline|duration)\s*"
+    r"(?:is|=|:)\s*[$€£]?\s*\d)"
 )
 
 

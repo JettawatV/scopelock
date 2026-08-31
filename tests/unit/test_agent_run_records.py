@@ -156,6 +156,38 @@ def test_unexpected_commercial_field_becomes_needs_review():
     assert completed.error.category == "INVALID_REQUIREMENT_OUTPUT"
 
 
+def test_non_numeric_commercial_request_language_is_allowed():
+    raw_output = json.loads(valid_output())
+    raw_output["objective"] = (
+        "Prepare a proposal with pricing and a delivery timeline for operator review."
+    )
+    run = create_agent_run("Please prepare pricing and a delivery timeline.")
+
+    completed = complete_agent_run(
+        run,
+        json.dumps(raw_output),
+        valid_module_keys={"email_intake"},
+    )
+
+    assert completed.status == AgentRunStatus.COMPLETED
+
+
+def test_numeric_commercial_claim_in_semantic_output_needs_review():
+    raw_output = json.loads(valid_output())
+    raw_output["objective"] = "Deliver the project in 5 business days for $500."
+    run = create_agent_run("Please automate our shared Gmail inbox.")
+
+    completed = complete_agent_run(
+        run,
+        json.dumps(raw_output),
+        valid_module_keys={"email_intake"},
+    )
+
+    assert completed.status == AgentRunStatus.NEEDS_REVIEW
+    assert completed.error is not None
+    assert "commercial language" in completed.error.message
+
+
 def test_tool_actions_and_run_bundle_are_application_owned(tmp_path):
     run = create_agent_run("Automate our shared Gmail inbox.")
     call = Event(
