@@ -525,7 +525,8 @@ def create_app(
                 detail="Reviewer dashboard is unavailable",
             )
         return configured.dashboard_service.overview_for_client_email(
-            identity.email
+            identity.email,
+            demo_mailbox=configured.mailbox,
         ).model_dump(mode="json")
 
     @app.get("/api/reviewer/messages/{message_id}")
@@ -545,7 +546,9 @@ def create_app(
             )
         try:
             result = configured.dashboard_service.message_detail_for_client_email(
-                message_id, identity.email
+                message_id,
+                identity.email,
+                demo_mailbox=configured.mailbox,
             )
         except KeyError as error:
             raise HTTPException(status_code=404, detail="Message not found") from error

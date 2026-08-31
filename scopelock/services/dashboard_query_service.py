@@ -167,7 +167,9 @@ class DashboardQueryService:
             warnings=tuple(warnings),
         )
 
-    def overview_for_client_email(self, client_email: str) -> DashboardSnapshot:
+    def overview_for_client_email(
+        self, client_email: str, *, demo_mailbox: str | None = None
+    ) -> DashboardSnapshot:
         """Return a bounded projection for one verified reviewer email.
 
         The public judge surface must not expose the shared demo mailbox or
@@ -183,6 +185,29 @@ class DashboardQueryService:
             for project in snapshot.projects
             if project.client_email.casefold() == normalized_email
         }
+        # The public reviewer surface is a single authenticated demo workspace.
+        # A judge may sign in with one address and send the test message from a
+        # different account. If the identity-specific query is empty, fall back
+        # to projects whose inbound message was delivered to the configured
+        # demo mailbox. This keeps the mailbox boundary while avoiding a silent
+        # empty dashboard caused by an address mismatch.
+        if not project_ids and demo_mailbox:
+            normalized_mailbox = demo_mailbox.strip().casefold()
+            inbound_by_thread = {
+                message.email.thread_id
+                for message in self._load(
+                    CollectionName.INBOUND_MESSAGES,
+                    InboundMessageRecord,
+                    [],
+                )
+                if normalized_mailbox
+                in {recipient.casefold() for recipient in message.email.recipient_emails}
+            }
+            project_ids = {
+                project.id
+                for project in snapshot.projects
+                if project.gmail_thread_id in inbound_by_thread
+            }
         return snapshot.model_copy(
             update={
                 "projects": tuple(
@@ -228,7 +253,11 @@ class DashboardQueryService:
         )
 
     def message_detail_for_client_email(
-        self, message_id: str, client_email: str
+        self,
+        message_id: str,
+        client_email: str,
+        *,
+        demo_mailbox: str | None = None,
     ) -> DashboardMessageDetail:
         """Return a selected thread message for the verified project owner.
 
@@ -243,6 +272,24 @@ class DashboardQueryService:
             for project in self.overview().projects
             if project.client_email.casefold() == client_email.strip().casefold()
         }
+        if detail.project_id not in project_ids and demo_mailbox:
+            normalized_mailbox = demo_mailbox.strip().casefold()
+            inbound = next(
+                (
+                    item
+                    for item in self._load(
+                        CollectionName.INBOUND_MESSAGES,
+                        InboundMessageRecord,
+                        [],
+                    )
+                    if item.id == message_id
+                ),
+                None,
+            )
+            if inbound and normalized_mailbox in {
+                recipient.casefold() for recipient in inbound.email.recipient_emails
+            }:
+                return detail
         if detail.project_id not in project_ids:
             raise KeyError(message_id)
         return detail

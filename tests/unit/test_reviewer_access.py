@@ -78,6 +78,20 @@ def test_reviewer_dashboard_is_scoped_and_hides_demo_mailbox(monkeypatch):
     assert hidden_message.status_code == 404
 
 
+def test_reviewer_demo_mailbox_fallback_handles_sign_in_sender_mismatch():
+    service = _dashboard_service()
+    snapshot = service.overview_for_client_email(
+        "judge@example.com", demo_mailbox="hidden-recipient@example.com"
+    )
+    assert [project.id for project in snapshot.projects] == ["project-1"]
+    detail = service.message_detail_for_client_email(
+        "inbound-1",
+        "judge@example.com",
+        demo_mailbox="hidden-recipient@example.com",
+    )
+    assert detail.project_id == "project-1"
+
+
 def test_reviewer_config_returns_only_public_firebase_values(monkeypatch):
     monkeypatch.setenv("SCOPELOCK_FIREBASE_PROJECT_ID", "scopelock-test")
     monkeypatch.setenv("SCOPELOCK_FIREBASE_API_KEY", "public-web-key")
