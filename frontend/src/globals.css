@@ -76,10 +76,12 @@ textarea {
 }
 
 .operator-shell {
+  height: 100dvh;
   min-height: 100dvh;
   display: grid;
   grid-template-columns: 15rem minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
   background: var(--canvas);
   transition: grid-template-columns 200ms ease;
 }
@@ -107,9 +109,11 @@ textarea {
   grid-column: 1;
   grid-row: 1 / span 2;
   display: flex;
+  height: 100dvh;
   min-height: 100dvh;
   flex-direction: column;
   gap: 0.75rem;
+  overflow: hidden;
   border-right: 1px solid var(--line);
   background: var(--surface-soft);
   color: var(--ink);
@@ -178,7 +182,7 @@ textarea {
 }
 
 .sidebar-nav-settings {
-  margin-top: auto;
+  margin-top: 0.5rem;
 }
 
 .sidebar-nav::-webkit-scrollbar {
@@ -314,8 +318,16 @@ textarea {
 .operator-shell > main {
   grid-column: 2;
   grid-row: 2;
+  height: 100%;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   width: 100%;
+}
+
+.workspace-main {
+  min-height: 0;
 }
 
 .brand-mark {
@@ -373,7 +385,15 @@ textarea {
 }
 
 .overview-main {
-  padding-top: 1.25rem !important;
+  padding-top: 1.5rem !important;
+  padding-bottom: 1.5rem !important;
+}
+
+@media (min-width: 1024px) {
+  .overview-main {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+  }
 }
 
 .overview-main .overview-demo-banner {
@@ -439,6 +459,36 @@ textarea {
   border: 1px solid var(--line);
   background: var(--surface-soft);
 }
+
+.toast-stack {
+  position: fixed;
+  z-index: 1200;
+  top: 5.25rem;
+  right: 1.25rem;
+  display: grid;
+  width: min(24rem, calc(100vw - 2rem));
+  gap: .75rem;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: .6rem;
+  border: 1px solid var(--line-strong);
+  border-radius: .75rem;
+  padding: .8rem 1rem;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-panel);
+  color: var(--ink);
+  font-size: .75rem;
+  font-weight: 750;
+  line-height: 1.45;
+  pointer-events: auto;
+}
+
+.toast-success { border-color: var(--line-dark); }
+.toast-error { border-color: var(--ink); }
 
 .overview-main > footer {
   display: none;
@@ -562,28 +612,13 @@ textarea {
   flex-direction: column;
 }
 
-.sop-source-strip {
-  display: flex;
-  min-height: 4rem;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-  padding: 0.75rem 1rem;
-}
-
-.sop-source-icon {
-  display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 0.625rem;
-  background: var(--surface-soft);
-}
-
 .priority-review-header {
   min-height: 4rem;
+}
+
+.overview-panel-header {
+  min-height: 4rem;
+  border-bottom: 1px solid var(--line);
 }
 
 .priority-review-panel .overview-artifact-card {
@@ -708,6 +743,20 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 0.875rem;
   background: var(--surface-soft);
+}
+
+.proposal-pdf-frame-shell {
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+  background: white;
+}
+
+.proposal-pdf-frame {
+  display: block;
+  width: 100%;
+  height: min(56dvh, 38rem);
+  border: 0;
+  background: white;
 }
 
 .proposal-document-sheet {
@@ -929,7 +978,7 @@ textarea {
   }
 
   .operator-shell.sidebar-collapsed .sidebar-nav-settings {
-    margin-top: auto;
+    margin-top: 0.5rem;
   }
 
   .operator-shell.sidebar-collapsed .sidebar-link {
@@ -942,12 +991,20 @@ textarea {
 }
 
 @media (max-width: 1023px) {
+  .toast-stack {
+    top: 1rem;
+    right: 1rem;
+  }
+
   .operator-shell {
+    height: auto;
     display: block;
+    overflow: visible;
   }
 
   .operator-sidebar {
     display: grid;
+    height: auto;
     min-height: auto;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
@@ -1001,6 +1058,8 @@ textarea {
 
   .operator-shell > main {
     display: block;
+    height: auto;
+    overflow: visible;
   }
 
   .overview-board {
@@ -1087,10 +1146,6 @@ textarea {
 }
 
 @media (max-height: 800px) and (min-width: 768px) {
-  .overview-main {
-    padding-top: 1rem !important;
-  }
-
   .overview-demo-banner {
     display: none;
   }

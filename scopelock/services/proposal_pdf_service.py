@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from functools import partial
 from html import escape
 from io import BytesIO
@@ -40,6 +41,21 @@ def _humanize(value: str) -> str:
 def _money(value: int, *, signed: bool = False) -> str:
     prefix = "+" if signed and value > 0 else ""
     return f"{prefix}USD {value:,}"
+
+
+def _client_facing_project_title(title: str, *, artifact_type: str) -> str:
+    """Keep internal/demo subject markers out of the client-facing PDF."""
+
+    cleaned = re.sub(r"\s+", " ", title.strip())
+    cleaned = re.sub(r"^\[(?:dev|demo|fixture)\]\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+\((?:dev|demo|fixture)\)$", "", cleaned, flags=re.IGNORECASE)
+    if not cleaned or re.fullmatch(
+        r"(?:re:\s*)?(?:automation\s+)?project\s+requirements",
+        cleaned,
+        flags=re.IGNORECASE,
+    ):
+        return "Scope change order" if artifact_type == "CHANGE_ORDER" else "Project proposal"
+    return cleaned
 
 
 class _InvariantCanvas(canvas.Canvas):
@@ -154,14 +170,21 @@ def render_commercial_artifact_pdf(
     story = [
         Paragraph("ScopeLock", styles["ScopeLockSmall"]),
         Paragraph(escape(label), styles["ScopeLockTitle"]),
-        Paragraph(escape(project.title), styles["Heading2"]),
+        Paragraph(
+            escape(
+                _client_facing_project_title(
+                    project.title,
+                    artifact_type=artifact.artifact_type.value,
+                )
+            ),
+            styles["Heading2"],
+        ),
         Spacer(1, 2 * mm),
         Table(
             [
                 ["Prepared for", escape(project.client_name)],
                 ["Client email", escape(project.client_email)],
                 ["Document", escape(reference)],
-                ["SOP version", escape(artifact.sop_version)],
                 ["Prepared", artifact.created_at.date().isoformat()],
             ],
             colWidths=[34 * mm, 122 * mm],
@@ -315,11 +338,7 @@ def render_commercial_artifact_pdf(
             Spacer(1, 5 * mm),
             HRFlowable(width="100%", thickness=0.6, color=_LINE),
             Spacer(1, 2 * mm),
-            Paragraph(
-                f"Artifact {escape(artifact.id)} - checksum "
-                f"{escape(artifact.checksum or 'unsealed')}",
-                styles["ScopeLockSmall"],
-            ),
+            Paragraph("Prepared for client review.", styles["ScopeLockSmall"]),
         ]
     )
 

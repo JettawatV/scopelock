@@ -352,6 +352,14 @@ Vite build, Docker build, or Cloud Run deployment. The proxy exists only in the
 development server; the production image still serves the built SPA and API
 from one origin.
 
+To preview the dashboard through a Cloud Run service proxy instead, set
+`VITE_API_PROXY_TARGET` before starting Vite (the default remains port 8080):
+
+```powershell
+$env:VITE_API_PROXY_TARGET = "http://127.0.0.1:8082"
+npm run dev
+```
+
 For a production-style local build:
 
 ```powershell

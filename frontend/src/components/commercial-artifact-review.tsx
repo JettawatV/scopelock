@@ -28,6 +28,23 @@ type ArtifactReviewProps = {
 
 type PreviewTab = "overview" | "document" | "email";
 
+function clientFacingProjectTitle(artifact: Artifact, project?: Project) {
+  const rawTitle = project?.title?.trim().replace(/\s+/g, " ");
+  const cleanedTitle = rawTitle
+    ?.replace(/^\[(?:dev|demo|fixture)\]\s*/i, "")
+    .replace(/\s+\((?:dev|demo|fixture)\)$/i, "")
+    .trim();
+  if (
+    !cleanedTitle
+    || /^(?:re:\s*)?(?:automation\s+)?project\s+requirements$/i.test(cleanedTitle)
+  ) {
+    return artifact.artifact_type === "CHANGE_ORDER"
+      ? "Scope change order"
+      : "Project proposal";
+  }
+  return cleanedTitle;
+}
+
 const PREVIEW_TABS: Array<{ key: PreviewTab; label: string; icon: LucideIcon }> = [
   { key: "overview", label: "Overview", icon: Eye },
   { key: "document", label: "Proposal review", icon: FileText },
@@ -48,7 +65,7 @@ type ReviewPacketActions = {
 };
 
 function emailPreview(artifact: Artifact, project?: Project) {
-  const title = project?.title?.trim() || "your project";
+  const title = clientFacingProjectTitle(artifact, project);
   const greeting = project?.client_name?.trim()
     ? `Hello ${project.client_name.trim()},`
     : "Hello,";
@@ -104,11 +121,12 @@ function PreviewTabs({
 }
 
 function ProposalDocumentSheet({ artifact, project }: { artifact: Artifact; project?: Project }) {
+  const title = clientFacingProjectTitle(artifact, project);
   return (
     <article className="proposal-document-sheet" aria-label="Proposal document preview">
       <div className="proposal-document-heading">
         <p className="eyebrow">Proposal · Version {artifact.version_number}</p>
-        <h3 className="mt-2 text-2xl font-black tracking-[-0.035em]">{project?.title ?? "Commercial proposal"}</h3>
+        <h3 className="mt-2 text-2xl font-black tracking-[-0.035em]">{title}</h3>
         <p className="mt-1 text-sm text-[var(--muted)]">Prepared for {project?.client_name ?? "the client"}</p>
       </div>
       <dl className="proposal-document-summary">
@@ -127,7 +145,7 @@ function ProposalDocumentSheet({ artifact, project }: { artifact: Artifact; proj
           ))}
         </div>
       </div>
-      <p className="mt-6 border-t border-[var(--line)] pt-4 text-xs leading-5 text-[var(--muted)]">Scope and pricing calculated from the sealed {artifact.sop_version} catalog. Reply to confirm the scope or request a change.</p>
+      <p className="mt-6 border-t border-[var(--line)] pt-4 text-xs leading-5 text-[var(--muted)]">Scope and pricing are based on the reviewed requirements. Reply to confirm the scope or request a change.</p>
     </article>
   );
 }
@@ -202,6 +220,13 @@ function ArtifactPreviewModal({
   });
 
   useEffect(() => {
+    const savedDraft = readStoredValue("session", emailDraftStorageKey);
+    setEmailDraft(savedDraft ?? emailPreview(artifact, project));
+    setEmailDraftSaved(savedDraft !== null);
+    setSendConfirm(false);
+  }, [artifact.id]);
+
+  useEffect(() => {
     if (!open) return;
     setTab(initialTab);
     const onKeyDown = (event: KeyboardEvent) => {
@@ -268,7 +293,7 @@ function ArtifactPreviewModal({
           <div>
             <p className="eyebrow">Review packet</p>
             <h2 id={`preview-title-${artifact.id}`} className="mt-1 text-xl font-black tracking-[-0.03em]">
-              {project?.title ?? "Commercial review"}
+              {clientFacingProjectTitle(artifact, project)}
             </h2>
             <p className="mt-1 text-xs text-[var(--muted)]">
               Review the commercial summary, exact PDF, and client email before taking action.
@@ -293,7 +318,7 @@ function ArtifactPreviewModal({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[var(--muted)]">{humanize(artifact.artifact_type)} · Version {artifact.version_number}</p>
-                    <h3 className="mt-2 text-xl font-black tracking-[-0.03em]">{project?.title ?? "Commercial proposal"}</h3>
+                    <h3 className="mt-2 text-xl font-black tracking-[-0.03em]">{clientFacingProjectTitle(artifact, project)}</h3>
                     <p className="mt-1 text-sm text-[var(--muted)]">Prepared for {project?.client_name ?? "client review"}</p>
                   </div>
                   <StatusPill status={artifact.status} />
@@ -303,7 +328,7 @@ function ArtifactPreviewModal({
                 <div className="rounded-xl border border-[var(--line)] bg-white p-4">
                   <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[var(--muted)]">Total investment</p>
                   <p className="tabular mt-2 text-2xl font-black">{money(artifact.pricing_result.total_usd)}</p>
-                  <p className="mt-1 text-xs text-[var(--muted)]">Calculated from {artifact.sop_version}</p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">Based on the reviewed requirements</p>
                 </div>
                 <div className="rounded-xl border border-[var(--line)] bg-white p-4">
                   <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[var(--muted)]">Delivery timeline</p>
@@ -334,13 +359,14 @@ function ArtifactPreviewModal({
           {tab === "document" ? (
             <div className="proposal-document-viewer">
               <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3">
-                <div><p className="text-xs font-black">Exact proposal PDF</p><p className="mt-0.5 text-[10px] text-[var(--muted)]">Generated from the sealed scope and deterministic pricing result.</p></div>
+                <div><p className="text-xs font-black">Latest proposal · Version {artifact.version_number}</p><p className="mt-0.5 text-[10px] text-[var(--muted)]">The current proposal and commercial totals for this review.</p></div>
                 {pdfUrl ? <a href={pdfUrl} download={`proposal-${artifact.version_number}.pdf`} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--line)] px-3 text-xs font-bold hover:bg-[var(--surface-soft)]"><Download size={14} /> Download</a> : null}
               </div>
               {pdfError ? <p role="alert" className="m-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm font-bold">{pdfError}</p> : null}
               {!pdfUrl && !pdfError ? <p className="p-6 text-center text-sm font-bold text-[var(--muted)]">Loading proposal PDF…</p> : null}
-              {pdfUrl ? <ProposalDocumentSheet artifact={artifact} project={project} /> : null}
-              {pdfUrl ? <p className="border-t border-[var(--line)] px-4 py-3 text-xs text-[var(--muted)]">The exact sealed PDF is available from Download above. This review sheet mirrors its deterministic scope and commercial totals.</p> : null}
+              <ProposalDocumentSheet artifact={artifact} project={project} />
+              {pdfUrl ? <div className="proposal-pdf-frame-shell"><iframe title={`Latest proposal PDF, version ${artifact.version_number}`} src={pdfUrl} className="proposal-pdf-frame" /></div> : null}
+              {pdfUrl ? <p className="border-t border-[var(--line)] px-4 py-3 text-xs text-[var(--muted)]">The current PDF is available from Download above.</p> : null}
             </div>
           ) : null}
 
@@ -827,7 +853,7 @@ function CompactArtifactReview({
         <div className="latest-review-layout">
           <div className="min-w-0">
             <p className="eyebrow">Latest review</p>
-            <h2 className="mt-1 text-balance text-lg font-bold tracking-[-0.025em]">{project?.title ?? "Commercial artifact"}</h2>
+            <h2 className="mt-1 text-balance text-lg font-bold tracking-[-0.025em]">{clientFacingProjectTitle(artifact, project)}</h2>
             <p className="mt-1 truncate text-xs text-[var(--muted)]">{project?.client_name ?? artifact.project_id}</p>
           </div>
           <dl className="latest-review-metrics">

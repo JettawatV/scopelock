@@ -174,7 +174,7 @@ export const demoDashboard: DashboardSnapshot = {
       baseline_scope_version_id: "demo-scope-accepted",
       classification: "EXPANSION",
       status: "AWAITING_USER_REVIEW",
-      description: "Managers can approve requests from LINE and receive LINE alerts.",
+      description: "Managers can approve requests from WhatsApp and receive WhatsApp alerts.",
       additions: [
         { module_key: "line_notifications", quantity: 1 },
         { module_key: "line_approval", quantity: 1 },
@@ -185,7 +185,7 @@ export const demoDashboard: DashboardSnapshot = {
         {
           source_type: "gmail",
           source_id: "demo-gmail-change",
-          quote_or_rule: "Can managers also approve requests from LINE and receive LINE alerts?",
+        quote_or_rule: "Can managers also approve requests from WhatsApp and receive WhatsApp alerts?",
         },
       ],
       price_delta_usd: 1500,
@@ -360,7 +360,7 @@ export const demoInboxMessageDetails: Record<string, InboxMessageDetail> = {
   },
   "demo-inbound-northstar": {
     ...demoDashboard.inbox_messages[1],
-    body: "Hi team,\n\nCan managers also approve requests from LINE and receive LINE alerts? Please let us know the impact on price and delivery.\n\nThanks,\nNorthstar Services",
+    body: "Hi team,\n\nCan managers also approve requests from WhatsApp and receive WhatsApp alerts? Please let us know the impact on price and delivery.\n\nThanks,\nNorthstar Services",
     body_format: "PLAIN",
     attachments: [],
   },
@@ -424,12 +424,12 @@ export const demoProjectDetails: Record<string, ProjectDetailSnapshot> = {
         requirements: [
           { requirement_id: "REQ-01", category: "Workflow", description: "Automate the defined operations workflow.", normalized_key: "operations_workflow" },
           { requirement_id: "REQ-02", category: "Dashboard", description: "Provide a simple operations status dashboard.", normalized_key: "operations_dashboard" },
-          { requirement_id: "REQ-03", category: "Notification", description: "Notify managers through LINE when approval is needed.", normalized_key: "line_notifications" },
-          { requirement_id: "REQ-04", category: "Approval", description: "Allow authorized managers to approve or reject requests from LINE.", normalized_key: "line_approval" },
+          { requirement_id: "REQ-03", category: "Notification", description: "Notify managers through WhatsApp when approval is needed.", normalized_key: "line_notifications" },
+          { requirement_id: "REQ-04", category: "Approval", description: "Allow authorized managers to approve or reject requests from WhatsApp.", normalized_key: "line_approval" },
         ],
         module_selections: northstarArtifact.calculation_inputs,
-        assumptions: ["One LINE channel is used for manager notifications."],
-        exclusions: ["A LINE mini app and conversational chatbot are excluded."],
+        assumptions: ["One WhatsApp channel is used for manager notifications."],
+        exclusions: ["A WhatsApp mini app and conversational chatbot are excluded."],
         pricing_result: northstarArtifact.pricing_result,
         timeline_result: northstarArtifact.timeline_result,
         total_price_usd: northstarArtifact.pricing_result.total_usd,

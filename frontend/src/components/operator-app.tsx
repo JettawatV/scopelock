@@ -5,10 +5,8 @@ import {
   CircleAlert,
   Clock3,
   FileCheck2,
-  FileText,
   Inbox,
   KeyRound,
-  LockKeyhole,
   LogOut,
   Mail,
   Paperclip,
@@ -84,6 +82,23 @@ const VIEW_TITLES: Record<View, readonly [string, string]> = {
   overview: ["Workspace overview", "Keep every commercial decision in view."],
   settings: ["Settings", "Manage the connected workspace and business rules"],
 };
+
+function latestWorkspaceArtifact(data: DashboardSnapshot): Artifact | undefined {
+  const currentArtifacts = data.artifacts.filter((artifact) => {
+    const project = data.projects.find((candidate) => candidate.id === artifact.project_id);
+    return !project?.active_proposal_id || project.active_proposal_id === artifact.id;
+  });
+  const reviewArtifacts = currentArtifacts.filter((artifact) => REVIEW_STATUSES.has(artifact.status));
+  const candidates = reviewArtifacts.length ? reviewArtifacts : currentArtifacts.length ? currentArtifacts : data.artifacts;
+
+  return [...candidates].sort((left, right) => {
+    const leftActive = data.projects.some((project) => project.active_proposal_id === left.id);
+    const rightActive = data.projects.some((project) => project.active_proposal_id === right.id);
+    return Number(rightActive) - Number(leftActive)
+      || new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+      || right.version_number - left.version_number;
+  })[0];
+}
 
 function dashboardHref(path: string, demo: boolean) {
   return demo ? `${path}${path.includes("?") ? "&" : "?"}demo=1` : path;
@@ -161,8 +176,8 @@ function AppHeader({
       <aside id="workspace-navigation" className="operator-sidebar" aria-label="Workspace navigation">
         <div className="sidebar-top-row">
           <a href={reviewer ? "/review/" : dashboardHref("/", demo)} onClick={reviewer ? undefined : navigateWithinDashboard} className="sidebar-brand rounded-lg" aria-label="ScopeLock home">
-            <span className="sidebar-brand-mark grid size-10 shrink-0 place-items-center rounded-lg text-[var(--ink)]">
-              <LockKeyhole aria-hidden="true" size={20} strokeWidth={2.4} />
+            <span className="sidebar-brand-mark grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-white">
+              <img src="/scopelock-logo.jpeg" alt="" className="size-full object-cover" />
             </span>
             <span className="sidebar-brand-copy min-w-0">
               <span className="block text-lg font-black tracking-[-0.035em]">ScopeLock</span>
@@ -347,9 +362,9 @@ function MetricCard({
     <article className={`panel metric-card ${compact ? "p-4" : "p-5 sm:p-6"} ${accent ? "metric-card-accent" : ""}`}>
       <div className="flex items-center gap-3">
         <span className="metric-card-icon grid size-10 shrink-0 place-items-center rounded-lg text-[var(--ink)]">{icon}</span>
-        <div className="min-w-0">
-          <p className="metric-card-label font-extrabold uppercase text-[var(--muted)]">{label}</p>
-          <p className={`tabular ${compact ? "mt-2 text-2xl" : "mt-3 text-3xl"} font-black tracking-[-0.045em]`}>{value}</p>
+        <div className="min-w-0 flex-1">
+          <p className="metric-card-label text-left font-extrabold uppercase text-[var(--muted)]">{label}</p>
+          <p className={`tabular text-right ${compact ? "mt-2 text-2xl" : "mt-3 text-3xl"} font-black tracking-[-0.045em]`}>{value}</p>
         </div>
       </div>
       <p className={`${compact ? "mt-2" : "mt-4"} text-xs font-semibold leading-5 text-[var(--muted)]`}>{detail}</p>
@@ -640,8 +655,8 @@ function GmailReviewPanel({
 
   return (
     <>
-    <section className={`panel gmail-review-panel flex min-w-0 flex-col p-5 sm:p-6 ${compact ? "overview-inbox-panel" : "min-h-[31rem]"}`}>
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--line)] pb-5">
+    <section className={`panel gmail-review-panel flex min-w-0 flex-col overflow-hidden ${compact ? "overview-inbox-panel" : "min-h-[31rem]"}`}>
+      <div className="overview-panel-header flex flex-wrap items-start justify-between gap-4 px-5 py-4 sm:px-6">
         <div className="min-w-0">
           <p className="eyebrow">{reviewer ? "ScopeLock demo inbox" : "Gmail review"}</p>
           {reviewer ? <p className="mt-1 text-xs font-semibold text-[var(--muted)]">Shared test inbox · not your personal Gmail</p> : null}
@@ -659,7 +674,7 @@ function GmailReviewPanel({
       </div>
 
       {data.inbox_messages.length ? (
-        <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto px-5 pb-5 pr-4 sm:px-6 sm:pb-6 sm:pr-5">
           <div className={compact ? "overview-message-list" : "grid gap-2"}>
             {data.inbox_messages.slice(0, compact ? 3 : undefined).map((message) => {
               const project = projectsById.get(message.project_id);
@@ -694,7 +709,7 @@ function GmailReviewPanel({
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center sm:px-6">
           <span className="grid size-12 place-items-center rounded-full bg-[var(--surface-muted)] text-[var(--ink)]"><Mail size={21} /></span>
           <h3 className="mt-4 text-base font-black">{watch ? "Waiting for a project email" : reviewer ? "Demo inbox is ready" : "Gmail monitoring is not active"}</h3>
           <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--muted)]">{watch ? reviewer ? "Send a project email to the shared ScopeLock demo inbox from this signed-in address. The agent will analyze it in the background." : "Project-linked messages will appear here after the Gmail event workflow records them." : reviewer ? "The owner manages Gmail monitoring. Your reviewer session only exposes messages linked to this signed-in email." : "Register Gmail notifications only after the OAuth and Pub/Sub checks are complete."}</p>
@@ -781,7 +796,7 @@ function Overview({
   busy: boolean;
   onCommand: (path: string, payload: Record<string, string>) => Promise<void>;
 }) {
-  const artifact = data.artifacts.find((item) => REVIEW_STATUSES.has(item.status)) ?? data.artifacts[0];
+  const artifact = latestWorkspaceArtifact(data);
   const project = artifact ? data.projects.find((item) => item.id === artifact.project_id) : undefined;
   const actionCount = data.artifacts.filter((item) => REVIEW_STATUSES.has(item.status)).length + data.scope_buffers.filter((item) => item.status === "READY_TO_FINALIZE").length;
   const bufferedDelta = data.scope_buffers
@@ -807,19 +822,13 @@ function Overview({
         <MetricCard label="Agent gate" value={data.readiness.status} detail={`${data.readiness.checks.reduce((sum, item) => sum + item.passed, 0)} reviewed checks passed`} icon={<ShieldCheck size={19} />} compact />
       </section>
 
-      <section className="sop-source-strip panel" aria-label="Active business SOP">
-        <span className="sop-source-icon"><FileText size={18} aria-hidden="true" /></span>
-        <div className="min-w-0 flex-1"><p className="text-xs font-black">Business SOP</p><p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">Configured catalog · {artifact?.sop_version ?? "No active SOP version"}</p></div>
-        <span className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[var(--muted-strong)]">{artifact?.sop_version ? "SOP loaded" : "No SOP reference"}</span>
-      </section>
-
       <section className="overview-board mt-2 min-w-0">
         <div className="overview-inbox min-w-0">
           <GmailReviewPanel data={data} demo={demo} operatorKey={operatorKey} apiPrefix={apiPrefix} reviewer={reviewer} busy={busy} onCommand={onCommand} compact />
         </div>
 
         <section className="panel overview-review priority-review-panel min-w-0 overflow-hidden">
-          <div className="priority-review-header flex items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-4 sm:px-6">
+          <div className="overview-panel-header priority-review-header flex items-center justify-between gap-3 px-5 py-4 sm:px-6">
             <p className="eyebrow">Priority queue</p>
             <span className="text-xs font-extrabold text-[var(--muted)]">Current project</span>
           </div>
@@ -841,7 +850,7 @@ function Settings({
   busy: boolean;
   onCommand: (path: string, payload: Record<string, string>) => Promise<void>;
 }) {
-  const artifact = data.artifacts.find((item) => REVIEW_STATUSES.has(item.status)) ?? data.artifacts[0];
+  const artifact = latestWorkspaceArtifact(data);
   const defaultSopDraft = {
     version: artifact?.sop_version ?? "jvl-demo-v1",
     businessName: "JVL",
@@ -887,19 +896,12 @@ function Settings({
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-      <section className="panel p-6 sm:p-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="eyebrow">Business rules</p>
-            <h2 className="mt-2 text-3xl font-black tracking-[-0.045em]">SOP settings</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">Manage a versioned draft of the rules ScopeLock uses to price work and calculate delivery impact.</p>
-          </div>
-          <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-[var(--surface-muted)] text-[var(--ink)]"><FileText size={19} aria-hidden="true" /></span>
-        </div>
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <section className="panel p-5 sm:p-6">
+        <p className="max-w-2xl text-sm font-semibold leading-6 text-[var(--muted)]">SOP setting</p>
 
-        <form onSubmit={saveSopDraft} className="mt-8 grid gap-5">
-          <div className="grid gap-5 sm:grid-cols-2">
+        <form onSubmit={saveSopDraft} className="mt-6 grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-1.5 text-sm font-extrabold" htmlFor="sop-business-name">Business name<input id="sop-business-name" value={sopDraft.businessName} onChange={(event) => updateSop("businessName", event.target.value)} className="min-h-11 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm font-normal" required /></label>
             <label className="grid gap-1.5 text-sm font-extrabold" htmlFor="sop-version">Catalog version<input id="sop-version" value={sopDraft.version} onChange={(event) => updateSop("version", event.target.value)} className="min-h-11 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm font-normal" required /></label>
             <label className="grid gap-1.5 text-sm font-extrabold" htmlFor="sop-valid-days">Proposal validity (days)<input id="sop-valid-days" type="number" min="1" value={sopDraft.proposalValidDays} onChange={(event) => updateSop("proposalValidDays", event.target.value)} className="min-h-11 rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm font-normal" required /></label>
@@ -928,10 +930,9 @@ function Settings({
         </form>
       </section>
 
-      <div className="grid content-start gap-6">
-        <section className="panel p-6 sm:p-8">
-          <div className="flex items-start justify-between gap-4"><div><p className="eyebrow">Inbound channel</p><h2 className="mt-2 text-2xl font-black tracking-[-0.035em]">Gmail connection</h2></div><span className="grid size-11 shrink-0 place-items-center rounded-lg bg-[var(--surface-muted)] text-[var(--ink)]"><Mail size={19} aria-hidden="true" /></span></div>
-          <div className="mt-6 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+      <div className="grid content-start gap-4">
+        <section className="panel p-5 sm:p-6">
+          <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
             <div className="flex items-center justify-between gap-3"><p className="text-xs font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Connection status</p><StatusPill status={watch ? "MONITORING" : "NOT_CONNECTED"} /></div>
             <p className="mt-3 text-sm font-black">{watch ? watch.mailbox : "No mailbox watch registered"}</p>
             <p className="mt-1 text-xs leading-5 text-[var(--muted)]">{watch ? `Watch expires ${time(watch.expiration)}.` : "Register the dedicated Gmail mailbox after OAuth and Pub/Sub configuration are verified."}</p>
@@ -946,13 +947,6 @@ function Settings({
           <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-[var(--muted)]"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-[var(--ink)]" /> Read-only and compose/send scopes are kept separate; commercial sends still require explicit approval.</p>
         </section>
 
-        <section className="panel p-6 sm:p-8">
-          <p className="eyebrow">Operator controls</p>
-          <h2 className="mt-2 text-2xl font-black tracking-[-0.035em]">Guardrails stay on</h2>
-          <div className="mt-5 grid gap-3">
-            {["Accepted scope baselines remain immutable", "Pricing and timeline are deterministic", "Every external action is correlation-ID logged"].map((item) => <div key={item} className="flex items-start gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3"><CheckCircle2 size={17} className="mt-0.5 shrink-0 text-[var(--ink)]" /><span className="text-sm font-bold">{item}</span></div>)}
-          </div>
-        </section>
       </div>
     </div>
   );
@@ -988,6 +982,15 @@ export function OperatorApp({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return readStoredValue("local", SIDEBAR_COLLAPSED_KEY) === "true";
   });
+
+  useEffect(() => {
+    if (!notice && !error) return;
+    const timer = window.setTimeout(() => {
+      setNotice(null);
+      setError(null);
+    }, 5_000);
+    return () => window.clearTimeout(timer);
+  }, [notice, error]);
 
   const load = async (key: ApiCredential) => {
     const snapshot = await apiRequest<DashboardSnapshot>(
@@ -1124,8 +1127,6 @@ export function OperatorApp({
     }
   };
 
-  const title = VIEW_TITLES[view];
-
   return (
     <div className={`operator-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <AppHeader
@@ -1150,7 +1151,7 @@ export function OperatorApp({
           </section>
         </main>
       ) : <ConnectPanel busy={busy} error={error} onConnect={connect} /> : (
-        <main id="main-content" className={`mx-auto max-w-[1600px] px-4 sm:px-7 lg:px-10 ${view === "overview" ? "overview-main pt-2 pb-0 lg:pt-2" : "py-8 lg:py-10"}`}>
+        <main id="main-content" className={`workspace-main mx-auto max-w-[1600px] px-4 py-6 sm:px-8 lg:px-8 lg:py-8 ${view === "overview" ? "overview-main" : ""}`}>
           {demo ? (
             <div className="overview-demo-banner mb-6 flex flex-col gap-3 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-soft)] px-4 py-3 text-sm font-bold text-[var(--ink)] sm:flex-row sm:items-center sm:justify-between">
               <span className="flex min-w-0 items-center gap-2 break-words"><TriangleAlert size={17} className="shrink-0" /> Reviewed demo fixture—no live Gmail data or external actions.</span>
@@ -1163,19 +1164,12 @@ export function OperatorApp({
               <span><strong>ScopeLock demo inbox.</strong> This shared test workspace is not your personal Gmail inbox.</span>
             </div>
           ) : null}
-          {view !== "overview" ? (
-            <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="eyebrow">{title[0]}</p>
-                <h1 className="mt-2 text-balance text-3xl font-black tracking-[-0.045em] sm:text-4xl">{title[1]}</h1>
-                <p className="mt-3 text-sm font-semibold text-[var(--muted)]">Last refreshed {time(data.generated_at)}</p>
-              </div>
-            </header>
+          {notice || error ? (
+            <div className="toast-stack" aria-live="polite" aria-atomic="true">
+              {notice ? <div role="status" className="toast toast-success"><CheckCircle2 size={17} />{notice}</div> : null}
+              {error ? <div role="alert" className="toast toast-error"><CircleAlert size={17} />{error}</div> : null}
+            </div>
           ) : null}
-          <div aria-live="polite" aria-atomic="true">
-            {notice ? <p className="mb-6 flex gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface-muted)] px-4 py-3 text-sm font-bold text-[var(--ink)]"><CheckCircle2 size={18} />{notice}</p> : null}
-            {error ? <p role="alert" className="mb-6 flex gap-2 rounded-lg border border-[var(--line-dark)] bg-[var(--surface-muted)] px-4 py-3 text-sm font-bold text-[var(--ink)]"><CircleAlert size={18} />{error}</p> : null}
-          </div>
           {data.warnings.length ? (
             <div className="mb-6 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-soft)] px-4 py-3 text-sm text-[var(--ink)]">
               <p className="font-extrabold">Data warnings</p>
