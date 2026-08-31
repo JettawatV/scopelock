@@ -145,47 +145,52 @@ class AdkAgentGateway:
                 events.append(event)
             return events, final_text_from_events(events)
 
-        try:
-            events, raw_output = await WorkflowExecutionBoundaries.model_async(operation)
-            if raw_output is None:
-                raise SemanticContractViolation("ADK returned no final structured output")
-            output = self._validate(route, raw_output, context)
-            return run.model_copy(
-                update={
-                    "completed_at": _utc_now(),
-                    "status": AgentRunStatus.COMPLETED,
-                    "output": output,
-                    "tool_trajectory": extract_redacted_tool_actions(
-                        events,
-                        agent_run_id=run.id,
-                    ),
-                }
-            )
-        except (ValidationError, SemanticContractViolation, ValueError) as error:
+        validation_error: Exception | None = None
+        for attempt in range(2):
+            try:
+                events, raw_output = await WorkflowExecutionBoundaries.model_async(operation)
+                if raw_output is None:
+                    raise SemanticContractViolation("ADK returned no final structured output")
+                output = self._validate(route, raw_output, context)
+                return run.model_copy(
+                    update={
+                        "completed_at": _utc_now(),
+                        "status": AgentRunStatus.COMPLETED,
+                        "output": output,
+                        "tool_trajectory": extract_redacted_tool_actions(
+                            events,
+                            agent_run_id=run.id,
+                        ),
+                    }
+                )
+            except (ValidationError, SemanticContractViolation, ValueError) as error:
+                validation_error = error
+                if attempt == 0:
+                    continue
+            except Exception as error:
+                return run.model_copy(
+                    update={
+                        "completed_at": _utc_now(),
+                        "status": AgentRunStatus.FAILED,
+                        "error": AgentRunError(
+                            category=type(error).__name__,
+                            message=str(error),
+                            retryable=False,
+                        ),
+                    }
+                )
+        if validation_error is not None:
             return run.model_copy(
                 update={
                     "completed_at": _utc_now(),
                     "status": AgentRunStatus.NEEDS_REVIEW,
                     "error": AgentRunError(
                         category="INVALID_AGENT_OUTPUT",
-                        message=str(error),
-                        retryable=False,
+                        message=str(validation_error),
+                        retryable=True,
                     ),
                 }
             )
-        except Exception as error:
-            return run.model_copy(
-                update={
-                    "completed_at": _utc_now(),
-                    "status": AgentRunStatus.FAILED,
-                    "error": AgentRunError(
-                        category=type(error).__name__,
-                        message=str(error),
-                        retryable=False,
-                    ),
-                }
-            )
-
     def _validate(
         self,
         route: AgentRoute,

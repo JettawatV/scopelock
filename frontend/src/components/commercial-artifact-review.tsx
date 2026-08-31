@@ -324,34 +324,11 @@ function ArtifactPreviewModal({
                   <StatusPill status={artifact.status} />
                 </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-[var(--line)] bg-white p-4">
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[var(--muted)]">Total investment</p>
-                  <p className="tabular mt-2 text-2xl font-black">{money(artifact.pricing_result.total_usd)}</p>
-                  <p className="mt-1 text-xs text-[var(--muted)]">Based on the reviewed requirements</p>
-                </div>
-                <div className="rounded-xl border border-[var(--line)] bg-white p-4">
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[var(--muted)]">Delivery timeline</p>
-                  <p className="tabular mt-2 text-2xl font-black">{artifact.timeline_result.total_days} business days</p>
-                  <p className="mt-1 text-xs text-[var(--muted)]">Scope and timeline remain approval-gated</p>
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="eyebrow">Included work</p>
-                  <span className="text-xs font-bold text-[var(--muted)]">{artifact.pricing_result.line_items.length} line items</span>
-                </div>
-                <div className="mt-3 divide-y divide-[var(--line)] overflow-hidden rounded-xl border border-[var(--line)] bg-white">
-                  {artifact.pricing_result.line_items.map((line) => (
-                    <div key={line.module_key} className="flex items-center justify-between gap-4 px-4 py-3">
-                      <div>
-                        <p className="text-sm font-extrabold">{humanize(line.module_key)}</p>
-                        <p className="mt-0.5 text-xs text-[var(--muted)]">Qty {line.quantity} · {humanize(line.unit_rule)}</p>
-                      </div>
-                      <p className="tabular shrink-0 text-sm font-black">{money(line.subtotal_usd)}</p>
-                    </div>
-                  ))}
-                </div>
+              <div className="rounded-xl border border-[var(--line)] bg-white p-5">
+                <div className="flex items-center justify-between gap-3"><div><p className="eyebrow">Proposal history</p><p className="mt-1 text-xs text-[var(--muted)]">Recorded lifecycle for this commercial artifact.</p></div><span className="text-xs font-bold text-[var(--muted)]">Version {artifact.version_number}</span></div>
+                <ol className="mt-5 grid gap-3">
+                  {["Drafted", artifact.status === "ACCEPTED" || artifact.status === "SENT" ? "Sent" : "Ready for review", artifact.status === "ACCEPTED" ? "Client accepted" : "Operator review"].map((label, index) => <li key={label} className="flex items-start gap-3"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--surface-muted)] text-xs font-black">{index + 1}</span><div><p className="text-sm font-extrabold">{label}</p><p className="mt-0.5 text-xs leading-5 text-[var(--muted)]">{index === 0 ? "Agent prepared this version from the SOP." : index === 1 && artifact.status !== "ACCEPTED" && artifact.status !== "SENT" ? "Waiting for explicit operator approval." : label === "Sent" ? "Sent in the existing Gmail thread." : label === "Client accepted" ? "This version is the immutable commercial baseline." : "The next action remains approval-gated."}</p></div></li>)}
+                </ol>
               </div>
             </div>
           ) : null}
@@ -861,7 +838,7 @@ function CompactArtifactReview({
             <div><dt>Timeline</dt><dd>{artifact.timeline_result.total_days}d</dd></div>
             <div><dt>Current status</dt><dd><StatusPill status={artifact.status} label="Awaiting review" /></dd></div>
           </dl>
-          <button type="button" onClick={() => { setPreviewTab("overview"); setPreviewOpen(true); }} className="latest-review-button"><Eye size={15} /> Review packet</button>
+          <button type="button" onClick={() => { setPreviewTab("overview"); setPreviewOpen(true); }} className="latest-review-button" aria-label="Open review packet" title="Open review packet"><Eye size={15} /></button>
         </div>
         {stale ? <p className="mt-3 rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-xs font-bold text-[var(--muted)]">Historical artifact — newer active version exists.</p> : null}
       </div>

@@ -131,6 +131,9 @@ modules:
       - line alerts
       - line notifications
       - line integration
+      - whatsapp alerts
+      - whatsapp notifications
+      - whatsapp integration
     quantity:
       mode: fixed_package
       unit: notification package
@@ -157,6 +160,8 @@ modules:
     aliases:
       - manager approval on line
       - line approval
+      - manager approval on whatsapp
+      - whatsapp approval
     quantity:
       mode: fixed_package
       unit: approval package

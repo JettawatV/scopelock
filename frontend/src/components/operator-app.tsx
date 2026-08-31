@@ -21,7 +21,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { type FormEvent, type MouseEvent, useEffect, useState } from "react";
+import { type FormEvent, type MouseEvent, useEffect, useRef, useState } from "react";
 
 import { ApiError, apiRequest, correlationId, type ApiCredential } from "@/lib/api";
 import {
@@ -430,6 +430,9 @@ function ScopeIntelligenceModal({
   const changeProject = changeArtifact
     ? data?.projects.find((item) => item.id === changeArtifact.project_id)
     : undefined;
+  const openBuffer = data?.scope_buffers.find((item) => item.status !== "FINALIZED");
+  const openBufferPrice = openBuffer?.net_price_delta_usd ?? (openBuffer ? data?.scope_events.filter((event) => openBuffer.event_ids.includes(event.id)).reduce((sum, event) => sum + event.price_delta_usd, 0) : 0);
+  const openBufferDays = openBuffer?.net_timeline_delta_days ?? (openBuffer ? data?.scope_events.filter((event) => openBuffer.event_ids.includes(event.id)).reduce((sum, event) => sum + event.timeline_delta_days, 0) : 0);
 
   return (
     <div
@@ -500,6 +503,14 @@ function ScopeIntelligenceModal({
                   <p className="tabular mt-1 text-xl font-black">+{Math.max(0, changeArtifact.timeline_result.total_days - changeProject.current_timeline_days)} days</p>
                 </div>
               </div>
+            </section>
+          ) : null}
+          {openBuffer ? (
+            <section className="mt-5 rounded-xl border border-[var(--line-strong)] bg-[var(--surface-soft)] p-4">
+              <p className="eyebrow">Current signal</p>
+              <h3 className="mt-1 text-base font-black">Scope change buffered for review</h3>
+              <p className="mt-1 text-xs font-semibold text-[var(--muted)]">The latest client changes are calculated but not yet sent.</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-lg border border-[var(--line)] bg-white p-3"><p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Pending price impact</p><p className="tabular mt-1 text-xl font-black">{money(openBufferPrice ?? 0, true)}</p></div><div className="rounded-lg border border-[var(--line)] bg-white p-3"><p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--muted)]">Pending timeline</p><p className="tabular mt-1 text-xl font-black">{(openBufferDays ?? 0) > 0 ? "+" : ""}{openBufferDays ?? 0} days</p></div></div>
             </section>
           ) : null}
 
@@ -806,7 +817,7 @@ function Overview({
   const actionCount = data.artifacts.filter((item) => REVIEW_STATUSES.has(item.status)).length + data.scope_buffers.filter((item) => item.status === "READY_TO_FINALIZE").length;
   const bufferedDelta = data.scope_buffers
     .filter((item) => item.status !== "FINALIZED")
-    .reduce((sum, item) => sum + item.net_price_delta_usd, 0);
+    .reduce((sum, item) => sum + (item.net_price_delta_usd ?? data.scope_events.filter((event) => item.event_ids.includes(event.id)).reduce((delta, event) => delta + event.price_delta_usd, 0)), 0);
   const artifactDelta = data.artifacts
     .filter(
       (item) =>
@@ -837,6 +848,11 @@ function Overview({
             <p className="eyebrow">Priority queue</p>
             <span className="text-xs font-extrabold text-[var(--muted)]">Current project</span>
           </div>
+          {data.scope_buffers.filter((item) => item.status !== "FINALIZED").map((buffer) => (
+            <div key={buffer.id} className="px-5 pt-4 sm:px-6">
+              <BufferCard buffer={buffer} demo={demo} busy={busy} onCommand={onCommand} />
+            </div>
+          ))}
           {artifact ? <ArtifactReview artifact={artifact} project={project} inboxMessages={data.inbox_messages} demo={demo} operatorKey={operatorKey} apiPrefix={apiPrefix} compact operatorId={operatorId} setOperatorId={setOperatorId} busy={busy} onCommand={onCommand} /> : <div className="flex flex-1 items-center justify-center p-6"><EmptyState>No commercial artifact needs review.</EmptyState></div>}
         </section>
       </section>
@@ -984,6 +1000,7 @@ export function OperatorApp({
   const [notice, setNotice] = useState<string | null>(null);
   const [demo, setDemo] = useState(false);
   const [scopeIntelligenceOpen, setScopeIntelligenceOpen] = useState(false);
+  const previousSnapshotRef = useRef<DashboardSnapshot | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return readStoredValue("local", SIDEBAR_COLLAPSED_KEY) === "true";
   });
@@ -1002,6 +1019,7 @@ export function OperatorApp({
       `${apiPrefix}/dashboard`,
       key,
     );
+    previousSnapshotRef.current = snapshot;
     setData(snapshot);
   };
 
@@ -1037,7 +1055,20 @@ export function OperatorApp({
             ? { kind: "reviewer", token: reviewerSession.token }
             : operatorKey,
         );
-        if (active) setData(snapshot);
+        if (active) {
+          const previous = previousSnapshotRef.current;
+          if (previous) {
+            if (snapshot.inbox_messages.length > previous.inbox_messages.length) {
+              setNotice("New client email received. Open Gmail review to read the message.");
+            } else {
+              const previousArtifactIds = new Set(previous.artifacts.map((artifact) => artifact.id));
+              const newChangeOrder = snapshot.artifacts.find((artifact) => artifact.artifact_type === "CHANGE_ORDER" && !previousArtifactIds.has(artifact.id));
+              if (newChangeOrder) setNotice("Updated proposal ready. Open the review packet to check the new price and timeline.");
+            }
+          }
+          previousSnapshotRef.current = snapshot;
+          setData(snapshot);
+        }
       } catch {
         // Keep the last trusted snapshot. Manual refresh still surfaces an error.
       } finally {
