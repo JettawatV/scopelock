@@ -364,8 +364,8 @@ function ArtifactPreviewModal({
             {actions.canDecide ? (
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
                 <div><label htmlFor={`packet-operator-${artifact.id}`} className="block text-[11px] font-extrabold">Approver identity</label><input id={`packet-operator-${artifact.id}`} type="email" value={actions.operatorId} onChange={(event) => actions.setOperatorId(event.target.value)} disabled={demo} placeholder="you@example.com" className="mt-1.5 min-h-11 w-full rounded-lg border border-[var(--line-strong)] bg-white px-3 text-sm disabled:bg-[var(--surface-muted)]" /></div>
-                <button type="button" disabled={actions.busy || demo || !actions.operatorId} onClick={() => actions.onCommand(`/artifacts/${artifact.id}/reject`, { approver_id: actions.operatorId, correlation_id: correlationId() })} className="min-h-11 rounded-lg border border-[var(--line-dark)] bg-white px-4 text-xs font-extrabold disabled:opacity-45">Reject</button>
-                <button type="button" disabled={actions.busy || demo || !actions.operatorId} onClick={() => actions.onCommand(`/artifacts/${artifact.id}/approve`, { approver_id: actions.operatorId, correlation_id: correlationId() })} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-[var(--ink)] px-4 text-xs font-extrabold text-white disabled:opacity-45"><Check size={14} /> Approve</button>
+                <button type="button" disabled={actions.busy || demo || !actions.operatorId} onClick={() => actions.onCommand(`/artifacts/${artifact.id}/reject`, apiPrefix === "/api/reviewer" ? { correlation_id: correlationId() } : { approver_id: actions.operatorId, correlation_id: correlationId() })} className="min-h-11 rounded-lg border border-[var(--line-dark)] bg-white px-4 text-xs font-extrabold disabled:opacity-45">Reject</button>
+                <button type="button" disabled={actions.busy || demo || !actions.operatorId} onClick={() => actions.onCommand(`/artifacts/${artifact.id}/approve`, apiPrefix === "/api/reviewer" ? { correlation_id: correlationId() } : { approver_id: actions.operatorId, correlation_id: correlationId() })} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-[var(--ink)] px-4 text-xs font-extrabold text-white disabled:opacity-45"><Check size={14} /> Approve</button>
               </div>
             ) : null}
 
@@ -598,7 +598,7 @@ export function ArtifactReview({
                 disabled={busy || demo || !operatorId}
                 onClick={() =>
                   onCommand(`/artifacts/${artifact.id}/approve`, {
-                    approver_id: operatorId,
+                    ...(apiPrefix === "/api/reviewer" ? {} : { approver_id: operatorId }),
                     correlation_id: correlationId(),
                   })
                 }
@@ -611,7 +611,7 @@ export function ArtifactReview({
                 disabled={busy || demo || !operatorId}
                 onClick={() =>
                   onCommand(`/artifacts/${artifact.id}/reject`, {
-                    approver_id: operatorId,
+                    ...(apiPrefix === "/api/reviewer" ? {} : { approver_id: operatorId }),
                     correlation_id: correlationId(),
                   })
                 }
